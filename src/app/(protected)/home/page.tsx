@@ -14,7 +14,7 @@ export default async function Home() {
     <>
       <Page.Header className="p-0">
         <TopBar
-          title="Home"
+          title="World Reward Coin"
           endAdornment={
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold capitalize">
