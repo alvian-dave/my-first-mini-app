@@ -12,6 +12,7 @@ export const Transaction = () => {
   const contractAddress = '0x341029eA2F41f22DADfFf0f3Ef903b54a5805C59';
   const [buttonState, setButtonState] = useState<'pending' | 'success' | 'failed' | undefined>();
   const [transactionId, setTransactionId] = useState<string>('');
+  const [isHidden, setIsHidden] = useState(false); // ← kontrol tampilan
 
   const client = createPublicClient({
     chain: worldchain,
@@ -36,6 +37,7 @@ export const Transaction = () => {
       if (isConfirmed) {
         console.log('Transaction confirmed!');
         setButtonState('success');
+        setIsHidden(true); // ← sembunyikan setelah sukses
       } else if (isError) {
         console.error('Transaction failed:', error);
         setButtonState('failed');
@@ -79,6 +81,8 @@ export const Transaction = () => {
       setButtonState(undefined);
     }, 3000);
   };
+
+  if (isHidden) return null; // ← tidak render komponen jika sukses
 
   return (
     <div className="grid w-full gap-4">
