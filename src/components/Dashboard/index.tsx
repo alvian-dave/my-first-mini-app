@@ -8,13 +8,11 @@ import {
   createPublicClient,
   http,
   parseAbi,
-  encodeFunctionData,
   formatEther,
 } from 'viem';
 
 const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS! as `0x${string}`;
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
-
 const abi = parseAbi([
   'function claimWorldReward()',
   'function pendingWorldReward(address) view returns (uint256)',
@@ -31,23 +29,7 @@ export const Dashboard = () => {
   const [pending, setPending] = useState('0');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!address) return;
-
-    fetch('/api/auto-claim', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address }),
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.shouldClaim) {
-          handleClaim();
-        }
-      })
-      .catch(console.error);
-  }, [address]);
-
+  // Realtime fetch reward
   useEffect(() => {
     if (!address) return;
 
@@ -68,27 +50,42 @@ export const Dashboard = () => {
     return () => clearInterval(interval);
   }, [address]);
 
-  const handleClaim = async () => {
-    if (typeof window === 'undefined' || !window.worldApp) {
-      alert('World App not detected.');
-      return;
-    }
+  // Otomatis claim saat login pertama
+  useEffect(() => {
+    if (!address) return;
 
+    fetch('/api/auto-claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+    })
+      .then(res => res.json())
+      .then(async (data) => {
+        if (data.shouldClaim) {
+          await handleClaim();
+        }
+      })
+      .catch(console.error);
+  }, [address]);
+
+  const handleClaim = async () => {
     try {
       setLoading(true);
 
-      const data = encodeFunctionData({
-        abi,
-        functionName: 'claimWorldReward',
-        args: [],
+      const res = await fetch('/api/claim-relay', {
+        method: 'POST',
+        body: JSON.stringify({ address }),
       });
 
-      const tx = await window.worldApp.sendTransaction({
-        to: contractAddress,
-        data,
-      });
+      const tx = await res.json();
+      console.log('✅ Claim TX result:', tx);
 
-      console.log('✅ TX sent:', tx);
+      if (tx.status === 'success') {
+        alert('✅ Claim berhasil!');
+        setPending('0');
+      } else {
+        alert('⚠️ Gagal claim. Mungkin sedang diproses.');
+      }
     } catch (err) {
       console.error('❌ Claim failed:', err);
     } finally {
