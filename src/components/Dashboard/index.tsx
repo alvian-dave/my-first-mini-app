@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useMiniKit } from '@worldcoin/minikit-js/minikit-provider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +10,7 @@ import {
   parseAbi,
   formatEther,
 } from 'viem';
+import { MiniKit } from '@worldcoin/minikit-js';
 
 const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS! as `0x${string}`;
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
@@ -26,17 +26,30 @@ const client = createPublicClient({
 
 export const Dashboard = () => {
   const { data: session } = useSession();
-  const { sendTransaction } = useMiniKit();
-
   const address = session?.user?.walletAddress as `0x${string}` | undefined;
 
   const [pending, setPending] = useState('0');
   const [loading, setLoading] = useState(false);
-  const [claimed, setClaimed] = useState(false);
+  const [hasClaimed, setHasClaimed] = useState(false);
 
-  // 👇 Otomatis claim saat login pertama
+  const fetchPendingReward = useCallback(() => {
+    if (!address) return;
+
+    client.readContract({
+      address: contractAddress,
+      abi,
+      functionName: 'pendingWorldReward',
+      args: [address],
+    })
+      .then((res) => {
+        const formatted = formatEther(res as bigint);
+        setPending(formatted);
+      })
+      .catch(console.error);
+  }, [address]);
+
   useEffect(() => {
-    if (!address || claimed) return;
+    if (!address || hasClaimed) return;
 
     fetch('/api/auto-claim', {
       method: 'POST',
@@ -44,58 +57,41 @@ export const Dashboard = () => {
       body: JSON.stringify({ address }),
     })
       .then(res => res.json())
-      .then(data => {
-        console.log('Auto-claim check:', data);
+      .then(async (data) => {
         if (data.shouldClaim) {
-          handleClaim();
+          await handleClaim();
         }
       })
       .catch(console.error);
-  }, [address, claimed]);
+  }, [address, hasClaimed]);
 
-  // 👇 Update pending reward setiap detik
   useEffect(() => {
     if (!address) return;
 
-    const interval = setInterval(() => {
-      client.readContract({
-        address: contractAddress,
-        abi,
-        functionName: 'pendingWorldReward',
-        args: [address],
-      })
-        .then((res) => {
-          const formatted = formatEther(res as bigint);
-          setPending(formatted);
-        })
-        .catch(console.error);
-    }, 1000);
-
+    const interval = setInterval(fetchPendingReward, 1000);
     return () => clearInterval(interval);
-  }, [address]);
+  }, [fetchPendingReward]);
 
-  // 👇 Fungsi klaim
   const handleClaim = async () => {
-    if (!sendTransaction || !address) return;
+    if (!address) return;
+    setLoading(true);
 
     try {
-      setLoading(true);
-
-      const result = await sendTransaction({
+      const { commandPayload, finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
             address: contractAddress,
             abi,
             functionName: 'claimWorldReward',
-            args: [],
           },
         ],
+        formatPayload: true,
       });
 
-      console.log('✅ TX sent:', result);
-      setClaimed(true);
+      console.log('✅ Sent via Worldcoin relayer', finalPayload);
+      setHasClaimed(true);
     } catch (err) {
-      console.error('❌ Claim failed:', err);
+      console.error('❌ Transaction failed:', err);
     } finally {
       setLoading(false);
     }
