@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const reward = BigInt(pending.toString());
 
-    if (reward > 0n) {
+    if (reward > BigInt(0)) {
       console.log(`[SKIP] ${address} already claimed.`);
       return Response.json({ alreadyClaimed: true });
     }
