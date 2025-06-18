@@ -12,15 +12,21 @@ import { useState } from 'react';
  */
 
 export const Navigation = () => {
-  const [value, setValue] = useState('info');
-  const [value, setValue] = useState('home');
+  const [activeTab, setActiveTab] = useState('home');
 
   return (
-    <Tabs value={value} onValueChange={setValue}>
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabItem value="home" icon={<Home />} label="Home" />
       {/* // TODO: These currently don't link anywhere */}
       <TabItem value="Info" icon={<InfoCircle />} label="Info" />
       <TabItem value="profile" icon={<User />} label="Profile" />
     </Tabs>
+  {/* Konten berdasarkan tab */}
+      <div className="mt-4 px-4">
+        {activeTab === 'home' && <p>Ini halaman Home.</p>}
+        {activeTab === 'info' && <p>Ini halaman Info.</p>}
+        {activeTab === 'profile' && <p>Ini halaman Profil.</p>}
+      </div>
+    </div>
   );
 };
