@@ -56,7 +56,7 @@ export const Dashboard = () => {
         address: contractAddress,
         abi,
         functionName: 'pendingWorldReward',
-        args: [address],
+        args: [address as `0x${string}`],
       })
         .then((res) => {
           const formatted = formatEther(res as bigint);
