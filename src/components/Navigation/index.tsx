@@ -12,6 +12,7 @@ import { useState } from 'react';
  */
 
 export const Navigation = () => {
+  const [value, setValue] = useState('info');
   const [value, setValue] = useState('home');
 
   return (
