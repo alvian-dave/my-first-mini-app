@@ -4,13 +4,19 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { sendTransaction } from '@worldcoin/idkit';
-import { createPublicClient, http, parseAbi, formatEther } from 'viem';
+import {
+  createPublicClient,
+  http,
+  parseAbi,
+  encodeFunctionData,
+  formatEther,
+} from 'viem';
 
-const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
+const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS! as `0x${string}`;
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
 
 const abi = parseAbi([
+  'function claimWorldReward()',
   'function pendingWorldReward(address) view returns (uint256)',
 ]);
 
@@ -25,7 +31,6 @@ export const Dashboard = () => {
   const [pending, setPending] = useState('0');
   const [loading, setLoading] = useState(false);
 
-  // Call auto-claim only if user hasn't claimed before
   useEffect(() => {
     if (!address) return;
 
@@ -37,19 +42,18 @@ export const Dashboard = () => {
       .then(res => res.json())
       .then(data => {
         if (data.shouldClaim) {
-          handleClaim(); // auto-claim for first time
+          handleClaim();
         }
       })
       .catch(console.error);
   }, [address]);
 
-  // Update pending reward every second
   useEffect(() => {
     if (!address) return;
 
     const interval = setInterval(() => {
       client.readContract({
-        address: contractAddress as `0x${string}`,
+        address: contractAddress,
         abi,
         functionName: 'pendingWorldReward',
         args: [address],
@@ -65,24 +69,28 @@ export const Dashboard = () => {
   }, [address]);
 
   const handleClaim = async () => {
+    if (typeof window === 'undefined' || !window.worldApp) {
+      alert('World App not detected.');
+      return;
+    }
+
     try {
       setLoading(true);
-      await sendTransaction({
-        contractAddress,
+
+      const data = encodeFunctionData({
+        abi,
         functionName: 'claimWorldReward',
-        abi: [
-          {
-            name: 'claimWorldReward',
-            type: 'function',
-            stateMutability: 'nonpayable',
-            inputs: [],
-            outputs: [],
-          },
-        ],
-        params: [],
+        args: [],
       });
+
+      const tx = await window.worldApp.sendTransaction({
+        to: contractAddress,
+        data,
+      });
+
+      console.log('✅ TX sent:', tx);
     } catch (err) {
-      console.error('Claim failed:', err);
+      console.error('❌ Claim failed:', err);
     } finally {
       setLoading(false);
     }
@@ -106,4 +114,4 @@ export const Dashboard = () => {
       </Card>
     </div>
   );
-}
+};
