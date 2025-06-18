@@ -3,6 +3,7 @@
 import TestContractABI from '@/abi/TestContract.json';
 import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
 import { MiniKit } from '@worldcoin/minikit-js';
+import { useSession } from 'next-auth/react';
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
 import { useEffect, useState } from 'react';
 import { createPublicClient, http } from 'viem';
@@ -11,6 +12,7 @@ import { formatEther } from 'viem/utils';
 
 export const Amount = () => {
   const contractAddress = '0x341029eA2F41f22DADfFf0f3Ef903b54a5805C59';
+  const { data: session } = useSession();
   const [buttonState, setButtonState] = useState<'pending' | 'success' | 'failed' | undefined>();
   const [transactionId, setTransactionId] = useState<string>('');
   const [availableReward, setAvailableReward] = useState<bigint>(0n);
@@ -33,6 +35,30 @@ export const Amount = () => {
     transactionId,
   });
 
+  // Auto fetch reward setiap detik
+  useEffect(() => {
+    if (!session?.user.walletAddress) return;
+
+    const fetchReward = async () => {
+      try {
+        const reward = await client.readContract({
+          address: contractAddress,
+          abi: TestContractABI,
+          functionName: 'pendingWorldReward',
+          args: [session.user.walletAddress as `0x${string}`],
+        });
+        setAvailableReward(reward as bigint);
+      } catch (e) {
+        console.error('Gagal ambil pending reward:', e);
+      }
+    };
+
+    fetchReward(); // pertama kali
+    const interval = setInterval(fetchReward, 1000); // tiap detik
+    return () => clearInterval(interval);
+  }, [session?.user.walletAddress]);
+
+  // Update status transaksi setelah dikirim
   useEffect(() => {
     if (transactionId && !isConfirming) {
       if (isConfirmed) {
@@ -48,28 +74,6 @@ export const Amount = () => {
       }, 3000);
     }
   }, [transactionId, isConfirming, isConfirmed, isError, error]);
-
-  // Ambil reward setiap detik
-  useEffect(() => {
-    const fetchReward = async () => {
-      try {
-        const userAddress = await MiniKit.getUserAddress();
-        const reward = await client.readContract({
-          address: contractAddress,
-          abi: TestContractABI,
-          functionName: 'pendingWorldReward',
-          args: [userAddress as `0x${string}`],
-        });
-        setAvailableReward(reward as bigint);
-      } catch (e) {
-        console.error('Gagal ambil pending reward:', e);
-      }
-    };
-
-    fetchReward(); // panggil pertama kali
-    const interval = setInterval(fetchReward, 1000); // update tiap detik
-    return () => clearInterval(interval);
-  }, [client]);
 
   const onClickClaim = async () => {
     setTransactionId('');
