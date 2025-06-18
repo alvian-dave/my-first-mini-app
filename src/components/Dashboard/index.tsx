@@ -9,7 +9,6 @@ import {
   createPublicClient,
   http,
   parseAbi,
-  encodeFunctionData,
   formatEther,
 } from 'viem';
 
@@ -30,11 +29,14 @@ export const Dashboard = () => {
   const { sendTransaction } = useMiniKit();
 
   const address = session?.user?.walletAddress as `0x${string}` | undefined;
+
   const [pending, setPending] = useState('0');
   const [loading, setLoading] = useState(false);
+  const [claimed, setClaimed] = useState(false);
 
+  // 👇 Otomatis claim saat login pertama
   useEffect(() => {
-    if (!address) return;
+    if (!address || claimed) return;
 
     fetch('/api/auto-claim', {
       method: 'POST',
@@ -43,13 +45,15 @@ export const Dashboard = () => {
     })
       .then(res => res.json())
       .then(data => {
+        console.log('Auto-claim check:', data);
         if (data.shouldClaim) {
           handleClaim();
         }
       })
       .catch(console.error);
-  }, [address]);
+  }, [address, claimed]);
 
+  // 👇 Update pending reward setiap detik
   useEffect(() => {
     if (!address) return;
 
@@ -70,23 +74,26 @@ export const Dashboard = () => {
     return () => clearInterval(interval);
   }, [address]);
 
+  // 👇 Fungsi klaim
   const handleClaim = async () => {
     if (!sendTransaction || !address) return;
 
     try {
       setLoading(true);
 
-      const data = encodeFunctionData({
-        abi,
-        functionName: 'claimWorldReward',
+      const result = await sendTransaction({
+        transaction: [
+          {
+            address: contractAddress,
+            abi,
+            functionName: 'claimWorldReward',
+            args: [],
+          },
+        ],
       });
 
-      const tx = await sendTransaction({
-        to: contractAddress,
-        data,
-      });
-
-      console.log('✅ TX sent:', tx);
+      console.log('✅ TX sent:', result);
+      setClaimed(true);
     } catch (err) {
       console.error('❌ Claim failed:', err);
     } finally {
