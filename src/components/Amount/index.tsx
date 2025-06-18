@@ -36,6 +36,7 @@ export const Amount = () => {
   });
 
   // Auto fetch reward setiap detik
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!session?.user.walletAddress) return;
 

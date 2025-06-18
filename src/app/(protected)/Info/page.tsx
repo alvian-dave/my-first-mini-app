@@ -1,11 +1,9 @@
-'use client';
-
 import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
 import { Information } from '@/components/Information';
 import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
-export default async function Wallet () {
+export default async function Info () {
     const session = await auth();
     
   return (

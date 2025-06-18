@@ -1,7 +1,7 @@
 'use client';
 
 import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
-import { Bank, Home, InfoCircle, User } from 'iconoir-react';
+import { Home, InfoCircle, User } from 'iconoir-react';
 import { useState } from 'react';
 
 /**
