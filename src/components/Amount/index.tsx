@@ -45,7 +45,7 @@ export const Amount = () => {
           address: contractAddress,
           abi: TestContractABI,
           functionName: 'pendingWorldReward',
-          args: [session.user.walletAddress as `0x${string}`],
+          args: [session.user.walletAddress],
         });
         setAvailableReward(reward as bigint);
       } catch (e) {
@@ -110,7 +110,7 @@ export const Amount = () => {
 
   return (
     <div className="grid w-full gap-4">
-      <p className="text-lg font-semibold">Transaction</p>
+      <p className="text-lg font-semibold">Amount</p>
 
       <div className="text-base">
         <p>
