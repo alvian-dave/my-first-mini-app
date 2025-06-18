@@ -1,6 +1,6 @@
-// pages/api/auto-claim.ts
+// app/api/auto-claim/route.ts (Next.js 13+ App Router style)
 
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest } from 'next/server';
 import { createPublicClient, http, parseAbi } from 'viem';
 
 const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
@@ -14,13 +14,16 @@ const client = createPublicClient({
   transport: http(rpcUrl),
 });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
-
-  const { address } = req.body;
-  if (!address) return res.status(400).json({ error: 'Missing address' });
-
+export async function POST(req: NextRequest) {
   try {
+    const { address } = await req.json();
+
+    if (!address) {
+      return new Response(JSON.stringify({ error: 'Missing address' }), {
+        status: 400,
+      });
+    }
+
     const pending = await client.readContract({
       address: contractAddress as `0x${string}`,
       abi,
@@ -32,13 +35,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (reward > 0n) {
       console.log(`[SKIP] ${address} already claimed.`);
-      return res.status(200).json({ alreadyClaimed: true });
+      return Response.json({ alreadyClaimed: true });
     }
 
     console.log(`[AUTO] ${address} belum pernah claim → lanjut claim dari frontend`);
-    return res.status(200).json({ shouldClaim: true });
+    return Response.json({ shouldClaim: true });
   } catch (err) {
     console.error('[ERROR] auto-claim check:', err);
-    return res.status(500).json({ error: 'Internal error' });
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
+      status: 500,
+    });
   }
 }
