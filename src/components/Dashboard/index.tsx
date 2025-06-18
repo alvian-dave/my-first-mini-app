@@ -18,7 +18,7 @@ const client = createPublicClient({
   transport: http(rpcUrl),
 });
 
-export const Dashboard() {
+export const Dashboard = () => {
   const { data: session } = useSession();
   const address = session?.user?.walletAddress;
 
