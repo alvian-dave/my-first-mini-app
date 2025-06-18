@@ -2,7 +2,6 @@ import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
 import { Amount } from '@/components/Amount';
 import { Transaction } from '@/components/Transaction';
-import { Information } from '@/components/Information';
 import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
 export default async function Home() {
@@ -26,7 +25,6 @@ export default async function Home() {
       <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
         <Amount />
         <Transaction />
-        <Information />
       </Page.Main>
     </>
   );
