@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useMiniKit } from '@worldcoin/minikit-js';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   createPublicClient,
   http,
   parseAbi,
+  encodeFunctionData,
   formatEther,
 } from 'viem';
 
 const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS! as `0x${string}`;
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
+
 const abi = parseAbi([
   'function claimWorldReward()',
   'function pendingWorldReward(address) view returns (uint256)',
@@ -24,12 +27,29 @@ const client = createPublicClient({
 
 export const Dashboard = () => {
   const { data: session } = useSession();
-  const address = session?.user?.walletAddress;
+  const { sendTransaction } = useMiniKit();
 
+  const address = session?.user?.walletAddress as `0x${string}` | undefined;
   const [pending, setPending] = useState('0');
   const [loading, setLoading] = useState(false);
 
-  // Realtime fetch reward
+  useEffect(() => {
+    if (!address) return;
+
+    fetch('/api/auto-claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.shouldClaim) {
+          handleClaim();
+        }
+      })
+      .catch(console.error);
+  }, [address]);
+
   useEffect(() => {
     if (!address) return;
 
@@ -38,7 +58,7 @@ export const Dashboard = () => {
         address: contractAddress,
         abi,
         functionName: 'pendingWorldReward',
-        args: [address as `0x${string}`],
+        args: [address],
       })
         .then((res) => {
           const formatted = formatEther(res as bigint);
@@ -50,42 +70,23 @@ export const Dashboard = () => {
     return () => clearInterval(interval);
   }, [address]);
 
-  // Otomatis claim saat login pertama
-  useEffect(() => {
-    if (!address) return;
-
-    fetch('/api/auto-claim', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address }),
-    })
-      .then(res => res.json())
-      .then(async (data) => {
-        if (data.shouldClaim) {
-          await handleClaim();
-        }
-      })
-      .catch(console.error);
-  }, [address]);
-
   const handleClaim = async () => {
+    if (!sendTransaction || !address) return;
+
     try {
       setLoading(true);
 
-      const res = await fetch('/api/claim-relay', {
-        method: 'POST',
-        body: JSON.stringify({ address }),
+      const data = encodeFunctionData({
+        abi,
+        functionName: 'claimWorldReward',
       });
 
-      const tx = await res.json();
-      console.log('✅ Claim TX result:', tx);
+      const tx = await sendTransaction({
+        to: contractAddress,
+        data,
+      });
 
-      if (tx.status === 'success') {
-        alert('✅ Claim berhasil!');
-        setPending('0');
-      } else {
-        alert('⚠️ Gagal claim. Mungkin sedang diproses.');
-      }
+      console.log('✅ TX sent:', tx);
     } catch (err) {
       console.error('❌ Claim failed:', err);
     } finally {

@@ -1,9 +1,9 @@
-// app/api/auto-claim/route.ts (Next.js 13+ App Router style)
+// app/api/auto-claim/route.ts
 
 import { NextRequest } from 'next/server';
 import { createPublicClient, http, parseAbi } from 'viem';
 
-const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
+const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS! as `0x${string}`;
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
 
 const abi = parseAbi([
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const pending = await client.readContract({
-      address: contractAddress as `0x${string}`,
+      address: contractAddress,
       abi,
       functionName: 'pendingWorldReward',
       args: [address],
@@ -34,12 +34,12 @@ export async function POST(req: NextRequest) {
     const reward = BigInt(pending.toString());
 
     if (reward > BigInt(0)) {
-      console.log(`[SKIP] ${address} already claimed.`);
-      return Response.json({ alreadyClaimed: true });
+      console.log(`[AUTO] ${address} → pending reward ${reward} → lanjut claim`);
+      return Response.json({ shouldClaim: true });
     }
 
-    console.log(`[AUTO] ${address} belum pernah claim → lanjut claim dari frontend`);
-    return Response.json({ shouldClaim: true });
+    console.log(`[SKIP] ${address} → pending reward 0 → tidak perlu claim`);
+    return Response.json({ shouldClaim: false });
   } catch (err) {
     console.error('[ERROR] auto-claim check:', err);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
