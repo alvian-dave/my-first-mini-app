@@ -2,15 +2,16 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useMiniKit } from '@worldcoin/minikit-js/minikit-provider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   createPublicClient,
   http,
   parseAbi,
+  encodeFunctionData,
   formatEther,
 } from 'viem';
-import { MiniKit } from '@worldcoin/minikit-js';
 
 const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS! as `0x${string}`;
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
@@ -26,76 +27,74 @@ const client = createPublicClient({
 
 export const Dashboard = () => {
   const { data: session } = useSession();
-  const address = session?.user?.walletAddress as `0x${string}` | undefined;
+  const { sendTransaction } = useMiniKit();
 
+  const address = session?.user?.walletAddress as `0x${string}` | undefined;
   const [pending, setPending] = useState('0');
   const [loading, setLoading] = useState(false);
-  const [hasClaimed, setHasClaimed] = useState(false);
 
-  const fetchPendingReward = useCallback(() => {
-    if (!address) return;
+  const handleClaim = useCallback(async () => {
+    if (!sendTransaction || !address) return;
 
-    client.readContract({
-      address: contractAddress,
-      abi,
-      functionName: 'pendingWorldReward',
-      args: [address],
-    })
-      .then((res) => {
-        const formatted = formatEther(res as bigint);
-        setPending(formatted);
-      })
-      .catch(console.error);
-  }, [address]);
+    try {
+      setLoading(true);
 
+      const data = encodeFunctionData({
+        abi,
+        functionName: 'claimWorldReward',
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { commandPayload, finalPayload } = await sendTransaction({
+        to: contractAddress,
+        data,
+      });
+
+      console.log('✅ Claim transaction sent');
+    } catch (err) {
+      console.error('❌ Claim failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [sendTransaction, address]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!address || hasClaimed) return;
+    if (!address) return;
 
     fetch('/api/auto-claim', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address }),
     })
-      .then(res => res.json())
-      .then(async (data) => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.shouldClaim) {
-          await handleClaim();
+          handleClaim();
         }
       })
       .catch(console.error);
-  }, [address, hasClaimed]);
+  }, [address]);
 
   useEffect(() => {
     if (!address) return;
 
-    const interval = setInterval(fetchPendingReward, 1000);
+    const interval = setInterval(() => {
+      client.readContract({
+        address: contractAddress,
+        abi,
+        functionName: 'pendingWorldReward',
+        args: [address],
+      })
+        .then((res) => {
+          const formatted = formatEther(res as bigint);
+          setPending(formatted);
+        })
+        .catch(console.error);
+    }, 1000);
+
     return () => clearInterval(interval);
-  }, [fetchPendingReward]);
-
-  const handleClaim = async () => {
-    if (!address) return;
-    setLoading(true);
-
-    try {
-      const { commandPayload, finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
-          {
-            address: contractAddress,
-            abi,
-            functionName: 'claimWorldReward',
-          },
-        ],
-        formatPayload: true,
-      });
-
-      console.log('✅ Sent via Worldcoin relayer', finalPayload);
-      setHasClaimed(true);
-    } catch (err) {
-      console.error('❌ Transaction failed:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [address]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-8">
