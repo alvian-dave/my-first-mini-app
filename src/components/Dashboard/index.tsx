@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useMiniKit } from '@worldcoin/minikit-js';
+import { useMiniKit } from '@worldcoin/minikit-js/useMiniKit';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
