@@ -2,25 +2,20 @@
 
 import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
 import { Home, InfoCircle, User } from 'iconoir-react';
-import { useState } from 'react';
-
-/**
- * This component uses the UI Kit to navigate between pages
- * Bottom navigation is the most common navigation pattern in Mini Apps
- * We require mobile first design patterns for mini apps
- * Read More: https://docs.world.org/mini-apps/design/app-guidelines#mobile-first
- */
+import { usePathname, useRouter } from 'next/navigation';
 
 export const Navigation = () => {
-  const [activeTab, setActiveTab] = useState('home');
+  const pathname = usePathname(); // Dapatkan path saat ini, misal "/info"
+  const router = useRouter();
+
+  // Ambil nama tab dari path, misal "/info" => "info"
+  const currentTab = pathname.split('/')[1] || 'home';
 
   return (
-    <div> {/* Bungkus semua elemen di dalam satu <div> */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabItem value="home" icon={<Home />} label="Home" />
-        <TabItem value="info" icon={<InfoCircle />} label="info" />
-        <TabItem value="profile" icon={<User />} label="Profile" />
-      </Tabs>
-    </div>
+    <Tabs value={currentTab} onValueChange={(tab) => router.push(`/${tab}`)}>
+      <TabItem value="home" icon={<Home />} label="Home" />
+      <TabItem value="info" icon={<InfoCircle />} label="Info" />
+      <TabItem value="profile" icon={<User />} label="Profile" />
+    </Tabs>
   );
 };
