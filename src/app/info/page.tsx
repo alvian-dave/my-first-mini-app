@@ -1,8 +1,10 @@
+import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
 import { Information } from '@/components/Information';
 import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
 export default async function Infopage () {
+    const session = await auth();
     
   return (
       <>
