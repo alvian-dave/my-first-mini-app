@@ -86,7 +86,6 @@ export const Transaction = () => {
 
   return (
     <div className="grid w-full gap-4">
-      <p className="text-lg font-semibold">Transaction</p>
       <LiveFeedback
         label={{
           failed: 'Transaction failed',
@@ -103,7 +102,7 @@ export const Transaction = () => {
           variant="primary"
           className="w-full"
         >
-          Get Token
+          Inial Reward
         </Button>
       </LiveFeedback>
     </div>

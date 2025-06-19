@@ -111,8 +111,6 @@ export const Amount = () => {
 
   return (
   <div className="w-full px-4">
-    <div className="text-lg font-semibold mb-2">Reward</div>
-
     <div className="bg-white rounded-2xl shadow-md p-4 space-y-2">
       <p className="text-sm text-gray-500">Available to claim:</p>
       <p className="text-2xl font-bold text-black">
