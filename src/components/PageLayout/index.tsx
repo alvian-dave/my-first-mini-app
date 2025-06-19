@@ -47,7 +47,7 @@ const Footer = (props: { children: ReactNode; className?: string }) => {
   return (
     <footer
       className={twMerge(
-        'px-6 pb-[35px] flex items-center justify-center',
+        'h-[70px] px-6 pb-[10px] flex items-center justify-center',
         clsx(props.className)
       )}
     >
