@@ -18,9 +18,9 @@ export default async function Home() {
   title=""
 />
 </Page.Header>
-      <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
-        <Amount />
-      </Page.Main>
+      <Page.Main className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
+  <Amount />
+</Page.Main>
     </>
   );
 }
