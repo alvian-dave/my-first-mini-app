@@ -12,7 +12,7 @@ export const Information = () => {
       </p>
 
       <p>
-        To begin earning rewards, new users must click the <strong>Initial Reward</strong> button.
+        To begin earning rewards, new users must click the <strong> 'Initial Reward' </strong> button.
       </p>
 
       <p>

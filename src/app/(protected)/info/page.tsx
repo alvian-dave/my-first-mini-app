@@ -11,7 +11,9 @@ export default async function Infopage () {
           title="WRC"
         />
       </Page.Header>
-          <Information />
+      <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
+        <Information />
+      </Page.Main>
       </>
     );
   }
