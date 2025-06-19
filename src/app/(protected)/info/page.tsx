@@ -7,10 +7,17 @@ export default async function Infopage () {
   return (
       <>
         <Page.Header className="p-0">
-        <TopBar
-          title="WRC"
-        />
-      </Page.Header>
+  <TopBar
+  startAdornment={
+    <img
+      src="/favicon.png"
+      alt="Logo"
+      className="h-12 w-auto"
+    />
+  }
+  title=""
+/>
+</Page.Header>
       <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
         <Information />
       </Page.Main>
