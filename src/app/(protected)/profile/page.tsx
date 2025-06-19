@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
+import { InfoImage } from '@/components/InfoImage';
 import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
 export default async function Profilpage () {
@@ -21,8 +22,8 @@ export default async function Profilpage () {
           />
         </Page.Header>
         <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
-          <p className="text-lg font-semibold"> </p>
-        </Page.Main>
+                <InfoImage />
+              </Page.Main>
       </>
     );
   }
