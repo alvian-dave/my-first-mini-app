@@ -8,8 +8,8 @@ export const InfoImage = () => {
   return (
     <div className="flex flex-col items-center justify-start px-4 py-6 space-y-4">
       {/* User ID dan Wallet Address */}
-      <p className="text-black text-sm">User ID: {session?.data?.user?.user.id}</p>
-      <p className="text-black text-sm">Wallet: {session?.data?.user?.username.walletAddress}</p>
+      <p className="text-black text-sm">User ID: {session?.data?.user?.id}</p>
+      <p className="text-black text-sm">Wallet: {session?.data?.user?.walletAddress}</p>
 
       {/* Gambar SVG */}
       <img
