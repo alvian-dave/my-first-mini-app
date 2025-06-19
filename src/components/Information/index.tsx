@@ -20,7 +20,7 @@ export const Information = () => {
       </p>
 
       <p className="text-xs text-gray-300 pt-2">
-        ⚠️ Staking functionality with up to 70% APY will be available soon.
+      🔥 Staking functionality with up to 70% APY will be available soon.
       </p>
     </div>
   );
