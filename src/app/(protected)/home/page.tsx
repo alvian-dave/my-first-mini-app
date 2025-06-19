@@ -12,7 +12,7 @@ export default async function Home() {
     <img
       src="/favicon.png"
       alt="Logo"
-      className="h-12 w-auto"
+      className="h-16 w-auto"
     />
   }
   title="" // kosongkan
