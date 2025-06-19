@@ -1,7 +1,7 @@
 import { Page } from '@/components/PageLayout';
 import { Amount } from '@/components/Amount';
 import { Transaction } from '@/components/Transaction';
-import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
+import { TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
 export default async function Home() {
 
