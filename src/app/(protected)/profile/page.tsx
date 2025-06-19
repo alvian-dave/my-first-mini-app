@@ -1,6 +1,5 @@
 import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
-import { ViewPermissions } from '@/components/ViewPermissions';
 import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
 export default async function Profilpage () {
@@ -21,7 +20,6 @@ export default async function Profilpage () {
             }
           />
         </Page.Header>
-          <ViewPermissions />
       </>
     );
   }
