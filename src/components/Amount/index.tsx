@@ -8,7 +8,8 @@ import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
 import { useEffect, useState } from 'react';
 import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
-import { formatEther } from 'viem/utils';
+import { useSpring, animated } from '@react-spring/web';
+import { parseEther, formatEther } from 'viem/utils';
 
 export const Amount = () => {
   const contractAddress = '0x341029eA2F41f22DADfFf0f3Ef903b54a5805C59';
@@ -35,8 +36,12 @@ export const Amount = () => {
     transactionId,
   });
 
-  // Auto fetch reward setiap detik
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const spring = useSpring({
+    from: { number: 0 },
+    to: { number: parseFloat(formatEther(availableReward)) },
+    config: { tension: 120, friction: 14 },
+  });
+
   useEffect(() => {
     if (!session?.user.walletAddress) return;
 
@@ -54,16 +59,14 @@ export const Amount = () => {
       }
     };
 
-    fetchReward(); // pertama kali
-    const interval = setInterval(fetchReward, 1000); // tiap detik
+    fetchReward();
+    const interval = setInterval(fetchReward, 1000);
     return () => clearInterval(interval);
   }, [session?.user.walletAddress]);
 
-  // Update status transaksi setelah dikirim
   useEffect(() => {
     if (transactionId && !isConfirming) {
       if (isConfirmed) {
-        console.log('Transaction confirmed!');
         setButtonState('success');
       } else if (isError) {
         console.error('Transaction failed:', error);
@@ -93,10 +96,8 @@ export const Amount = () => {
       });
 
       if (finalPayload.status === 'success') {
-        console.log('Transaction submitted:', finalPayload.transaction_id);
         setTransactionId(finalPayload.transaction_id);
       } else {
-        console.error('Transaction submission failed:', finalPayload);
         setButtonState('failed');
       }
     } catch (err) {
@@ -110,33 +111,35 @@ export const Amount = () => {
   };
 
   return (
-  <div className="w-full px-4">
-    <div className="bg-white rounded-2xl shadow-md p-4 space-y-2">
-      <p className="text-sm text-gray-500">Available to claim:</p>
-      <p className="text-2xl font-bold text-black">
-        {formatEther(availableReward)} WRC
-      </p>
-    </div>
+    <div className="w-full px-4">
+      <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 w-full max-w-md mx-auto">
+        <div className="text-center space-y-2">
+          <p className="text-sm text-gray-500">Available to claim:</p>
+          <animated.p className="text-3xl font-bold text-black">
+            {spring.number.to((n) => n.toFixed(6))} WRC
+          </animated.p>
+        </div>
 
-      <LiveFeedback
-        label={{
-          failed: 'Transaction failed',
-          pending: 'Transaction pending',
-          success: 'Transaction successful',
-        }}
-        state={buttonState}
-        className="w-full"
-      >
-        <Button
-          onClick={onClickClaim}
-          disabled={buttonState === 'pending'}
-          size="lg"
-          variant="primary"
+        <LiveFeedback
+          label={{
+            failed: 'Transaction failed',
+            pending: 'Transaction pending',
+            success: 'Transaction successful',
+          }}
+          state={buttonState}
           className="w-full"
         >
-          {availableReward > 0n ? 'Claim' : 'Initial Reward'}
-        </Button>
-      </LiveFeedback>
+          <Button
+            onClick={onClickClaim}
+            disabled={buttonState === 'pending'}
+            size="lg"
+            variant="primary"
+            className="w-full"
+          >
+            {availableReward > 0n ? 'Claim' : 'Initial Reward'}
+          </Button>
+        </LiveFeedback>
+      </div>
     </div>
   );
 };
