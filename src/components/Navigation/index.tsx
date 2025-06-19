@@ -11,8 +11,8 @@ export const Navigation = () => {
   const currentTab = pathname.split('/')[1] || 'home'; // ambil nama tab dari URL
 
   return (
-    <Tabs value={currentTab} onValueChange={(tab) => router.push(`/${tab}`)}>
-      className="h-full flex items-center"
+    <Tabs value={currentTab} onValueChange={(tab) => router.push(`/${tab}`)}
+    className="h-full flex items-center">
       <TabItem value="home" icon={<Home />} label="Home" />
       <TabItem value="info" icon={<InfoCircle />} label="Info" />
       <TabItem value="profile" icon={<User />} label="Profile" />
