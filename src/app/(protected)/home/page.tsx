@@ -8,14 +8,15 @@ export default async function Home() {
     <>
       <Page.Header className="p-0">
   <TopBar
-    title={
-      <img
-        src="/favicon.png"
-        alt="Logo"
-        className="h-6 w-auto"
-      />
-    }
-  />
+  startAdornment={
+    <img
+      src="/favicon.png"
+      alt="Logo"
+      className="h-6 w-auto"
+    />
+  }
+  title="" // kosongkan
+/>
 </Page.Header>
       <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
         <Amount />
