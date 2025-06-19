@@ -119,7 +119,6 @@ export const Amount = () => {
         {formatEther(availableReward)} WRC
       </p>
     </div>
-  </div>
 
       <LiveFeedback
         label={{
