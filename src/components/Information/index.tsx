@@ -8,22 +8,19 @@ export const Information = () => {
       </h2>
 
       <p>
-        Welcome to the World App reward system. To start receiving WRC token rewards,
-        you must first click the <strong>Get Token</strong> button.
+        Welcome to the World Reward Coin App. We are pleased to welcome you to the WRC ecosystem. 
       </p>
 
       <p>
-        After your first claim, the automatic reward system will be activated.
-        From then on, rewards will accumulate every second without needing to take further action.
+        To begin earning rewards, new users must click the <strong>Initial Reward</strong> button.
       </p>
 
       <p>
-        You can return anytime to claim your accumulated rewards or to stake your tokens for more yield.
-        Make sure your wallet is connected via World ID.
+        Once activated, you are free to claim your rewards at any time through the app.
       </p>
 
       <p className="text-xs text-gray-300 pt-2">
-        ⚠️ This mini-app is optimized for mobile use within the World App.
+        ⚠️ Staking functionality with up to 70% APY will be available soon.
       </p>
     </div>
   );
