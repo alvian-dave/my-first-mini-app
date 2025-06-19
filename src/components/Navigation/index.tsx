@@ -1,20 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { Tabs, TabItem } from '@worldcoin/mini-apps-ui-kit-react';
+import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
 import { Home, InfoCircle, User } from 'iconoir-react';
+import { usePathname, useRouter } from 'next/navigation';
 
 export const Navigation = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'info' | 'profile'>('home');
+  const pathname = usePathname();        // misalnya: "/info"
+  const router = useRouter();
+
+  const currentTab = pathname.split('/')[1] || 'home'; // ambil nama tab dari URL
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Tab Navigasi */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
-        <TabItem value="home" icon={<Home />} label="Home" />
-        <TabItem value="info" icon={<InfoCircle />} label="Info" />
-        <TabItem value="profile" icon={<User />} label="Profile" />
-      </Tabs>
-    </div>
+    <Tabs value={currentTab} onValueChange={(tab) => router.push(`/${tab}`)}>
+      <TabItem value="home" icon={<Home />} label="Home" />
+      <TabItem value="info" icon={<InfoCircle />} label="Info" />
+      <TabItem value="profile" icon={<User />} label="Profile" />
+    </Tabs>
   );
 };

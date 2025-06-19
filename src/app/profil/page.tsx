@@ -1,10 +1,9 @@
-import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
-import { Information } from '@/components/Information';
+import { UserInfo } from '@/components/UserInfo';
+import { ViewPermissions } from '@/components/ViewPermissions';
 import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 
-export default async function info () {
-    const session = await auth();
+export default async function Profilpage () {
     
   return (
       <>
@@ -21,7 +20,8 @@ export default async function info () {
             }
           />
         </Page.Header>
-          <Information />
+          <UserInfo />
+          <ViewPermissions />
       </>
     );
   }
