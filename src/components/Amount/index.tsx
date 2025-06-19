@@ -134,7 +134,7 @@ export const Amount = () => {
           variant="primary"
           className="w-full"
         >
-          Claim
+          {availableReward > 0n ? 'Initial Reward' : 'Claim'}
         </Button>
       </LiveFeedback>
     </div>
