@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
 import { useSpring, animated } from '@react-spring/web';
-import { parseEther, formatEther } from 'viem/utils';
+import { formatEther } from 'viem/utils';
 
 export const Amount = () => {
   const contractAddress = '0x341029eA2F41f22DADfFf0f3Ef903b54a5805C59';
