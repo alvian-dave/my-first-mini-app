@@ -12,10 +12,10 @@ export default async function Home() {
     <img
       src="/favicon.png"
       alt="Logo"
-      className="h-14 w-auto"
+      className="h-12 w-auto"
     />
   }
-  title="" // kosongkan
+  title=""
 />
 </Page.Header>
       <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
