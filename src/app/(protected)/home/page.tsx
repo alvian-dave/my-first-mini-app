@@ -18,7 +18,7 @@ export default async function Home() {
   title=""
 />
 </Page.Header>
-      <Page.Main className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
+      <Page.Main className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)] -mt-8">
   <Amount />
 </Page.Main>
     </>
