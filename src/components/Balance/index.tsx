@@ -65,7 +65,7 @@ export const Balance = () => {
   }, [session?.user?.walletAddress]);
 
   return (
-    <div className="text-white text-lg font-bold">
+    <div className="text-white text-sm font-normal">
       Balance: {balance} WRC
     </div>
   );
