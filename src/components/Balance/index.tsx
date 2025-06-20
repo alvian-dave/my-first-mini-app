@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { useSession } from 'next-auth/react';
-import tokenABI from '@/lib/tokenABI.json';
+import tokenABI from '@/abi/tokenABI.json';
 
 const tokenAddress = '0x020dC518227Dfa84237eB3c2C32cc9c8D70d92BE';
 const tokenDecimals = 18;
