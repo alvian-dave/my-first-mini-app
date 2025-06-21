@@ -6,19 +6,23 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useRef } from 'react';
 
 export const Navigation = () => {
-  const pathname = usePathname(); // contoh: "/home"
+  const pathname = usePathname(); // misalnya: "/info"
   const router = useRouter();
-  const lastPath = useRef(pathname);
-
-  const handleTabChange = (nextTab: string) => {
-    const currentTab = lastPath.current?.split('/')[1] || 'home';
-    if (currentTab === nextTab) return; // ⛔ Jangan navigasi kalau tab-nya sama
-
-    lastPath.current = `/${nextTab}`;
-    router.push(`/${nextTab}`);
-  };
+  const lastPath = useRef(pathname); // simpan path terakhir
 
   const currentTab = pathname.split('/')[1] || 'home';
+
+  const handleTabChange = (nextTab: string) => {
+    const targetPath = `/${nextTab}`;
+
+    if (lastPath.current === targetPath) {
+      // ⛔ Jika path-nya sama, jangan lakukan apa pun
+      return;
+    }
+
+    lastPath.current = targetPath;
+    router.push(targetPath); // ✅ Hanya push jika path berbeda
+  };
 
   return (
     <Tabs
