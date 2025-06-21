@@ -11,18 +11,15 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
 
   useEffect(() => {
-    // 🧠 Hanya redirect kalau status memang "unauthenticated"
     if (status === 'unauthenticated') {
       router.replace('/');
     }
   }, [status, router]);
 
-  // ⏳ Jangan render apa pun saat loading untuk menghindari flicker/redirect palsu
   if (status === 'loading') {
     return null;
   }
 
-  // ✅ Session sudah valid, tampilkan layout
   return (
     <Page>
       {children}
