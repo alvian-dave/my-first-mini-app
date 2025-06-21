@@ -7,22 +7,20 @@ import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+  const { status } = useSession(); // ✅ hanya ambil `status`, hindari unused `session`
   const router = useRouter();
   const hasRedirected = useRef(false);
-
   const [hydrated, setHydrated] = useState(false);
 
-  // ✅ Hindari redirect tergesa-gesa
+  // 🌐 Hindari redirect terlalu dini
   useEffect(() => {
-    if (status === 'loading') return;
     if (status === 'unauthenticated' && !hasRedirected.current) {
       hasRedirected.current = true;
       router.replace('/');
     }
   }, [status, router]);
 
-  // ✅ Hindari flicker saat hydration di sisi klien
+  // 💧 Hindari flash layout saat first hydration
   useEffect(() => {
     setHydrated(true);
   }, []);
