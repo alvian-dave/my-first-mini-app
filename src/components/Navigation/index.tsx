@@ -5,13 +5,16 @@ import { Home, InfoCircle, User } from 'iconoir-react';
 import { usePathname, useRouter } from 'next/navigation';
 
 export const Navigation = () => {
-  const pathname = usePathname(); // contoh: /home
+  const pathname = usePathname();       // contoh: "/info"
   const router = useRouter();
-  const currentTab = pathname.split('/')[1] || 'home';
+
+  const currentTab = pathname.split('/')[1] || 'home'; // 'home', 'info', atau 'profile'
 
   const handleTabChange = (tab: string) => {
-    if (tab === currentTab) return; // ✅ Jangan navigasi ulang ke tab yang sama
-    router.push(`/${tab}`);
+    const targetPath = `/${tab}`;
+    if (pathname !== targetPath) {
+      router.push(targetPath); // hanya push jika path berbeda
+    }
   };
 
   return (
