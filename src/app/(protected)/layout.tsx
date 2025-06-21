@@ -1,19 +1,24 @@
-import { auth } from '@/auth';
-import { redirect } from 'next/navigation'; // ✅ tambahkan ini
+'use client';
+
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 
-export default async function TabsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const session = await auth();
+export default function TabsLayout({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  // ✅ Jika user belum login, langsung redirect ke halaman root
-  if (!session) {
-    redirect('/'); // ✅ penting untuk cegah popup MiniKit muncul ulang
-  }
+  useEffect(() => {
+    if (status === 'loading') return;
+
+    if (!session) {
+      router.push('/'); // redirect jika belum login
+    }
+  }, [session, status, router]);
+
+  if (status === 'loading' || !session) return null;
 
   return (
     <Page>

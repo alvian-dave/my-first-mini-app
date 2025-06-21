@@ -36,7 +36,7 @@ export const AuthButton = () => {
         size="lg"
         variant="primary"
       >
-        Login with Wallet
+        Login with World ID
       </Button>
     </LiveFeedback>
   );
