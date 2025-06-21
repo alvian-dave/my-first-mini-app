@@ -3,38 +3,27 @@
 import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
 import { Home, InfoCircle, User } from 'iconoir-react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRef } from 'react';
 
 export const Navigation = () => {
-  const pathname = usePathname();
+  const pathname = usePathname(); // e.g. /home
   const router = useRouter();
+  const lastTab = useRef<string | null>(null);
 
-  const [currentTab, setCurrentTab] = useState(() => {
-    return pathname.split('/')[1] || 'home';
-  });
+  const currentTab = pathname.split('/')[1] || 'home';
 
-  useEffect(() => {
-    const path = pathname.split('/')[1] || 'home';
-    setCurrentTab(path);
-    sessionStorage.setItem('last-tab', path);
-  }, [pathname]);
-
-  const handleTabChange = (nextTab: string) => {
-    const lastTab = sessionStorage.getItem('last-tab');
-
-    if (lastTab === nextTab) {
-      // ⛔ Tab sama, jangan lakukan apa pun
-      return;
+  const handleChange = (nextTab: string) => {
+    if (nextTab === currentTab || nextTab === lastTab.current) {
+      return; // 🛑 Jangan lakukan apa pun kalau tab sama
     }
-
-    sessionStorage.setItem('last-tab', nextTab);
+    lastTab.current = nextTab;
     router.push(`/${nextTab}`);
   };
 
   return (
     <Tabs
       value={currentTab}
-      onValueChange={handleTabChange}
+      onValueChange={handleChange}
       className="h-full flex items-center !mt-0"
     >
       <TabItem value="home" icon={<Home />} label="Home" />
