@@ -2,30 +2,23 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const hasRedirected = useRef(false);
 
   useEffect(() => {
-    // ⛔️ Jangan redirect kalau masih loading
     if (status === 'loading') return;
 
-    // ✅ Redirect hanya sekali kalau benar-benar tidak ada session
-    if (status === 'unauthenticated' && !hasRedirected.current) {
-      hasRedirected.current = true;
-      router.replace('/');
+    if (!session) {
+      router.push('/'); // redirect jika belum login
     }
-  }, [status, router]);
+  }, [session, status, router]);
 
-  // ⏳ Jangan render apa-apa saat masih loading atau sebelum session stabil
-  if (status === 'loading' || (status === 'unauthenticated' && !hasRedirected.current)) {
-    return null;
-  }
+  if (status === 'loading' || !session) return null;
 
   return (
     <Page>
