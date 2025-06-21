@@ -11,14 +11,14 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/');
-    }
-  }, [status, router]);
+    if (status === 'loading') return;
 
-  if (status === 'loading') {
-    return null;
-  }
+    if (!session) {
+      router.push('/'); // redirect jika belum login
+    }
+  }, [session, status, router]);
+
+  if (status === 'loading' || !session) return null;
 
   return (
     <Page>
