@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { redirect } from 'next/navigation'; // ✅ tambahkan ini
 import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 
@@ -9,10 +10,9 @@ export default async function TabsLayout({
 }) {
   const session = await auth();
 
-  // If the user is not authenticated, redirect to the login page
+  // ✅ Jika user belum login, langsung redirect ke halaman root
   if (!session) {
-    console.log('Not authenticated');
-    // redirect('/');
+    redirect('/'); // ✅ penting untuk cegah popup MiniKit muncul ulang
   }
 
   return (
