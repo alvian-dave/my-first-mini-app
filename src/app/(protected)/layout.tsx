@@ -7,34 +7,33 @@ import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: session, status } = useSession();
   const router = useRouter();
   const hasRedirected = useRef(false);
+  const [hasSession, setHasSession] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  // 🧠 Tandai user pernah login
-  const hasSession = useRef(false);
-
+  // ⏳ Set hydrated = true saat komponen siap di client
   useEffect(() => {
     setHydrated(true);
   }, []);
 
+  // ✅ Tandai jika session pernah authenticated
   useEffect(() => {
     if (status === 'authenticated') {
-      hasSession.current = true;
+      setHasSession(true);
     }
 
-    if (
-      status === 'unauthenticated' &&
-      !hasRedirected.current &&
-      !hasSession.current
-    ) {
+    // ❌ Redirect hanya jika belum pernah authenticated
+    if (status === 'unauthenticated' && !hasRedirected.current && !hasSession) {
       hasRedirected.current = true;
       router.replace('/');
     }
-  }, [status, router]);
+  }, [status, router, hasSession]);
 
-  if (!hydrated || (status === 'unauthenticated' && !hasSession.current)) {
+  // 🛑 Hindari render jika belum hydration atau redirect sedang berjalan
+  if (!hydrated || (status === 'unauthenticated' && !hasSession)) {
     return null;
   }
 
