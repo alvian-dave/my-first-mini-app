@@ -4,6 +4,7 @@ import { Page } from '@/components/PageLayout';
 import { Amount } from '@/components/Amount';
 import { TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 import { Balance } from '@/components/Balance';
+import { Navigation } from '@/components/Navigation'; // ✅ Import navigation
 
 export default function Home() {
   return (
@@ -18,6 +19,10 @@ export default function Home() {
       <Page.Main className="flex flex-col items-center justify-center">
         <Amount />
       </Page.Main>
+
+      <Page.Footer className="px-0 fixed bottom-0 w-full bg-white">
+        <Navigation />
+      </Page.Footer>
     </Page>
   );
 }
