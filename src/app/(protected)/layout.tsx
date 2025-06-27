@@ -7,44 +7,41 @@ import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
-  const { status } = useSession(); // ✅ hanya ambil status, karena session tidak digunakan
+  const { status } = useSession(); // hanya ambil 'status', karena 'session' tidak digunakan
   const router = useRouter();
 
   const hasRedirected = useRef(false);
   const [hasSession, setHasSession] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  // ⏳ Tandai bahwa komponen sudah di-render di client
+  // ⚡ Komponen siap di-render di client
   useEffect(() => {
     setHydrated(true);
   }, []);
 
-  // ✅ Update state jika pernah authenticated
+  // 🧠 Logika redirect jika user benar-benar belum login
   useEffect(() => {
     if (status === 'authenticated') {
       setHasSession(true);
     }
 
-    // ❌ Redirect jika tidak login dan status sudah final
+    // ⛔ Cegah redirect saat status masih 'loading'
     if (
       hydrated &&
-      status !== 'loading' &&
       status === 'unauthenticated' &&
-      !hasRedirected.current &&
-      !hasSession
+      !hasSession &&
+      !hasRedirected.current
     ) {
       hasRedirected.current = true;
       router.replace('/');
     }
   }, [status, router, hasSession, hydrated]);
 
-  // 🛑 Jangan render apapun saat loading atau belum login
-  if (
-    !hydrated ||
-    (status === 'unauthenticated' && !hasSession && status !== 'loading')
-  ) {
-    return null;
-  }
+  // 🛑 Jangan render apa pun saat belum ready
+  const shouldBlockRender =
+    !hydrated || (status === 'unauthenticated' && !hasSession);
+
+  if (shouldBlockRender) return null;
 
   return (
     <Page>
