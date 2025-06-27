@@ -3,7 +3,6 @@
 import { Home, InfoCircle, User } from 'iconoir-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import clsx from 'clsx';
 
 const TABS = [
