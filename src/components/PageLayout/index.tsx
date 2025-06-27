@@ -51,17 +51,16 @@ const Main = (props: { children: ReactNode; className?: string }) => {
 
           return (
             <span
-              key={i}
-              className="absolute w-[4px] h-[16px] opacity-100 animate-fall rounded mix-blend-overlay"
-              style={{
-                left,
-                top,
-                backgroundColor: color,
-                animationDelay: delay,
-                animationDuration: duration,
-                filter: `drop-shadow(0 0 8px ${color})`,
-              }}
-            />
+  key={i}
+  className="absolute w-[4px] h-[16px] opacity-100 rounded mix-blend-overlay"
+  style={{
+    left,
+    top,
+    backgroundColor: color,
+    filter: `drop-shadow(0 0 8px ${color})`,
+    animation: `fall ${duration} linear ${delay} infinite`,
+  }}
+/>
           );
         })}
       </div>
