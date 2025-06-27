@@ -7,25 +7,25 @@ import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+  const { status } = useSession(); // ✅ hanya ambil status, karena session tidak digunakan
   const router = useRouter();
 
   const hasRedirected = useRef(false);
   const [hasSession, setHasSession] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  // ⏳ Tandai bahwa komponen sudah ter-render di client
+  // ⏳ Tandai bahwa komponen sudah di-render di client
   useEffect(() => {
     setHydrated(true);
   }, []);
 
-  // ✅ Tandai jika session sudah pernah authenticated
+  // ✅ Update state jika pernah authenticated
   useEffect(() => {
     if (status === 'authenticated') {
       setHasSession(true);
     }
 
-    // ❌ Redirect hanya jika belum login dan status tidak lagi loading
+    // ❌ Redirect jika tidak login dan status sudah final
     if (
       hydrated &&
       status !== 'loading' &&
@@ -38,7 +38,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
     }
   }, [status, router, hasSession, hydrated]);
 
-  // 🛑 Hindari render jika belum hydration atau sedang proses auth
+  // 🛑 Jangan render apapun saat loading atau belum login
   if (
     !hydrated ||
     (status === 'unauthenticated' && !hasSession && status !== 'loading')
