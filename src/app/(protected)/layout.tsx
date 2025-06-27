@@ -7,41 +7,32 @@ import { Navigation } from '@/components/Navigation';
 import { Page } from '@/components/PageLayout';
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
-  const { status } = useSession(); // hanya ambil 'status', karena 'session' tidak digunakan
+  const { status } = useSession(); // ✅ Tidak pakai session → aman dari unused var
   const router = useRouter();
 
-  const hasRedirected = useRef(false);
-  const [hasSession, setHasSession] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const hasRedirected = useRef(false);
 
-  // ⚡ Komponen siap di-render di client
   useEffect(() => {
     setHydrated(true);
   }, []);
 
-  // 🧠 Logika redirect jika user benar-benar belum login
   useEffect(() => {
-    if (status === 'authenticated') {
-      setHasSession(true);
-    }
-
-    // ⛔ Cegah redirect saat status masih 'loading'
-    if (
+    const shouldRedirect =
       hydrated &&
       status === 'unauthenticated' &&
-      !hasSession &&
-      !hasRedirected.current
-    ) {
+      !hasRedirected.current;
+
+    if (shouldRedirect) {
       hasRedirected.current = true;
       router.replace('/');
     }
-  }, [status, router, hasSession, hydrated]);
+  }, [status, hydrated, router]);
 
-  // 🛑 Jangan render apa pun saat belum ready
-  const shouldBlockRender =
-    !hydrated || (status === 'unauthenticated' && !hasSession);
-
-  if (shouldBlockRender) return null;
+  // ✅ Aman: tunggu hydration + status stabil (bukan loading)
+  if (!hydrated || status === 'loading') {
+    return null;
+  }
 
   return (
     <Page>
