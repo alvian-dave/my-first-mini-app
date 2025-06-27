@@ -33,20 +33,29 @@ const Main = (props: { children: ReactNode; className?: string }) => {
       className={twMerge(
         clsx(
           'relative grow overflow-y-auto p-6 pt-3',
-          'bg-[#0f172a]',
+          'bg-gradient-to-br from-blue-300 via-blue-100 to-white',
           props.className,
         )
       )}
     >
-      {/* Dynamic glow aura */}
-      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[120px] animate-pulse pointer-events-none z-0" />
-
-      {/* Subtle animated light streak */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-1/4 left-[-100px] w-[200%] h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent animate-slide" />
+      {/* Falling particles */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <span
+            key={i}
+            className="absolute w-[2px] h-[8px] bg-blue-400 opacity-20 animate-fall rounded"
+            style={{
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${2 + Math.random() * 3}s`,
+              top: `${-Math.random() * 100}px`,
+              filter: `blur(${Math.random() * 2 + 0.5}px)`,
+            }}
+          />
+        ))}
       </div>
 
-      {/* Content */}
+      {/* Content layer */}
       <div className="relative z-10">{props.children}</div>
     </main>
   );
