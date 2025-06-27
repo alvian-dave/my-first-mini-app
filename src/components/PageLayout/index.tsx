@@ -32,13 +32,20 @@ const Main = (props: { children: ReactNode; className?: string }) => {
     <main
       className={twMerge(
         clsx(
-          'grow overflow-y-auto p-6 pt-3',
-          'bg-gradient-to-br from-blue-300 via-blue-100 to-white',
+          'relative grow overflow-y-auto p-6 pt-3',
+          'bg-[#0f172a]',
           props.className,
-        ),
+        )
       )}
     >
-      {props.children}
+      {/* Grid pattern background */}
+      <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:20px_20px]" />
+
+      {/* Glow effect */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-blue-500/20 rounded-full blur-3xl pointer-events-none z-0" />
+
+      {/* Content */}
+      <div className="relative z-10">{props.children}</div>
     </main>
   );
 };
