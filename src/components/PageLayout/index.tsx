@@ -27,7 +27,7 @@ const Header = (props: { children: ReactNode; className?: string }) => {
   );
 };
 
-const Main = (props: { children: ReactNode; className?: string }) => {
+const Main = (props: { children: React.ReactNode; className?: string }) => {
   const colors = ['#ff4d4d', '#4dd0ff', '#7cff4d', '#ffd24d', '#d44dff']; // neon colors
 
   return (
@@ -51,21 +51,21 @@ const Main = (props: { children: ReactNode; className?: string }) => {
 
           return (
             <span
-  key={i}
-  className="absolute w-[4px] h-[16px] opacity-100 rounded mix-blend-overlay"
-  style={{
-    left,
-    top,
-    backgroundColor: color,
-    filter: `drop-shadow(0 0 8px ${color})`,
-    animation: `fall ${duration} linear ${delay} infinite`,
-  }}
-/>
+              key={i}
+              className="absolute w-[4px] h-[16px] opacity-100 rounded mix-blend-overlay"
+              style={{
+                left,
+                top,
+                backgroundColor: color,
+                filter: `drop-shadow(0 0 8px ${color})`,
+                animation: `fall ${duration} linear ${delay} infinite`,
+              }}
+            />
           );
         })}
       </div>
 
-      {/* Content layer */}
+      {/* Content */}
       <div className="relative z-10">{props.children}</div>
     </main>
   );
