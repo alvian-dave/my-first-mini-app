@@ -28,31 +28,42 @@ const Header = (props: { children: ReactNode; className?: string }) => {
 };
 
 const Main = (props: { children: ReactNode; className?: string }) => {
+  const colors = ['#ff4d4d', '#4dd0ff', '#7cff4d', '#ffd24d', '#d44dff']; // neon colors
+
   return (
     <main
       className={twMerge(
         clsx(
           'relative grow overflow-y-auto p-6 pt-3',
-          'bg-gradient-to-br from-blue-300 via-blue-100 to-white',
-          props.className,
+          'bg-blue-200',
+          props.className
         )
       )}
     >
       {/* Falling particles */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        {Array.from({ length: 30 }).map((_, i) => (
-          <span
-            key={i}
-            className="absolute w-[2px] h-[8px] bg-blue-400 opacity-20 animate-fall rounded"
-            style={{
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${2 + Math.random() * 3}s`,
-              top: `${-Math.random() * 100}px`,
-              filter: `blur(${Math.random() * 2 + 0.5}px)`,
-            }}
-          />
-        ))}
+        {Array.from({ length: 40 }).map((_, i) => {
+          const left = `${Math.random() * 100}%`;
+          const delay = `${Math.random() * 5}s`;
+          const duration = `${2 + Math.random() * 3}s`;
+          const top = `${-Math.random() * 100}px`;
+          const color = colors[Math.floor(Math.random() * colors.length)];
+
+          return (
+            <span
+              key={i}
+              className="absolute w-[4px] h-[16px] opacity-100 animate-fall rounded mix-blend-overlay"
+              style={{
+                left,
+                top,
+                backgroundColor: color,
+                animationDelay: delay,
+                animationDuration: duration,
+                filter: `drop-shadow(0 0 8px ${color})`,
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Content layer */}
