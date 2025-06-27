@@ -1,10 +1,16 @@
 'use client';
 
-import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
 import { Home, InfoCircle, User } from 'iconoir-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import clsx from 'clsx';
+
+const TABS = [
+  { label: 'Home', value: 'home', icon: <Home /> },
+  { label: 'Info', value: 'info', icon: <InfoCircle /> },
+  { label: 'Profile', value: 'profile', icon: <User /> },
+];
 
 export const Navigation = () => {
   const pathname = usePathname();
@@ -13,46 +19,37 @@ export const Navigation = () => {
 
   const [clickedTab, setClickedTab] = useState<string | null>(null);
 
-  const handleChange = (nextTab: string) => {
-    if (nextTab === currentTab) {
-      setClickedTab(nextTab); // 🔄 Trigger flash
+  const handleClick = (tab: string) => {
+    if (tab === currentTab) {
+      setClickedTab(tab); // hanya animasi
       return;
     }
-    router.push(`/${nextTab}`);
+    router.push(`/${tab}`);
   };
 
-  // ⏱ Reset class setelah animasi selesai
   useEffect(() => {
     if (clickedTab) {
-      const timer = setTimeout(() => setClickedTab(null), 400); // 400ms sesuai durasi animasi
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setClickedTab(null), 400);
+      return () => clearTimeout(t);
     }
   }, [clickedTab]);
 
   return (
-    <Tabs
-      value={currentTab}
-      onValueChange={handleChange}
-      className="h-full flex items-center !mt-0"
-    >
-      <TabItem
-        value="home"
-        icon={<Home />}
-        label="Home"
-        className={clsx(clickedTab === 'home' && 'flash-on-click')}
-      />
-      <TabItem
-        value="info"
-        icon={<InfoCircle />}
-        label="Info"
-        className={clsx(clickedTab === 'info' && 'flash-on-click')}
-      />
-      <TabItem
-        value="profile"
-        icon={<User />}
-        label="Profile"
-        className={clsx(clickedTab === 'profile' && 'flash-on-click')}
-      />
-    </Tabs>
+    <div className="flex justify-around border-t border-border bg-white">
+      {TABS.map((tab) => (
+        <button
+          key={tab.value}
+          onClick={() => handleClick(tab.value)}
+          className={clsx(
+            'flex flex-col items-center justify-center gap-1 py-2 px-4 w-full text-sm font-medium',
+            currentTab === tab.value && 'text-primary',
+            clickedTab === tab.value && 'flash-on-click'
+          )}
+        >
+          <span>{tab.icon}</span>
+          <span>{tab.label}</span>
+        </button>
+      ))}
+    </div>
   );
 };
