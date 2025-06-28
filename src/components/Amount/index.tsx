@@ -112,7 +112,7 @@ export const Amount = () => {
 
   return (
     <div className="w-full px-4">
-      <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 w-full max-w-md mx-auto">
+      <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 mx-auto max-w-fit">
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-500">Available to claim:</p>
           <div className="h-[48px] flex items-center justify-center font-mono text-3xl font-bold text-black">
@@ -131,15 +131,19 @@ export const Amount = () => {
           state={buttonState}
           className="w-full"
         >
-          <Button
-            onClick={onClickClaim}
-            disabled={buttonState === 'pending'}
-            size="lg"
-            variant="primary"
-            className="w-full"
-          >
-            {availableReward > 0n ? 'Claim' : 'Initial Reward'}
-          </Button>
+          <div className="relative w-full">
+            <Button
+              onClick={onClickClaim}
+              disabled={buttonState === 'pending'}
+              size="lg"
+              variant="primary"
+              className="w-full"
+            >
+              {availableReward > 0n ? 'Claim' : 'Initial Reward'}
+              {/* Placeholder transparan untuk jaga lebar */}
+              <span className="invisible absolute pointer-events-none">Initial Reward</span>
+            </Button>
+          </div>
         </LiveFeedback>
       </div>
     </div>
