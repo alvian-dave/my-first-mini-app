@@ -111,8 +111,8 @@ export const Amount = () => {
   };
 
   return (
-    <div className="w-full px-4">
-      <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 w-full max-w-[360px] sm:max-w-[420px] mx-auto">
+    <div className="w-full px-4 sm:px-6 md:px-10">
+      <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 w-full mx-auto">
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-500">Available to claim:</p>
           <div className="h-[48px] flex items-center justify-center font-mono text-3xl font-bold text-black max-w-[240px] mx-auto overflow-hidden">
