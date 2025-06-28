@@ -116,7 +116,7 @@ export const Amount = () => {
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-500">Available to claim:</p>
           <animated.p className="text-3xl font-bold text-black">
-          {spring.number.to((n) => `${n.toFixed(6)} WRC`)}
+          {spring.number.to((n) => `${n.toFixed(6)}`)}
           </animated.p>
           </div>
 
