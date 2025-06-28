@@ -112,12 +112,16 @@ export const Amount = () => {
 
   return (
     <div className="w-full px-4">
-      <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 mx-auto max-w-fit">
+      <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 w-full max-w-lg mx-auto">
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-500">Available to claim:</p>
-          <div className="h-[48px] flex items-center justify-center font-mono text-3xl font-bold text-black">
-            <animated.span style={{ display: 'inline-block', minWidth: '7ch' }}>
-              {spring.number.to((n) => `${n.toFixed(6)}`)}
+          <div className="h-[48px] flex items-center justify-center font-mono text-3xl font-bold text-black max-w-[240px] mx-auto overflow-hidden">
+            <animated.span className="block truncate">
+              {spring.number.to((n) => {
+                const parts = n.toFixed(6).split('.');
+                const intPart = parts[0].length > 6 ? parts[0].slice(0, 6) + '+' : parts[0];
+                return `${intPart}.${parts[1]}`;
+              })}
             </animated.span>
           </div>
         </div>
@@ -140,7 +144,6 @@ export const Amount = () => {
               className="w-full"
             >
               {availableReward > 0n ? 'Claim' : 'Initial Reward'}
-              {/* Placeholder transparan untuk jaga lebar */}
               <span className="invisible absolute pointer-events-none">Initial Reward</span>
             </Button>
           </div>
