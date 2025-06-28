@@ -11,7 +11,7 @@ export default function Home() {
     <Page>
       <Page.Header className="p-0">
         <div className="flex justify-between items-center px-4 pt-3 w-full">
-          <TopBar title="WRC" />
+          <TopBar title="" />
           <Balance />
         </div>
       </Page.Header>

@@ -9,7 +9,7 @@ export default function InfoPage() {
   return (
     <Page>
       <Page.Header className="p-0">
-        <TopBar title="WRC" />
+        <TopBar title="" />
       </Page.Header>
 
       <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">

@@ -66,7 +66,7 @@ export const Balance = () => {
 
   return (
     <div className="text-white text-sm font-normal">
-      Balance: {balance} WRC
+     {balance} WRC
     </div>
   );
 };
