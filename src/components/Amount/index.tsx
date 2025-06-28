@@ -115,10 +115,12 @@ export const Amount = () => {
       <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 w-full max-w-md mx-auto">
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-500">Available to claim:</p>
-          <animated.p className="text-3xl font-bold text-black">
-          {spring.number.to((n) => `${n.toFixed(6)}`)}
-          </animated.p>
+          <div className="h-[48px] flex items-center justify-center font-mono text-3xl font-bold text-black">
+            <animated.span style={{ display: 'inline-block', minWidth: '7ch' }}>
+              {spring.number.to((n) => `${n.toFixed(6)}`)}
+            </animated.span>
           </div>
+        </div>
 
         <LiveFeedback
           label={{
