@@ -13,16 +13,21 @@ export default function ProfilePage() {
     <Page>
       <Page.Header className="p-0">
         <TopBar
-          title="WRC"
-          endAdornment={
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold capitalize">
-                {session?.user.username}
-              </p>
-              <Marble src={session?.user.profilePictureUrl} className="w-12" />
-            </div>
-          }
-        />
+  title=""
+  endAdornment={
+    <div className="flex items-center justify-between w-full">
+      <div>
+        <img src="/logo.png" alt="Logo" style={{ height: '56px', width: 'auto' }} />
+      </div>
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-semibold capitalize">
+          {session?.user.username}
+        </p>
+        <Marble src={session?.user.profilePictureUrl} className="w-12" />
+      </div>
+    </div>
+  }
+/>
       </Page.Header>
 
       <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
