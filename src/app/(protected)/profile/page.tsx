@@ -2,7 +2,7 @@
 
 import { Page } from '@/components/PageLayout';
 import { InfoImage } from '@/components/InfoImage';
-import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
+import { Marble } from '@worldcoin/mini-apps-ui-kit-react';
 import { Navigation } from '@/components/Navigation';
 import { useSession } from 'next-auth/react';
 
