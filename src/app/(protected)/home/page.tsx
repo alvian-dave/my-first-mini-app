@@ -2,7 +2,6 @@
 
 import { Page } from '@/components/PageLayout';
 import { Amount } from '@/components/Amount';
-import { TopBar } from '@worldcoin/mini-apps-ui-kit-react';
 import { Balance } from '@/components/Balance';
 import { Navigation } from '@/components/Navigation'; // ✅ Import navigation
 
@@ -10,11 +9,11 @@ export default function Home() {
   return (
     <Page>
       <Page.Header className="p-0">
-        <div className="flex justify-between items-center px-4 pt-3 w-full">
-          <TopBar title="" />
-          <Balance />
-        </div>
-      </Page.Header>
+  <div className="flex justify-between items-center px-4 pt-3 w-full">
+    <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
+    <Balance />
+  </div>
+</Page.Header>
 
       <Page.Main className="flex flex-col items-center justify-center">
         <Amount />
