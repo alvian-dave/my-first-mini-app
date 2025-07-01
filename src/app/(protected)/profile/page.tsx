@@ -12,23 +12,16 @@ export default function ProfilePage() {
   return (
     <Page>
       <Page.Header className="p-0">
-        <TopBar
-  title=""
-  endAdornment={
-    <div className="flex items-center justify-between w-full">
-      <div>
-        <img src="/logo.png" alt="Logo" style={{ height: '56px', width: 'auto' }} />
-      </div>
-      <div className="flex items-center gap-2">
-        <p className="text-sm font-semibold capitalize">
-          {session?.user.username}
-        </p>
-        <Marble src={session?.user.profilePictureUrl} className="w-12" />
-      </div>
+  <div className="flex items-center justify-between px-4 pt-3">
+    <img src="/logo.png" alt="Logo" style={{ height: '56px', width: 'auto' }} />
+    <div className="flex items-center gap-2">
+      <p className="text-sm font-semibold capitalize">
+        {session?.user.username}
+      </p>
+      <Marble src={session?.user.profilePictureUrl} className="w-12" />
     </div>
-  }
-/>
-      </Page.Header>
+  </div>
+</Page.Header>
 
       <Page.Main className="flex flex-col items-center justify-start gap-4 mb-16">
         <InfoImage />
