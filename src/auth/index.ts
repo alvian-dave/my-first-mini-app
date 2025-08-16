@@ -6,9 +6,12 @@ import {
 } from '@worldcoin/minikit-js';
 import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import dbConnect from '@/lib/mongodb';
+import User from '@/models/User';
 
 declare module 'next-auth' {
   interface User {
+    id: string;
     walletAddress: string;
     username: string;
     profilePictureUrl: string;
@@ -16,6 +19,7 @@ declare module 'next-auth' {
 
   interface Session {
     user: {
+      id: string;
       walletAddress: string;
       username: string;
       profilePictureUrl: string;
@@ -23,9 +27,6 @@ declare module 'next-auth' {
   }
 }
 
-// Auth configuration for Wallet Auth based sessions
-// For more information on each option (and a full list of options) go to
-// https://authjs.dev/getting-started/authentication/credentials
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: 'jwt' },
@@ -37,16 +38,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         signedNonce: { label: 'Signed Nonce', type: 'text' },
         finalPayloadJson: { label: 'Final Payload', type: 'text' },
       },
-      // @ts-expect-error TODO
-      authorize: async ({
-        nonce,
-        signedNonce,
-        finalPayloadJson,
-      }: {
-        nonce: string;
-        signedNonce: string;
-        finalPayloadJson: string;
-      }) => {
+      authorize: async ({ nonce, signedNonce, finalPayloadJson }) => {
         const expectedSignedNonce = hashNonce({ nonce });
 
         if (signedNonce !== expectedSignedNonce) {
@@ -62,12 +54,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           console.log('Invalid final payload');
           return null;
         }
-        // Optionally, fetch the user info from your own database
-        const userInfo = await MiniKit.getUserInfo(finalPayload.address);
+
+        const walletAddress = finalPayload.address;
+
+        // Connect ke MongoDB
+        await dbConnect();
+
+        // Cek apakah user sudah ada di DB
+        let user = await User.findOne({ walletAddress });
+
+        if (!user) {
+          // Ambil info dari MiniKit
+          const userInfo = await MiniKit.getUserInfo(walletAddress);
+
+          user = await User.create({
+            walletAddress,
+            username: userInfo.username,
+            profilePictureUrl: userInfo.profilePictureUrl,
+          });
+        }
 
         return {
-          id: finalPayload.address,
-          ...userInfo,
+          id: user._id.toString(),
+          walletAddress: user.walletAddress,
+          username: user.username,
+          profilePictureUrl: user.profilePictureUrl,
         };
       },
     }),
@@ -76,14 +87,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.userId = user.id;
-        token.walletAddress = user.walletAddress;
-        token.username = user.username;
-        token.profilePictureUrl = user.profilePictureUrl;
+      }
+
+      // fetch dari DB supaya data selalu update
+      if (token.userId) {
+        await dbConnect();
+        const dbUser = await User.findById(token.userId);
+
+        if (dbUser) {
+          token.walletAddress = dbUser.walletAddress;
+          token.username = dbUser.username;
+          token.profilePictureUrl = dbUser.profilePictureUrl;
+        }
       }
 
       return token;
     },
-    session: async ({ session, token }) => {
+    async session({ session, token }) {
       if (token.userId) {
         session.user.id = token.userId as string;
         session.user.walletAddress = token.walletAddress as string;
