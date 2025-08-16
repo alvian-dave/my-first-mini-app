@@ -1,7 +1,7 @@
 'use client';
 
 import { Page } from '@/components/PageLayout';
-import { Login } from '@/components/Login';
+import { Login } from '@/components/SelectRole';
 import { Balance } from '@/components/Balance';
 import { Navigation } from '@/components/Navigation'; // ✅ Import navigation
 
@@ -16,7 +16,7 @@ export default function Home() {
 </Page.Header>
 
       <Page.Main className="flex flex-col items-center justify-center">
-        <Login />
+        <SelectRole />
       </Page.Main>
 
       <Page.Footer className="px-0 fixed bottom-0 w-full bg-white">
