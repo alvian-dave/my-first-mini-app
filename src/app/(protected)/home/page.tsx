@@ -16,7 +16,7 @@ export default function Home() {
 </Page.Header>
 
       <Page.Main className="flex flex-col items-center justify-center">
-        <Amount />
+        <Login />
       </Page.Main>
 
       <Page.Footer className="px-0 fixed bottom-0 w-full bg-white">
