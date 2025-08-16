@@ -1,7 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 
-export const Login() {
+export const UserInfo = () => {
   const router = useRouter()
 
   return (
