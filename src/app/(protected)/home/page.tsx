@@ -3,7 +3,6 @@ import { Page } from '@/components/PageLayout';
 import {SelectRole} from '@/components/SelectRole';
 
 export default function Home() {
-  const router = useRouter()
 
   return (
     <Page>
