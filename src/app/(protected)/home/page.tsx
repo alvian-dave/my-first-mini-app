@@ -17,10 +17,10 @@ export default function Home() {
           </div>
           <div className="mt-4">
             <button
-              onClick={() => router.push('/login/client')}
+              onClick={() => router.push('/login/promoter')}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
             >
-              Login as Client
+              Login as Promoter
             </button>
           </div>
         </div>
