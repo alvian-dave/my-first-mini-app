@@ -1,16 +1,27 @@
-'use client'
+'use client';
+
 import { Page } from '@/components/PageLayout';
-import {SelectRole} from '@/components/SelectRole';
+import { Amount } from '@/components/Amount';
+import { Balance } from '@/components/Balance';
+import { Navigation } from '@/components/Navigation'; // ✅ Import navigation
 
 export default function Home() {
-
   return (
     <Page>
-    <Page.Main className="bg-transparent flex items-center justify-center">
-    <div className="bg-gray-800/80 p-6 rounded-xl shadow-lg">
-      <SelectRole />
-    </div>
-  </Page.Main>
-  </Page>
+      <Page.Header className="p-0">
+  <div className="flex justify-between items-center px-4 pt-3 w-full">
+    <img src="/logo.png" alt="Logo" style={{ height: '56px', width: 'auto' }} />
+    <Balance />
+  </div>
+</Page.Header>
+
+      <Page.Main className="flex flex-col items-center justify-center">
+        <Amount />
+      </Page.Main>
+
+      <Page.Footer className="px-0 fixed bottom-0 w-full bg-white">
+        <Navigation />
+      </Page.Footer>
+    </Page>
   );
 }
