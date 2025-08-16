@@ -1,7 +1,7 @@
 'use client';
 
 import { Page } from '@/components/PageLayout';
-import { SelectRole } from '@/components/SelectRoletRole';
+import { SelectRole } from '@/components/SelectRole';
 import { Balance } from '@/components/Balance';
 import { Navigation } from '@/components/Navigation'; // ✅ Import navigation
 

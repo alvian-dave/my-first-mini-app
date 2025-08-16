@@ -1,7 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 
-export default function SelectRole() {
+export const SelectRole = () => {
   const router = useRouter()
 
   return (
