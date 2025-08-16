@@ -53,7 +53,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         let finalPayload: MiniAppWalletAuthSuccessPayload;
         try {
           finalPayload = JSON.parse(finalPayloadJson);
-        } catch (_) {
+        } catch {
           console.log('Invalid JSON payload');
           return null;
         }
@@ -67,14 +67,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const walletAddress = finalPayload.address;
 
-        // Connect ke MongoDB
         await dbConnect();
 
-        // Cek apakah user sudah ada di DB
         let user = await User.findOne({ walletAddress });
 
         if (!user) {
-          // Ambil info dari MiniKit
           const userInfo = await MiniKit.getUserInfo(walletAddress);
 
           user = await User.create({
