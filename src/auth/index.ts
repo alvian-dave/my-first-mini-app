@@ -38,7 +38,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         signedNonce: { label: 'Signed Nonce', type: 'text' },
         finalPayloadJson: { label: 'Final Payload', type: 'text' },
       },
-      authorize: async ({ nonce, signedNonce, finalPayloadJson }) => {
+      authorize: async (credentials) => {
+        // ✅ kasih type aman biar ga "unknown"
+        const nonce = credentials?.nonce as string;
+        const signedNonce = credentials?.signedNonce as string;
+        const finalPayloadJson = credentials?.finalPayloadJson as string;
+
         const expectedSignedNonce = hashNonce({ nonce });
 
         if (signedNonce !== expectedSignedNonce) {
@@ -46,8 +51,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const finalPayload: MiniAppWalletAuthSuccessPayload =
-          JSON.parse(finalPayloadJson);
+        let finalPayload: MiniAppWalletAuthSuccessPayload;
+        try {
+          finalPayload = JSON.parse(finalPayloadJson);
+        } catch (e) {
+          console.log('Invalid JSON payload');
+          return null;
+        }
+
         const result = await verifySiweMessage(finalPayload, nonce);
 
         if (!result.isValid || !result.siweMessageData.address) {
