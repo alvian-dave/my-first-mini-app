@@ -39,7 +39,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         finalPayloadJson: { label: 'Final Payload', type: 'text' },
       },
       authorize: async (credentials) => {
-        // ✅ kasih type aman biar ga "unknown"
         const nonce = credentials?.nonce as string;
         const signedNonce = credentials?.signedNonce as string;
         const finalPayloadJson = credentials?.finalPayloadJson as string;
@@ -54,7 +53,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         let finalPayload: MiniAppWalletAuthSuccessPayload;
         try {
           finalPayload = JSON.parse(finalPayloadJson);
-        } catch (e) {
+        } catch (_) {
           console.log('Invalid JSON payload');
           return null;
         }
@@ -100,7 +99,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.userId = user.id;
       }
 
-      // fetch dari DB supaya data selalu update
       if (token.userId) {
         await dbConnect();
         const dbUser = await User.findById(token.userId);
