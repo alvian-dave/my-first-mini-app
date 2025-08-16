@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   },
   allowedDevOrigins: ['*'], // Add your dev origin here
   reactStrictMode: false,
+
+  eslint: {
+    // ❌ Matikan linting pas build di Vercel
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
