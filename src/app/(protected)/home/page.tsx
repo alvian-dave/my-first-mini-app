@@ -1,7 +1,7 @@
 'use client';
 
 import { Page } from '@/components/PageLayout';
-import { Amount } from '@/components/Amount';
+import { Login } from '@/components/Login';
 import { Balance } from '@/components/Balance';
 import { Navigation } from '@/components/Navigation'; // ✅ Import navigation
 
