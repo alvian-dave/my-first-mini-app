@@ -15,8 +15,8 @@ export default function Home() {
   </div>
 </Page.Header>
 
-      <Page.Main className="flex flex-col items-center justify-center">
-        <Login />
+      <Page.Main className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+  <Login />
       </Page.Main>
 
       <Page.Footer className="px-0 fixed bottom-0 w-full bg-white">
