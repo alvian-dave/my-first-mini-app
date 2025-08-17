@@ -19,9 +19,9 @@ export default function Home() {
   <Login />
       </Page.Main>
 
-      <Page.Footer className="fixed bottom-0 w-full z-20">
-  <Navigation />
-</Page.Footer>
+      <Page.Footer className="px-0 fixed bottom-0 w-full bg-white">
+        <Navigation />
+      </Page.Footer>
       </Page>
   );
 }
