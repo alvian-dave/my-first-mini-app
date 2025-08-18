@@ -6,7 +6,7 @@ interface Props {
   setActiveTab: (tab: 'active' | 'finished' | 'rejected') => void
 }
 
-export const CampaignTabs({ activeTab, setActiveTab }: Props) {
+export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
   return (
     <div className="flex justify-center gap-6 mb-6">
       {['active', 'finished', 'rejected'].map((tab) => (

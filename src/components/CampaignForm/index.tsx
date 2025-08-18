@@ -1,7 +1,7 @@
 'use client'
 
 import { Dialog, Transition } from '@headlessui/react'
-import { Fragment } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import { Campaign } from '@/types'
 
 interface Props {
@@ -12,37 +12,67 @@ interface Props {
   setEditingCampaign: (c: Campaign | null) => void
 }
 
-export const CampaignForm = () => {
-  isOpen,
-  onClose,
-  onSubmit,
-  editingCampaign,
-  setEditingCampaign
-}: Props) {
+export const CampaignForm = ({ isOpen, onClose, onSubmit, editingCampaign, setEditingCampaign }: Props) => {
   const campaign = editingCampaign || {
     id: Date.now(),
     title: '',
     description: '',
-    reward: 0,
     budget: 0,
-    status: 'active',
+    reward: 0,
     links: []
   }
 
+  // ✅ Sync state ketika ada editingCampaign
+  useEffect(() => {
+    if (editingCampaign) {
+      setCampaign(editingCampaign)
+    } else {
+      setCampaign({
+        id: Date.now(),
+        title: '',
+        description: '',
+        reward: 0,
+        budget: 0,
+        status: 'active',
+        links: [],
+      })
+    }
+  }, [editingCampaign])
+
   const handleChange = (key: keyof Campaign, value: any) => {
-    setEditingCampaign({ ...campaign, [key]: value })
+    setCampaign({ ...campaign, [key]: value })
   }
 
   const updateLink = (index: number, key: 'url' | 'label', value: string) => {
-    const newLinks = [...(campaign.links || [])]
+    const newLinks = [...campaign.links]
     newLinks[index][key] = value
-    setEditingCampaign({ ...campaign, links: newLinks })
+    setCampaign({ ...campaign, links: newLinks })
   }
 
   const removeLink = (index: number) => {
-    const newLinks = [...(campaign.links || [])]
+    const newLinks = [...campaign.links]
     newLinks.splice(index, 1)
-    setEditingCampaign({ ...campaign, links: newLinks })
+    setCampaign({ ...campaign, links: newLinks })
+  }
+
+  const handleSubmit = () => {
+    // ✅ Validasi sederhana
+    if (!campaign.title.trim()) {
+      alert('Title is required')
+      return
+    }
+    if (!campaign.description.trim()) {
+      alert('Description is required')
+      return
+    }
+    if (campaign.reward > campaign.budget) {
+      alert('Reward cannot be greater than total budget')
+      return
+    }
+
+    onSubmit(campaign)
+    setEditingCampaign(null)
+    onClose()
   }
 
   return (
@@ -58,12 +88,12 @@ export const CampaignForm = () => {
           leaveTo="opacity-0 scale-95"
         >
           <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
-            <Dialog.Panel className="w-full max-w-lg bg-gray-800 text-white rounded-xl p-6 max-h-[90vh] overflow-y-auto">
+            <Dialog.Panel className="relative w-full max-w-lg bg-gray-800 text-white rounded-xl p-6 max-h-[90vh] flex flex-col">
               <Dialog.Title className="text-xl font-bold mb-4">
                 {editingCampaign ? 'Edit Campaign' : 'Create New Campaign'}
               </Dialog.Title>
 
-              <div className="space-y-4">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1">
                 <input
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
                   placeholder="Campaign Title"
@@ -97,7 +127,7 @@ export const CampaignForm = () => {
                   onChange={(e) => handleChange('reward', Number(e.target.value))}
                 />
 
-                {(campaign.links || []).map((l, i) => (
+                {campaign.links.map((l, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <input
                       className="flex-1 bg-gray-700 border border-gray-600 rounded p-2 text-white"
@@ -121,38 +151,35 @@ export const CampaignForm = () => {
                   </div>
                 ))}
 
-                {(campaign.links?.length || 0) < 5 && (
+                {campaign.links.length < 5 && (
                   <button
                     onClick={() =>
-                      handleChange('links', [...(campaign.links || []), { url: '', label: '' }])
+                      handleChange('links', [...campaign.links, { url: '', label: '' }])
                     }
                     className="text-sm text-blue-400 hover:underline"
                   >
                     + Add Link
                   </button>
                 )}
+              </div>
 
-                <div className="flex gap-2 pt-2 sticky bottom-0 bg-gray-800 py-2">
-                  <button
-                    onClick={() => {
-                      onSubmit(campaign)
-                      setEditingCampaign(null)
-                      onClose()
-                    }}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
-                  >
-                    {editingCampaign ? 'Update Campaign' : 'Publish'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingCampaign(null)
-                      onClose()
-                    }}
-                    className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              {/* ✅ Footer fix */}
+              <div className="flex gap-2 pt-4 mt-4 border-t border-gray-700">
+                <button
+                  onClick={handleSubmit}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                >
+                  {editingCampaign ? 'Update Campaign' : 'Publish'}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingCampaign(null)
+                    onClose()
+                  }}
+                  className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded"
+                >
+                  Cancel
+                </button>
               </div>
             </Dialog.Panel>
           </div>
