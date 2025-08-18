@@ -98,6 +98,7 @@ export const CampaignForm = ({
                 {editingCampaign ? 'Edit Campaign' : 'Create New Campaign'}
               </Dialog.Title>
 
+              {/* Form Content */}
               <div className="flex-1 overflow-y-auto space-y-4 pr-1">
                 <input
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
@@ -148,7 +149,8 @@ export const CampaignForm = ({
                     />
                     <button
                       onClick={() => removeLink(i)}
-                      className="text-red-400 hover:text-red-600 text-xl font-bold"
+                      className="px-3 py-2 rounded font-bold transition hover:brightness-110"
+                      style={{ backgroundColor: '#dc2626', color: '#fff' }} // merah
                       title="Remove"
                     >
                       🗑
@@ -161,7 +163,8 @@ export const CampaignForm = ({
                     onClick={() =>
                       handleChange('links', [...(campaign.links || []), { url: '', label: '' }])
                     }
-                    className="text-sm text-blue-400 hover:text-blue-500 transition"
+                    className="px-3 py-2 rounded font-medium transition hover:brightness-110"
+                    style={{ backgroundColor: '#2563eb', color: '#fff' }} // biru
                   >
                     + Add Link
                   </button>
@@ -172,7 +175,8 @@ export const CampaignForm = ({
               <div className="flex gap-2 pt-4 mt-4 border-t border-gray-700">
                 <button
                   onClick={handleSubmit}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                  className="flex-1 py-2 rounded font-medium transition hover:brightness-110"
+                  style={{ backgroundColor: '#16a34a', color: '#fff' }} // hijau
                 >
                   {editingCampaign ? 'Update Campaign' : 'Publish'}
                 </button>
@@ -181,7 +185,8 @@ export const CampaignForm = ({
                     setEditingCampaign(null)
                     onClose()
                   }}
-                  className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded"
+                  className="flex-1 py-2 rounded font-medium transition hover:brightness-110"
+                  style={{ backgroundColor: '#4b5563', color: '#fff' }} // abu
                 >
                   Cancel
                 </button>
