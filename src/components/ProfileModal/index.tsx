@@ -2,9 +2,8 @@
 
 import { useSession, signOut } from 'next-auth/react'
 
-export const ProfileModal = ({ onClose }: { onClose: () => void }) => {
+const ProfileModal = ({ onClose }: { onClose: () => void }) => {
   const { data: session, status } = useSession()
-
   if (status === 'loading' || !session) return null
 
   const user = session.user
@@ -30,15 +29,9 @@ export const ProfileModal = ({ onClose }: { onClose: () => void }) => {
         <h1 className="mb-4 text-2xl font-bold">👤 Profile</h1>
 
         <div className="mb-6 rounded bg-gray-100 dark:bg-gray-800 p-4 shadow">
-          <p>
-            <strong>Username:</strong> {username}
-          </p>
-          <p>
-            <strong>User ID:</strong> {userId}
-          </p>
-          <p>
-            <strong>Wallet Address:</strong> {walletAddress}
-          </p>
+          <p><strong>Username:</strong> {username}</p>
+          <p><strong>User ID:</strong> {userId}</p>
+          <p><strong>Wallet Address:</strong> {walletAddress}</p>
         </div>
 
         <div className="flex justify-end">
@@ -53,3 +46,5 @@ export const ProfileModal = ({ onClose }: { onClose: () => void }) => {
     </div>
   )
 }
+
+export default ProfileModal
