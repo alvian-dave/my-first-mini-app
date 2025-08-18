@@ -16,7 +16,7 @@ export const Login = () => {
         </div>
         <div className="mt-4">
           <button
-            onClick={() => router.push('/login/client')}
+            onClick={() => router.push('/dashboard/promoter')}
             className="w-full py-2 rounded font-medium transition hover:brightness-110"
             style={{ backgroundColor: '#2563eb', color: '#fff' }} // force biru
           >
