@@ -29,22 +29,47 @@ export default function ClientDashboard() {
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
 
-  // Redirect ke /home jika belum login
+  // Redirect ke /login/client jika belum login
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/home')
     }
   }, [status, router])
 
+  // Tampilkan loading saat sesi masih dimuat
   if (status === 'loading') {
     return <div className="text-white p-6">Loading...</div>
   }
 
+  // Jika sudah dicek dan tidak ada session, jangan render dashboard
   if (!session?.user) {
     return null
   }
 
+  // Fungsi fetchCampaigns (aktifkan jika API siap)
+  // const fetchCampaigns = async () => {
+  //   try {
+  //     const res = await fetch('/api/client/campaigns')
+  //     const data = await res.json()
+  //     setCampaigns(data || [])
+  //   } catch (err) {
+  //     console.error('Failed to load campaigns', err)
+  //   }
+  // }
+
+  // Fungsi fetchBalance (aktifkan jika API siap)
+  // const fetchBalance = async () => {
+  //   try {
+  //     const res = await fetch('/api/client/balance')
+  //     const data = await res.json()
+  //     setBalance(data.balance || 0)
+  //   } catch (err) {
+  //     console.error('Failed to load balance', err)
+  //   }
+  // }
+
   const handleSubmit = async (newCampaign: Campaign) => {
+    // Sementara nonaktifkan submit sampai handler API siap
     console.log('Campaign submitted:', newCampaign)
     setIsModalOpen(false)
   }
@@ -57,7 +82,6 @@ export default function ClientDashboard() {
     <div className="min-h-screen bg-gray-900 text-white">
       <Topbar />
       <main className="w-full px-4 md:px-12 py-6">
-        {/* Balance & Topup */}
         <div className="flex justify-between items-center mb-6">
           <div className="text-lg font-medium">
             Balance:{' '}
@@ -65,31 +89,23 @@ export default function ClientDashboard() {
           </div>
           <button
             onClick={() => alert('Topup coming soon!')}
-            className="px-5 py-2 rounded-full font-semibold shadow-md 
-                       bg-blue-600 text-white hover:bg-blue-700 transition"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded"
           >
             Topup
           </button>
         </div>
-
-        {/* Create Campaign */}
         <div className="text-center mb-6">
           <button
             onClick={() => {
               setEditingCampaign(null)
               setIsModalOpen(true)
             }}
-            className="px-6 py-2 rounded-full font-semibold shadow-md
-                       bg-green-600 text-white hover:bg-green-700 transition"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-semibold shadow"
           >
             + Create Campaign
           </button>
         </div>
-
-        {/* Tabs */}
         <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-
-        {/* Campaign list */}
         {current.length === 0 ? (
           <p className="text-center text-gray-400">No campaigns in this tab.</p>
         ) : (
@@ -122,19 +138,19 @@ export default function ClientDashboard() {
                       setEditingCampaign(c)
                       setIsModalOpen(true)
                     }}
-                    className="px-4 py-1 rounded-full font-semibold shadow-md
-                               bg-yellow-500 text-black hover:bg-yellow-600 transition"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded"
                   >
                     Edit
                   </button>
                   <button
                     onClick={async () => {
                       if (confirm('Delete this campaign?')) {
+                        // Sementara nonaktifkan delete sampai handler API siap
                         console.log('Campaign deleted:', c.id)
+                        // fetchCampaigns()
                       }
                     }}
-                    className="px-4 py-1 rounded-full font-semibold shadow-md
-                               bg-red-600 text-white hover:bg-red-700 transition"
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
                   >
                     Delete
                   </button>
@@ -143,8 +159,6 @@ export default function ClientDashboard() {
             ))}
           </div>
         )}
-
-        {/* Modal Form */}
         <CampaignForm
           isOpen={isModalOpen}
           onClose={() => {
@@ -156,13 +170,11 @@ export default function ClientDashboard() {
           setEditingCampaign={setEditingCampaign}
         />
       </main>
-
-      {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">
         {!showChat ? (
           <div className="text-center">
             <button
-              className="bg-green-600 p-3 rounded-full shadow-md hover:scale-105 transition"
+              className="bg-green-600 p-3 rounded-full shadow hover:scale-105 transition"
               onClick={() => setShowChat(true)}
             >
               💬
@@ -170,22 +182,16 @@ export default function ClientDashboard() {
             <p className="text-xs text-gray-400 mt-1">Chat</p>
           </div>
         ) : (
-          <div className="w-80 h-96 bg-gray-900 text-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+          <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
             <div className="flex justify-between items-center bg-green-600 text-white px-4 py-2">
               <span className="font-semibold">Global Chat</span>
-              <button
-                onClick={() => setShowChat(false)}
-                className="hover:text-gray-200"
-              >
-                ✕
-              </button>
+              <button onClick={() => setShowChat(false)}>✕</button>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <GlobalChatRoom />
-            </div>
+            <GlobalChatRoom />
           </div>
         )}
       </div>
     </div>
   )
 }
+// ...existing code...
