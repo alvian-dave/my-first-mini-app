@@ -19,7 +19,6 @@ export const CampaignForm = ({
   editingCampaign,
   setEditingCampaign,
 }: Props) => {
-  // ✅ bikin state untuk form (string untuk reward & budget)
   const [campaign, setCampaign] = useState<Campaign & { budget: string }>({
     id: Date.now(),
     title: '',
@@ -30,7 +29,6 @@ export const CampaignForm = ({
     links: [],
   })
 
-  // ✅ Sync state ketika ada editingCampaign
   useEffect(() => {
     if (editingCampaign) {
       setCampaign({ ...editingCampaign, budget: editingCampaign['budget'] ?? '0' })
@@ -64,7 +62,6 @@ export const CampaignForm = ({
   }
 
   const handleSubmit = () => {
-    // ✅ Validasi sederhana
     if (!campaign.title.trim()) {
       alert('Title is required')
       return
@@ -164,14 +161,14 @@ export const CampaignForm = ({
                     onClick={() =>
                       handleChange('links', [...(campaign.links || []), { url: '', label: '' }])
                     }
-                    className="text-sm text-blue-400 hover:underline"
+                    className="text-sm text-blue-400 hover:text-blue-500 transition"
                   >
                     + Add Link
                   </button>
                 )}
               </div>
 
-              {/* ✅ Footer */}
+              {/* Footer */}
               <div className="flex gap-2 pt-4 mt-4 border-t border-gray-700">
                 <button
                   onClick={handleSubmit}
