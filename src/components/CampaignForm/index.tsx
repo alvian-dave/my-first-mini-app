@@ -12,15 +12,23 @@ interface Props {
   setEditingCampaign: (c: Campaign | null) => void
 }
 
-export const CampaignForm = ({ isOpen, onClose, onSubmit, editingCampaign, setEditingCampaign }: Props) => {
-  const campaign = editingCampaign || {
+export const CampaignForm = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  editingCampaign,
+  setEditingCampaign,
+}: Props) => {
+  // ✅ bikin state untuk form
+  const [campaign, setCampaign] = useState<Campaign>({
     id: Date.now(),
     title: '',
     description: '',
     budget: 0,
     reward: 0,
-    links: []
-  }
+    status: 'active',
+    links: [],
+  })
 
   // ✅ Sync state ketika ada editingCampaign
   useEffect(() => {
@@ -40,7 +48,7 @@ export const CampaignForm = ({ isOpen, onClose, onSubmit, editingCampaign, setEd
   }, [editingCampaign])
 
   const handleChange = (key: keyof Campaign, value: any) => {
-    setCampaign({ ...campaign, [key]: value })
+    setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
   const updateLink = (index: number, key: 'url' | 'label', value: string) => {
