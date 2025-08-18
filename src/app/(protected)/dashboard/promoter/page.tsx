@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import Topbar from '@/components/Topbar'
+import { Topbar } from '@/components/Topbar'
 import GlobalChatRoom from '@/components/GlobalChatRoom'
 import CampaignForm from '@/components/CampaignForm'
 import CampaignTabs from '@/components/CampaignTabs'
