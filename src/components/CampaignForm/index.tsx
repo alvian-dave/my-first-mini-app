@@ -19,13 +19,13 @@ export const CampaignForm = ({
   editingCampaign,
   setEditingCampaign,
 }: Props) => {
-  // ✅ bikin state untuk form
-  const [campaign, setCampaign] = useState<Campaign>({
+  // ✅ bikin state untuk form (string untuk reward & budget)
+  const [campaign, setCampaign] = useState<Campaign & { budget: string }>({
     id: Date.now(),
     title: '',
     description: '',
-    budget: 0,
-    reward: 0,
+    budget: '0',
+    reward: '0',
     status: 'active',
     links: [],
   })
@@ -33,32 +33,32 @@ export const CampaignForm = ({
   // ✅ Sync state ketika ada editingCampaign
   useEffect(() => {
     if (editingCampaign) {
-      setCampaign(editingCampaign)
+      setCampaign({ ...editingCampaign, budget: editingCampaign['budget'] ?? '0' })
     } else {
       setCampaign({
         id: Date.now(),
         title: '',
         description: '',
-        reward: 0,
-        budget: 0,
+        reward: '0',
+        budget: '0',
         status: 'active',
         links: [],
       })
     }
   }, [editingCampaign])
 
-  const handleChange = (key: keyof Campaign, value: any) => {
+  const handleChange = (key: keyof Campaign | 'budget', value: any) => {
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
   const updateLink = (index: number, key: 'url' | 'label', value: string) => {
-    const newLinks = [...campaign.links]
+    const newLinks = [...(campaign.links || [])]
     newLinks[index][key] = value
     setCampaign({ ...campaign, links: newLinks })
   }
 
   const removeLink = (index: number) => {
-    const newLinks = [...campaign.links]
+    const newLinks = [...(campaign.links || [])]
     newLinks.splice(index, 1)
     setCampaign({ ...campaign, links: newLinks })
   }
@@ -73,7 +73,7 @@ export const CampaignForm = ({
       alert('Description is required')
       return
     }
-    if (campaign.reward > campaign.budget) {
+    if (parseFloat(campaign.reward) > parseFloat(campaign.budget)) {
       alert('Reward cannot be greater than total budget')
       return
     }
@@ -123,7 +123,7 @@ export const CampaignForm = ({
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
                   placeholder="Total Budget (e.g. 1000 WR)"
                   value={campaign.budget}
-                  onChange={(e) => handleChange('budget', Number(e.target.value))}
+                  onChange={(e) => handleChange('budget', e.target.value)}
                 />
 
                 <input
@@ -132,10 +132,10 @@ export const CampaignForm = ({
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
                   placeholder="Reward per Task (e.g. 10 WR)"
                   value={campaign.reward}
-                  onChange={(e) => handleChange('reward', Number(e.target.value))}
+                  onChange={(e) => handleChange('reward', e.target.value)}
                 />
 
-                {campaign.links.map((l, i) => (
+                {(campaign.links || []).map((l, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <input
                       className="flex-1 bg-gray-700 border border-gray-600 rounded p-2 text-white"
@@ -159,10 +159,10 @@ export const CampaignForm = ({
                   </div>
                 ))}
 
-                {campaign.links.length < 5 && (
+                {(campaign.links || []).length < 5 && (
                   <button
                     onClick={() =>
-                      handleChange('links', [...campaign.links, { url: '', label: '' }])
+                      handleChange('links', [...(campaign.links || []), { url: '', label: '' }])
                     }
                     className="text-sm text-blue-400 hover:underline"
                   >
@@ -171,7 +171,7 @@ export const CampaignForm = ({
                 )}
               </div>
 
-              {/* ✅ Footer fix */}
+              {/* ✅ Footer */}
               <div className="flex gap-2 pt-4 mt-4 border-t border-gray-700">
                 <button
                   onClick={handleSubmit}
