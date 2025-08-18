@@ -20,8 +20,8 @@ export const GlobalChatRoom = () => {
   const chatRef = useRef<HTMLDivElement>(null)
 
   const username =
-    session?.user?.name || session?.user?.walletAddress?.split('@')[0] || 'anon'
-  const role = session?.user?.id || session?.user?.id || 'unknown'
+    session?.user?.username || session?.user?.id?.split('@')[0] || 'anon'
+  const role = session?.user?.walletAddress || session?.user?.walletAddress || 'unknown'
 
   useEffect(() => {
     // Fetch messages

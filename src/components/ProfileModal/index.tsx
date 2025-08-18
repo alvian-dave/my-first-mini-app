@@ -7,7 +7,7 @@ const ProfileModal = ({ onClose }: { onClose: () => void }) => {
   if (status === 'loading' || !session) return null
 
   const user = session.user
-  const username = user?.name || 'Anonymous'
+  const username = user?.username || 'Anonymous'
   const userId = user?.id || 'Unknown'
   const walletAddress = user?.walletAddress || 'Not set'
 
