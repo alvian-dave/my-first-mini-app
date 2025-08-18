@@ -20,7 +20,7 @@ export const Login = () => {
             className="w-full py-2 rounded font-medium transition hover:brightness-110"
             style={{ backgroundColor: '#2563eb', color: '#fff' }} // force biru
           >
-            Login as Client
+            Login as Promoter
           </button>
         </div>
       </div>
