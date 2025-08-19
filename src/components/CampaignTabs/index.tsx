@@ -2,8 +2,8 @@
 'use client'
 
 interface Props {
-  activeTab: 'active' | 'finished' | 'rejected'
-  setActiveTab: (tab: 'active' | 'finished' | 'rejected') => void
+  activeTab: 'Active' | 'Finished' | 'Rejected'
+  setActiveTab: (tab: 'Active' | 'Finished' | 'Rejected') => void
 }
 
 export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
