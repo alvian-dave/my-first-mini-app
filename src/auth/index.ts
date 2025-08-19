@@ -8,6 +8,7 @@ import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
+import Session from '@/models/Session';
 
 declare module 'next-auth' {
   interface User {
@@ -30,14 +31,28 @@ declare module 'next-auth' {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
 
-  // ✅ Perubahan di sini (agar session tetap tersimpan)
+  // 🔥 simpan session di DB (persistent di WebView World App)
   session: {
-    strategy: 'jwt',
+    strategy: 'database',
     maxAge: 30 * 24 * 60 * 60, // 30 hari
-    updateAge: 24 * 60 * 60,   // refresh token tiap 1 hari
+    updateAge: 24 * 60 * 60,   // refresh session tiap 1 hari
   },
+
+  // optional: JWT masih dipakai untuk callback token
   jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30 hari juga
+    maxAge: 30 * 24 * 60 * 60,
+  },
+
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
   },
 
   providers: [
@@ -106,20 +121,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.userId = user.id;
       }
-
       if (token.userId) {
         await dbConnect();
         const dbUser = await User.findById(token.userId);
-
         if (dbUser) {
           token.walletAddress = dbUser.walletAddress;
           token.username = dbUser.username;
           token.profilePictureUrl = dbUser.profilePictureUrl;
         }
       }
-
       return token;
     },
+
     async session({ session, token }) {
       if (token.userId) {
         session.user.id = token.userId as string;
@@ -127,8 +140,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.username = token.username as string;
         session.user.profilePictureUrl = token.profilePictureUrl as string;
       }
-
       return session;
+    },
+  },
+
+  adapter: {
+    async createSession(data) {
+      await dbConnect();
+      const session = await Session.create(data);
+      return session.toObject();
+    },
+    async getSessionAndUser(sessionToken) {
+      await dbConnect();
+      const session = await Session.findOne({ sessionToken }).lean();
+      if (!session) return null;
+      const user = await User.findById(session.userId).lean();
+      return { session, user };
+    },
+    async updateSession(data) {
+      await dbConnect();
+      await Session.updateOne({ sessionToken: data.sessionToken }, data);
+      return data;
+    },
+    async deleteSession(sessionToken) {
+      await dbConnect();
+      await Session.deleteOne({ sessionToken });
     },
   },
 });
