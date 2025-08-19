@@ -8,7 +8,7 @@ import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
-import Session from '@/models/Session';
+import Session from '@/models/Session'; // ✅ tambahin model session
 
 declare module 'next-auth' {
   interface User {
@@ -31,28 +31,11 @@ declare module 'next-auth' {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
 
-  // 🔥 simpan session di DB (persistent di WebView World App)
+  // ✅ pake database strategy biar persistent
   session: {
     strategy: 'database',
     maxAge: 30 * 24 * 60 * 60, // 30 hari
-    updateAge: 24 * 60 * 60,   // refresh session tiap 1 hari
-  },
-
-  // optional: JWT masih dipakai untuk callback token
-  jwt: {
-    maxAge: 30 * 24 * 60 * 60,
-  },
-
-  cookies: {
-    sessionToken: {
-      name: `__Secure-next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      },
-    },
+    updateAge: 24 * 60 * 60,   // refresh tiap 1 hari
   },
 
   providers: [
@@ -117,33 +100,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async session({ session, token, user }) {
+      // kalau pakai database strategy, `user` otomatis ada
       if (user) {
-        token.userId = user.id;
-      }
-      if (token.userId) {
-        await dbConnect();
-        const dbUser = await User.findById(token.userId);
-        if (dbUser) {
-          token.walletAddress = dbUser.walletAddress;
-          token.username = dbUser.username;
-          token.profilePictureUrl = dbUser.profilePictureUrl;
-        }
-      }
-      return token;
-    },
-
-    async session({ session, token }) {
-      if (token.userId) {
-        session.user.id = token.userId as string;
-        session.user.walletAddress = token.walletAddress as string;
-        session.user.username = token.username as string;
-        session.user.profilePictureUrl = token.profilePictureUrl as string;
+        session.user.id = user.id;
+        session.user.walletAddress = user.walletAddress;
+        session.user.username = user.username;
+        session.user.profilePictureUrl = user.profilePictureUrl;
       }
       return session;
     },
   },
 
+  // ✅ Adapter custom ke Mongo (biar simpan session)
   adapter: {
     async createSession(data) {
       await dbConnect();
