@@ -8,8 +8,8 @@ import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
-import Session from '@/models/Session'; // ⬅️ kita bikin model Session mongoose
-import { Adapter } from 'next-auth/adapters';
+import { MongoDBAdapter } from '@auth/mongodb-adapter';
+import clientPromise from '@/lib/mongodb-client'; // bikin file ini (MongoClient promise)
 
 declare module 'next-auth' {
   interface User {
@@ -29,55 +29,15 @@ declare module 'next-auth' {
   }
 }
 
-// --- Adapter custom untuk pakai mongoose Session ---
-const MongooseAdapter: Adapter = {
-  async createSession(session) {
-    await dbConnect();
-    const newSession = await Session.create(session);
-    return {
-      sessionToken: newSession.sessionToken,
-      userId: newSession.userId,
-      expires: newSession.expires,
-    };
-  },
-
-  async getSessionAndUser(sessionToken) {
-    await dbConnect();
-    const session = await Session.findOne({ sessionToken });
-    if (!session) return null;
-
-    const user = await User.findById(session.userId);
-    if (!user) return null;
-
-    return {
-      session: {
-        sessionToken: session.sessionToken,
-        userId: session.userId,
-        expires: session.expires,
-      },
-      user: {
-        id: user.id,
-        walletAddress: user.walletAddress,
-        username: user.username,
-        profilePictureUrl: user.profilePictureUrl,
-      },
-    };
-  },
-
-  async deleteSession(sessionToken) {
-    await dbConnect();
-    await Session.deleteOne({ sessionToken });
-  },
-};
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
 
-  // ✅ Sekarang database strategy
-  adapter: MongooseAdapter,
+  // ✅ ubah jadi database strategy
+  adapter: MongoDBAdapter(clientPromise),
   session: {
     strategy: 'database',
     maxAge: 30 * 24 * 60 * 60, // 30 hari
+    updateAge: 24 * 60 * 60,   // refresh tiap 1 hari
   },
 
   providers: [
@@ -94,36 +54,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const finalPayloadJson = credentials?.finalPayloadJson as string;
 
         const expectedSignedNonce = hashNonce({ nonce });
-
-        if (signedNonce !== expectedSignedNonce) {
-          console.log('Invalid signed nonce');
-          return null;
-        }
+        if (signedNonce !== expectedSignedNonce) return null;
 
         let finalPayload: MiniAppWalletAuthSuccessPayload;
         try {
           finalPayload = JSON.parse(finalPayloadJson);
         } catch {
-          console.log('Invalid JSON payload');
           return null;
         }
 
         const result = await verifySiweMessage(finalPayload, nonce);
-
-        if (!result.isValid || !result.siweMessageData.address) {
-          console.log('Invalid final payload');
-          return null;
-        }
+        if (!result.isValid || !result.siweMessageData.address) return null;
 
         const walletAddress = finalPayload.address;
 
         await dbConnect();
-
         let user = await User.findOne({ walletAddress });
 
         if (!user) {
           const userInfo = await MiniKit.getUserInfo(walletAddress);
-
           user = await User.create({
             walletAddress,
             username: userInfo.username,
@@ -142,13 +91,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 
   callbacks: {
-    async session({ session, user }) {
-      // karena pakai database strategy, user di sini sudah resolve dari adapter
-      if (user) {
-        session.user.id = user.id;
-        session.user.walletAddress = user.walletAddress;
-        session.user.username = user.username;
-        session.user.profilePictureUrl = user.profilePictureUrl;
+    async jwt({ token, user }) {
+      if (user) token.userId = user.id;
+
+      if (token.userId) {
+        await dbConnect();
+        const dbUser = await User.findById(token.userId);
+        if (dbUser) {
+          token.walletAddress = dbUser.walletAddress;
+          token.username = dbUser.username;
+          token.profilePictureUrl = dbUser.profilePictureUrl;
+        }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token.userId) {
+        session.user.id = token.userId as string;
+        session.user.walletAddress = token.walletAddress as string;
+        session.user.username = token.username as string;
+        session.user.profilePictureUrl = token.profilePictureUrl as string;
       }
       return session;
     },
