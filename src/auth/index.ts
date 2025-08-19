@@ -8,7 +8,8 @@ import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
-import Session from '@/models/Session'; // ✅ tambahin model session
+import Session from '@/models/Session'; // ⬅️ kita bikin model Session mongoose
+import { Adapter } from 'next-auth/adapters';
 
 declare module 'next-auth' {
   interface User {
@@ -28,14 +29,55 @@ declare module 'next-auth' {
   }
 }
 
+// --- Adapter custom untuk pakai mongoose Session ---
+const MongooseAdapter: Adapter = {
+  async createSession(session) {
+    await dbConnect();
+    const newSession = await Session.create(session);
+    return {
+      sessionToken: newSession.sessionToken,
+      userId: newSession.userId,
+      expires: newSession.expires,
+    };
+  },
+
+  async getSessionAndUser(sessionToken) {
+    await dbConnect();
+    const session = await Session.findOne({ sessionToken });
+    if (!session) return null;
+
+    const user = await User.findById(session.userId);
+    if (!user) return null;
+
+    return {
+      session: {
+        sessionToken: session.sessionToken,
+        userId: session.userId,
+        expires: session.expires,
+      },
+      user: {
+        id: user.id,
+        walletAddress: user.walletAddress,
+        username: user.username,
+        profilePictureUrl: user.profilePictureUrl,
+      },
+    };
+  },
+
+  async deleteSession(sessionToken) {
+    await dbConnect();
+    await Session.deleteOne({ sessionToken });
+  },
+};
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
 
-  // ✅ pake database strategy biar persistent
+  // ✅ Sekarang database strategy
+  adapter: MongooseAdapter,
   session: {
     strategy: 'database',
     maxAge: 30 * 24 * 60 * 60, // 30 hari
-    updateAge: 24 * 60 * 60,   // refresh tiap 1 hari
   },
 
   providers: [
@@ -100,8 +142,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 
   callbacks: {
-    async session({ session, token, user }) {
-      // kalau pakai database strategy, `user` otomatis ada
+    async session({ session, user }) {
+      // karena pakai database strategy, user di sini sudah resolve dari adapter
       if (user) {
         session.user.id = user.id;
         session.user.walletAddress = user.walletAddress;
@@ -109,31 +151,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.profilePictureUrl = user.profilePictureUrl;
       }
       return session;
-    },
-  },
-
-  // ✅ Adapter custom ke Mongo (biar simpan session)
-  adapter: {
-    async createSession(data) {
-      await dbConnect();
-      const session = await Session.create(data);
-      return session.toObject();
-    },
-    async getSessionAndUser(sessionToken) {
-      await dbConnect();
-      const session = await Session.findOne({ sessionToken }).lean();
-      if (!session) return null;
-      const user = await User.findById(session.userId).lean();
-      return { session, user };
-    },
-    async updateSession(data) {
-      await dbConnect();
-      await Session.updateOne({ sessionToken: data.sessionToken }, data);
-      return data;
-    },
-    async deleteSession(sessionToken) {
-      await dbConnect();
-      await Session.deleteOne({ sessionToken });
     },
   },
 });

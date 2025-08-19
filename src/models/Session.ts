@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISession extends Document {
   sessionToken: string;
@@ -6,13 +6,13 @@ export interface ISession extends Document {
   expires: Date;
 }
 
-const SessionSchema = new Schema<ISession>(
-  {
-    sessionToken: { type: String, unique: true },
-    userId: { type: String, required: true },
-    expires: { type: Date, required: true },
-  },
-  { timestamps: true }
-);
+const SessionSchema = new Schema<ISession>({
+  sessionToken: { type: String, unique: true, required: true },
+  userId: { type: String, required: true },
+  expires: { type: Date, required: true },
+});
 
-export default mongoose.models.Session || mongoose.model<ISession>("Session", SessionSchema);
+const Session =
+  mongoose.models.Session || mongoose.model<ISession>('Session', SessionSchema);
+
+export default Session;
