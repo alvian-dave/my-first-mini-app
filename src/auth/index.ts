@@ -8,6 +8,8 @@ import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
+import { MongoDBAdapter } from '@auth/mongodb-adapter';
+import clientPromise from '@/lib/mongodb-client';
 
 declare module 'next-auth' {
   interface User {
@@ -29,7 +31,14 @@ declare module 'next-auth' {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: 'jwt' },
+
+  // 🔑 simpan session di MongoDB
+  adapter: MongoDBAdapter(clientPromise),
+  session: {
+    strategy: "database", // ganti dari jwt → database
+    maxAge: 30 * 24 * 60 * 60, // 30 hari
+  },
+
   providers: [
     Credentials({
       name: 'World App Wallet',
@@ -44,36 +53,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const finalPayloadJson = credentials?.finalPayloadJson as string;
 
         const expectedSignedNonce = hashNonce({ nonce });
-
-        if (signedNonce !== expectedSignedNonce) {
-          console.log('Invalid signed nonce');
-          return null;
-        }
+        if (signedNonce !== expectedSignedNonce) return null;
 
         let finalPayload: MiniAppWalletAuthSuccessPayload;
         try {
           finalPayload = JSON.parse(finalPayloadJson);
         } catch {
-          console.log('Invalid JSON payload');
           return null;
         }
 
         const result = await verifySiweMessage(finalPayload, nonce);
-
-        if (!result.isValid || !result.siweMessageData.address) {
-          console.log('Invalid final payload');
-          return null;
-        }
+        if (!result.isValid || !result.siweMessageData.address) return null;
 
         const walletAddress = finalPayload.address;
 
         await dbConnect();
-
         let user = await User.findOne({ walletAddress });
 
         if (!user) {
           const userInfo = await MiniKit.getUserInfo(walletAddress);
-
           user = await User.create({
             walletAddress,
             username: userInfo.username,
@@ -90,33 +88,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.userId = user.id;
+    async session({ session, user }) {
+      if (session.user && user) {
+        session.user.id = user.id;
+        session.user.walletAddress = user.walletAddress;
+        session.user.username = user.username;
+        session.user.profilePictureUrl = user.profilePictureUrl;
       }
-
-      if (token.userId) {
-        await dbConnect();
-        const dbUser = await User.findById(token.userId);
-
-        if (dbUser) {
-          token.walletAddress = dbUser.walletAddress;
-          token.username = dbUser.username;
-          token.profilePictureUrl = dbUser.profilePictureUrl;
-        }
-      }
-
-      return token;
-    },
-    async session({ session, token }) {
-      if (token.userId) {
-        session.user.id = token.userId as string;
-        session.user.walletAddress = token.walletAddress as string;
-        session.user.username = token.username as string;
-        session.user.profilePictureUrl = token.profilePictureUrl as string;
-      }
-
       return session;
     },
   },
