@@ -8,8 +8,6 @@ import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
-import mongoose from 'mongoose';
-import { MongoDBAdapter } from '@auth/mongodb-adapter';
 
 declare module 'next-auth' {
   interface User {
@@ -31,11 +29,7 @@ declare module 'next-auth' {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
-
-  // ✅ ganti dari jwt -> database
-  adapter: MongoDBAdapter(mongoose.connection.getClient() as any),
-  session: { strategy: 'database', maxAge: 30 * 24 * 60 * 60 },
-
+  session: { strategy: 'jwt' },
   providers: [
     Credentials({
       name: 'World App Wallet',
@@ -96,15 +90,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-
   callbacks: {
-    async session({ session, user }) {
-      if (session.user && user) {
-        session.user.id = user.id;
-        session.user.walletAddress = user.walletAddress;
-        session.user.username = user.username;
-        session.user.profilePictureUrl = user.profilePictureUrl;
+    async jwt({ token, user }) {
+      if (user) {
+        token.userId = user.id;
       }
+
+      if (token.userId) {
+        await dbConnect();
+        const dbUser = await User.findById(token.userId);
+
+        if (dbUser) {
+          token.walletAddress = dbUser.walletAddress;
+          token.username = dbUser.username;
+          token.profilePictureUrl = dbUser.profilePictureUrl;
+        }
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (token.userId) {
+        session.user.id = token.userId as string;
+        session.user.walletAddress = token.walletAddress as string;
+        session.user.username = token.username as string;
+        session.user.profilePictureUrl = token.profilePictureUrl as string;
+      }
+
       return session;
     },
   },
