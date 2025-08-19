@@ -52,12 +52,14 @@ export default function HunterDashboard() {
 
       <div className="w-full px-6 py-8">
         {/* Motivation */}
-        <div
-          className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
-          style={{ backgroundColor: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
-        >
-          "Every task you complete brings you closer to greatness..."
-        </div>
+<div
+  className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
+  style={{
+    background: 'linear-gradient(to right, #16a34a, #3b82f6)',
+  }}
+>
+  "Every task you complete brings you closer to greatness..."
+</div>
 
         {/* Tabs */}
         <div className="flex justify-center gap-4 mb-8">
