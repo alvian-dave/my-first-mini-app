@@ -29,7 +29,17 @@ declare module 'next-auth' {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: 'jwt' },
+
+  // ✅ Perubahan di sini (agar session tetap tersimpan)
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 hari
+    updateAge: 24 * 60 * 60,   // refresh token tiap 1 hari
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 hari juga
+  },
+
   providers: [
     Credentials({
       name: 'World App Wallet',
@@ -90,6 +100,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
