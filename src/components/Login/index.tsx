@@ -35,7 +35,7 @@ export const Login = () => {
         </div>
         <div className="mt-4">
           <button
-            onClick={() => router.push('/login/hunter')}
+            onClick={() => router.push('/dashboard/hunter')}
             className="w-full py-2 rounded font-medium transition hover:brightness-110"
             style={{ backgroundColor: '#16a34a', color: '#fff' }} // force hijau
           >
