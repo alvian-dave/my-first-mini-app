@@ -1,26 +1,7 @@
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
-import Campaign from "@/models/Campaign"
+import { Campaign } from "@/models/Campaign"
 import { Types } from "mongoose"
-
-// ✅ GET: ambil campaign by ID
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  await dbConnect()
-
-  if (!Types.ObjectId.isValid(params.id)) {
-    return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
-  }
-
-  const campaign = await Campaign.findById(params.id)
-  if (!campaign) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
-  }
-
-  return NextResponse.json(campaign)
-}
 
 // ✅ PUT: update campaign by ID
 export async function PUT(
