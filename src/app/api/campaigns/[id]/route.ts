@@ -2,22 +2,29 @@ import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
 import { Types } from "mongoose"
+import { auth } from "@/auth"   // ✅ pakai auth() bukan getServerSession
 
 // ✅ PUT: update campaign by ID
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  await dbConnect()
+  const session = await auth()
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
-  if (!Types.ObjectId.isValid(params.id)) {
+  await dbConnect()
+  const { id } = context.params
+
+  if (!Types.ObjectId.isValid(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
   }
 
   try {
     const body = await req.json()
     const updated = await Campaign.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: body },
       { new: true }
     )
@@ -35,19 +42,25 @@ export async function PUT(
   }
 }
 
-// ✅ DELETE: hapus campaign by ID (jika belum ada contributors)
+// ✅ DELETE: hapus campaign by ID
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  await dbConnect()
+  const session = await auth()
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
-  if (!Types.ObjectId.isValid(params.id)) {
+  await dbConnect()
+  const { id } = context.params
+
+  if (!Types.ObjectId.isValid(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
   }
 
   try {
-    const campaign = await Campaign.findById(params.id)
+    const campaign = await Campaign.findById(id)
     if (!campaign) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
@@ -59,7 +72,7 @@ export async function DELETE(
       )
     }
 
-    await Campaign.findByIdAndDelete(params.id)
+    await Campaign.findByIdAndDelete(id)
     return NextResponse.json({ success: true })
   } catch (err) {
     return NextResponse.json(
