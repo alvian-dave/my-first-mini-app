@@ -4,7 +4,7 @@ export interface Campaign {
   title: string
   description: string
   reward: string
-  budget?: string   // 👈 jadikan optional
+  budget?: string   // optional, default bisa "0"
   status: 'active' | 'finished' | 'rejected'
   links?: { url: string; label: string }[]
   owner?: string

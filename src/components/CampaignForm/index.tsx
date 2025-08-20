@@ -7,7 +7,7 @@ import { Campaign } from '@/types'
 interface Props {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (campaign: Campaign) => void
+  onSubmit: (campaign: Campaign) => void | Promise<void> // ✅ support async
   editingCampaign: Campaign | null
   setEditingCampaign: (c: Campaign | null) => void
 }
@@ -19,11 +19,11 @@ export const CampaignForm = ({
   editingCampaign,
   setEditingCampaign,
 }: Props) => {
-  const [campaign, setCampaign] = useState<Campaign & { budget: string }>({
+  const [campaign, setCampaign] = useState<Campaign>({
     id: Date.now(),
     title: '',
     description: '',
-    budget: '0',
+    budget: '0', // ✅ pake default string
     reward: '0',
     status: 'active',
     links: [],
@@ -31,21 +31,24 @@ export const CampaignForm = ({
 
   useEffect(() => {
     if (editingCampaign) {
-      setCampaign({ ...editingCampaign, budget: editingCampaign['budget'] ?? '0' })
+      setCampaign({
+        ...editingCampaign,
+        budget: editingCampaign.budget ?? '0', // ✅ aman kalo undefined
+      })
     } else {
       setCampaign({
         id: Date.now(),
         title: '',
         description: '',
-        reward: '0',
         budget: '0',
+        reward: '0',
         status: 'active',
         links: [],
       })
     }
   }, [editingCampaign])
 
-  const handleChange = (key: keyof Campaign | 'budget', value: any) => {
+  const handleChange = (key: keyof Campaign, value: any) => {
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -70,12 +73,12 @@ export const CampaignForm = ({
       alert('Description is required')
       return
     }
-    if (parseFloat(campaign.reward) > parseFloat(campaign.budget)) {
+    if (parseFloat(campaign.reward) > parseFloat(campaign.budget ?? '0')) {
       alert('Reward cannot be greater than total budget')
       return
     }
 
-    onSubmit(campaign)
+    onSubmit(campaign) // ✅ support async/void
     setEditingCampaign(null)
     onClose()
   }
@@ -120,7 +123,7 @@ export const CampaignForm = ({
                   min={0}
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
                   placeholder="Total Budget (e.g. 1000 WR)"
-                  value={campaign.budget}
+                  value={campaign.budget ?? '0'}
                   onChange={(e) => handleChange('budget', e.target.value)}
                 />
 
@@ -150,7 +153,7 @@ export const CampaignForm = ({
                     <button
                       onClick={() => removeLink(i)}
                       className="px-3 py-2 rounded font-bold transition hover:brightness-110"
-                      style={{ backgroundColor: '#dc2626', color: '#fff' }} // merah
+                      style={{ backgroundColor: '#dc2626', color: '#fff' }}
                       title="Remove"
                     >
                       🗑
@@ -164,7 +167,7 @@ export const CampaignForm = ({
                       handleChange('links', [...(campaign.links || []), { url: '', label: '' }])
                     }
                     className="px-3 py-2 rounded font-medium transition hover:brightness-110"
-                    style={{ backgroundColor: '#2563eb', color: '#fff' }} // biru
+                    style={{ backgroundColor: '#2563eb', color: '#fff' }}
                   >
                     + Add Link
                   </button>
@@ -176,7 +179,7 @@ export const CampaignForm = ({
                 <button
                   onClick={handleSubmit}
                   className="flex-1 py-2 rounded font-medium transition hover:brightness-110"
-                  style={{ backgroundColor: '#16a34a', color: '#fff' }} // hijau
+                  style={{ backgroundColor: '#16a34a', color: '#fff' }}
                 >
                   {editingCampaign ? 'Update Campaign' : 'Publish'}
                 </button>
@@ -186,7 +189,7 @@ export const CampaignForm = ({
                     onClose()
                   }}
                   className="flex-1 py-2 rounded font-medium transition hover:brightness-110"
-                  style={{ backgroundColor: '#4b5563', color: '#fff' }} // abu
+                  style={{ backgroundColor: '#4b5563', color: '#fff' }}
                 >
                   Cancel
                 </button>
