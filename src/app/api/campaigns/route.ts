@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { dbConnect } from '@/lib/mongodb'
+import dbConnect from '@/lib/mongodb'
 import { Campaign } from '@/models/Campaign'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 
 export async function GET() {
   await dbConnect()
