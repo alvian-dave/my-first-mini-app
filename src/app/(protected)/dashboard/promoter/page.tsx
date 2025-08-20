@@ -9,15 +9,16 @@ import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
 
 interface Campaign {
-  id: number
+  _id: string
   title: string
   description: string
   reward: string
   status: 'active' | 'finished' | 'rejected'
   links?: { url: string; label: string }[]
+  contributors: number
 }
 
-export default function ClientDashboard() {
+export default function PromoterDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
@@ -25,32 +26,39 @@ export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'rejected'>('active')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
-  const [contributorsMap, setContributorsMap] = useState<{ [id: number]: number }>({})
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/home')
-    }
+    if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
-  if (status === 'loading') {
-    return <div className="text-white p-6">Loading...</div>
-  }
+  useEffect(() => {
+    const loadCampaigns = async () => {
+      const res = await fetch('/api/campaigns')
+      const data = await res.json()
+      setCampaigns(data)
+    }
+    loadCampaigns()
+  }, [])
 
-  if (!session?.user) {
-    return null
-  }
+  if (status === 'loading') return <div className="text-white p-6">Loading...</div>
+  if (!session?.user) return null
 
   const handleSubmit = async (newCampaign: Campaign) => {
-    console.log('Campaign submitted:', newCampaign)
+    const res = await fetch('/api/campaigns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCampaign),
+    })
+    const saved = await res.json()
+    setCampaigns(prev => [...prev, saved])
     setIsModalOpen(false)
   }
 
   const current = campaigns
     .filter(c => (c.status || 'active') === activeTab)
-    .sort((a, b) => b.id - a.id)
+    .sort((a, b) => (a._id > b._id ? -1 : 1))
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -64,7 +72,7 @@ export default function ClientDashboard() {
           <button
             onClick={() => alert('Topup coming soon!')}
             className="px-4 py-1 rounded font-medium"
-            style={{ backgroundColor: '#2563eb', color: '#fff' }} // force biru
+            style={{ backgroundColor: '#2563eb', color: '#fff' }}
           >
             Topup
           </button>
@@ -77,7 +85,7 @@ export default function ClientDashboard() {
               setIsModalOpen(true)
             }}
             className="px-6 py-2 rounded font-semibold shadow"
-            style={{ backgroundColor: '#16a34a', color: '#fff' }} // force hijau
+            style={{ backgroundColor: '#16a34a', color: '#fff' }}
           >
             + Create Campaign
           </button>
@@ -91,26 +99,15 @@ export default function ClientDashboard() {
           <div className="grid md:grid-cols-2 gap-6">
             {current.map(c => (
               <div
-                key={c.id}
+                key={c._id}
                 className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition"
               >
                 <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
                 <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
                 <p className="text-sm text-green-400 font-semibold">Reward: {c.reward}</p>
                 <p className="text-sm text-gray-400">
-                  Contributors: <b>{contributorsMap[c.id] || 0}</b>
+                  Contributors: <b>{c.contributors}</b>
                 </p>
-                {c.links?.map((l, i) => (
-                  <a
-                    key={i}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 underline block text-sm mt-1"
-                  >
-                    {l.label}
-                  </a>
-                ))}
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => {
@@ -118,21 +115,43 @@ export default function ClientDashboard() {
                       setIsModalOpen(true)
                     }}
                     className="px-3 py-1 rounded font-medium"
-                    style={{ backgroundColor: '#facc15', color: '#000' }} // force kuning
+                    style={{ backgroundColor: '#facc15', color: '#000' }}
                   >
                     Edit
                   </button>
-                  <button
-                    onClick={async () => {
-                      if (confirm('Delete this campaign?')) {
-                        console.log('Campaign deleted:', c.id)
-                      }
-                    }}
-                    className="px-3 py-1 rounded font-medium"
-                    style={{ backgroundColor: '#dc2626', color: '#fff' }} // force merah
-                  >
-                    Delete
-                  </button>
+                  {c.contributors > 0 ? (
+                    <button
+                      onClick={async () => {
+                        await fetch(`/api/campaigns/${c._id}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: 'finished' }),
+                        })
+                        setCampaigns(prev =>
+                          prev.map(p =>
+                            p._id === c._id ? { ...p, status: 'finished' } : p
+                          )
+                        )
+                      }}
+                      className="px-3 py-1 rounded font-medium"
+                      style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                    >
+                      Mark Finished
+                    </button>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        if (confirm('Delete this campaign?')) {
+                          await fetch(`/api/campaigns/${c._id}`, { method: 'DELETE' })
+                          setCampaigns(prev => prev.filter(p => p._id !== c._id))
+                        }
+                      }}
+                      className="px-3 py-1 rounded font-medium"
+                      style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -157,7 +176,7 @@ export default function ClientDashboard() {
           <div className="text-center">
             <button
               className="p-3 rounded-full shadow hover:scale-105 transition"
-              style={{ backgroundColor: '#16a34a', color: '#fff' }} // force hijau
+              style={{ backgroundColor: '#16a34a', color: '#fff' }}
               onClick={() => setShowChat(true)}
             >
               💬
@@ -168,7 +187,7 @@ export default function ClientDashboard() {
           <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
             <div
               className="flex justify-between items-center px-4 py-2"
-              style={{ backgroundColor: '#16a34a', color: '#fff' }} // force hijau
+              style={{ backgroundColor: '#16a34a', color: '#fff' }}
             >
               <span className="font-semibold">Global Chat</span>
               <button onClick={() => setShowChat(false)}>✕</button>

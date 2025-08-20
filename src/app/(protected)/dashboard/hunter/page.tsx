@@ -7,59 +7,64 @@ import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 
 interface Campaign {
-  id: number
+  _id: string
   title: string
   description: string
   reward: string
   status: 'active' | 'finished' | 'rejected'
   links?: { url: string; label: string }[]
-  owner?: string
 }
 
 export default function HunterDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  const [campaigns] = useState<Campaign[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [hunterBalance, setHunterBalance] = useState(0)
-  const [submittedTasks, setSubmittedTasks] = useState<number[]>([])
+  const [submittedTasks, setSubmittedTasks] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'rejected'>('active')
   const [showChat, setShowChat] = useState(false)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/')
-    }
+    if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
 
-  if (status === 'loading') {
-    return <div className="text-white p-6">Loading...</div>
-  }
+  useEffect(() => {
+    const loadCampaigns = async () => {
+      const res = await fetch('/api/campaigns')
+      const data = await res.json()
+      setCampaigns(data)
+    }
+    loadCampaigns()
+  }, [])
 
-  if (!session?.user) {
-    return null
-  }
+  if (status === 'loading') return <div className="text-white p-6">Loading...</div>
+  if (!session?.user) return null
 
   const filtered = campaigns.filter((c) => {
-    if (activeTab === 'active') return !submittedTasks.includes(c.id)
-    if (activeTab === 'completed') return submittedTasks.includes(c.id)
+    if (activeTab === 'active') {
+      return c.status === 'active' && !submittedTasks.includes(c._id)
+    }
+    if (activeTab === 'completed') {
+      return submittedTasks.includes(c._id) // bisa status active / finished
+    }
+    if (activeTab === 'rejected') {
+      return c.status === 'rejected'
+    }
     return false
-  }).sort((a, b) => b.id - a.id)
+  }).sort((a, b) => (a._id > b._id ? -1 : 1))
 
   return (
     <div className="min-h-screen bg-gray-900 text-white w-full">
       <Topbar />
 
       <div className="w-full px-6 py-8">
-        {/* Motivation */}
-<div
-  className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
-  style={{
-    background: 'linear-gradient(to right, #16a34a, #3b82f6)',
-  }}
->
-  "Every task you complete brings you closer to greatness..."
-</div>
+        <div
+          className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
+          style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
+        >
+          "Every task you complete brings you closer to greatness..."
+        </div>
 
         {/* Tabs */}
         <div className="flex justify-center gap-4 mb-8">
@@ -84,12 +89,16 @@ export default function HunterDashboard() {
           ) : (
             filtered.map((c) => (
               <div
-                key={c.id}
+                key={c._id}
                 className="bg-gray-800 p-5 rounded-lg shadow hover:shadow-lg transition"
               >
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
-                  <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">🔥</span>
+                  {submittedTasks.includes(c._id) && (
+                    <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
+                      Submitted
+                    </span>
+                  )}
                 </div>
                 <p className="text-gray-300 mb-2">{c.description}</p>
                 <p className="text-sm text-gray-400 mb-2">
@@ -108,16 +117,25 @@ export default function HunterDashboard() {
                   </a>
                 ))}
 
-                {!submittedTasks.includes(c.id) ? (
+                {!submittedTasks.includes(c._id) ? (
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
-                    style={{ backgroundColor: '#16a34a' }} // ✅ pakai inline style hijau
-                    disabled
+                    style={{ backgroundColor: '#16a34a' }}
+                    onClick={() => setSubmittedTasks(prev => [...prev, c._id])}
                   >
                     Submit Task
                   </button>
                 ) : (
-                  <p className="text-green-400 mt-2 font-medium">Task Submitted</p>
+                  <p className="text-green-400 mt-2 font-medium">
+                    Task Submitted — Status:{' '}
+                    <span
+                      className={
+                        c.status === 'finished' ? 'text-blue-400' : 'text-green-400'
+                      }
+                    >
+                      {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                    </span>
+                  </p>
                 )}
               </div>
             ))
@@ -131,7 +149,7 @@ export default function HunterDashboard() {
           <div className="text-center">
             <button
               className="p-3 rounded-full shadow hover:scale-105 transition text-white"
-              style={{ backgroundColor: '#16a34a' }} // ✅ inline style hijau
+              style={{ backgroundColor: '#16a34a' }}
               onClick={() => setShowChat(true)}
             >
               💬
@@ -142,7 +160,7 @@ export default function HunterDashboard() {
           <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
             <div
               className="flex justify-between items-center px-4 py-2 text-white"
-              style={{ backgroundColor: '#16a34a' }} // ✅ inline style hijau
+              style={{ backgroundColor: '#16a34a' }}
             >
               <span className="font-semibold">Global Chat</span>
               <button onClick={() => setShowChat(false)}>✕</button>
