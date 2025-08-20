@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type RouteHandlerContext } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
 import { Types } from "mongoose"
-import { auth } from "@/auth"   // ✅ pakai auth() bukan getServerSession
+import { auth } from "@/auth"
 
 // ✅ PUT: update campaign by ID
 export async function PUT(
   req: Request,
-  context: { params: { id: string } }
+  context: RouteHandlerContext<{ id: string }>
 ) {
   const session = await auth()
   if (!session) {
@@ -45,7 +45,7 @@ export async function PUT(
 // ✅ DELETE: hapus campaign by ID
 export async function DELETE(
   req: Request,
-  context: { params: { id: string } }
+  context: RouteHandlerContext<{ id: string }>
 ) {
   const session = await auth()
   if (!session) {
