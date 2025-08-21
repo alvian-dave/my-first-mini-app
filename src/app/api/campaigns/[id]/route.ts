@@ -5,10 +5,7 @@ import { Types } from "mongoose"
 import { auth } from "@/auth"
 
 // ✅ PUT: update campaign by ID
-export async function PUT(
-  req: Request,
-  context: { params: { id: string } }
-) {
+export async function PUT(req: Request, context) {
   const session = await auth()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -43,10 +40,7 @@ export async function PUT(
 }
 
 // ✅ DELETE: hapus campaign by ID
-export async function DELETE(
-  req: Request,
-  context: { params: { id: string } }
-) {
+export async function DELETE(req: Request, context) {
   const session = await auth()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
