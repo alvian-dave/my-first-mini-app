@@ -13,6 +13,7 @@ import type { Campaign as BaseCampaign } from '@/types'
 type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
+  link?: string
 }
 
 export default function PromoterDashboard() {
@@ -32,12 +33,13 @@ export default function PromoterDashboard() {
   }, [status, router])
 
   // Load campaign list
+  const loadCampaigns = async () => {
+    const res = await fetch('/api/campaigns')
+    const data = await res.json()
+    setCampaigns(data as UICampaign[])
+  }
+
   useEffect(() => {
-    const loadCampaigns = async () => {
-      const res = await fetch('/api/campaigns')
-      const data = await res.json()
-      setCampaigns(data as UICampaign[])
-    }
     loadCampaigns()
   }, [])
 
@@ -51,9 +53,24 @@ export default function PromoterDashboard() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newCampaign),
     })
-    const saved = await res.json()
-    setCampaigns(prev => [...prev, saved as UICampaign])
+    await loadCampaigns()
     setIsModalOpen(false)
+  }
+
+  const handleMarkFinished = async (id: string) => {
+    await fetch(`/api/campaigns/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'finished' }),
+    })
+    await loadCampaigns()
+  }
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Delete this campaign?')) {
+      await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
+      setCampaigns(prev => prev.filter(p => p._id !== id))
+    }
   }
 
   const current = campaigns
@@ -115,6 +132,21 @@ export default function PromoterDashboard() {
                     {c.title}
                   </a>
                 </h3>
+
+                {/* ⬇️ Label link warna biru */}
+                {c.link && (
+                  <p className="mt-1">
+                    <a
+                      href={c.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 underline"
+                    >
+                      {c.link}
+                    </a>
+                  </p>
+                )}
+
                 <p className="text-gray-300 my-2 whitespace-pre-wrap">
                   {c.description}
                 </p>
@@ -139,20 +171,7 @@ export default function PromoterDashboard() {
                   </button>
                   {c.contributors > 0 ? (
                     <button
-                      onClick={async () => {
-                        await fetch(`/api/campaigns/${c._id}`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ status: 'finished' }),
-                        })
-                        setCampaigns(prev =>
-                          prev.map(p =>
-                            p._id === c._id
-                              ? ({ ...p, status: 'finished' } as UICampaign)
-                              : p
-                          )
-                        )
-                      }}
+                      onClick={() => handleMarkFinished(c._id)}
                       className="px-3 py-1 rounded font-medium"
                       style={{ backgroundColor: '#2563eb', color: '#fff' }}
                     >
@@ -160,12 +179,7 @@ export default function PromoterDashboard() {
                     </button>
                   ) : (
                     <button
-                      onClick={async () => {
-                        if (confirm('Delete this campaign?')) {
-                          await fetch(`/api/campaigns/${c._id}`, { method: 'DELETE' })
-                          setCampaigns(prev => prev.filter(p => p._id !== c._id))
-                        }
-                      }}
+                      onClick={() => handleDelete(c._id)}
                       className="px-3 py-1 rounded font-medium"
                       style={{ backgroundColor: '#dc2626', color: '#fff' }}
                     >
@@ -185,8 +199,8 @@ export default function PromoterDashboard() {
             setIsModalOpen(false)
             setEditingCampaign(null)
           }}
-          onSubmit={handleSubmit}              // ← now compatible
-          editingCampaign={editingCampaign}    // BaseCampaign | null
+          onSubmit={handleSubmit}
+          editingCampaign={editingCampaign}
           setEditingCampaign={setEditingCampaign}
         />
       </main>
