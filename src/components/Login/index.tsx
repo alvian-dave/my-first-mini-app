@@ -6,8 +6,9 @@ import { useState } from 'react'
 export const Login = () => {
   const router = useRouter()
   const { data: session, status } = useSession()
-  const [loading, setLoading] = useState(false)
+  const [loadingRole, setLoadingRole] = useState<'promoter' | 'hunter' | null>(null)
 
+  // Loading session
   if (status === 'loading') {
     return <p>Loading session...</p>
   }
@@ -17,12 +18,12 @@ export const Login = () => {
   }
 
   const handleLogin = async (role: 'promoter' | 'hunter') => {
-    setLoading(true)
+    setLoadingRole(role)
     try {
       const res = await fetch('/api/roles/set', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }), // pakai API auth() jadi tidak perlu userId
+        body: JSON.stringify({ role }), // API akan ambil userId dari auth()
       })
 
       if (!res.ok) throw new Error('Network response was not ok')
@@ -37,7 +38,7 @@ export const Login = () => {
       console.error(err)
       alert('Terjadi kesalahan, cek console')
     } finally {
-      setLoading(false)
+      setLoadingRole(null)
     }
   }
 
@@ -53,12 +54,12 @@ export const Login = () => {
         </div>
         <div className="mt-4">
           <button
-            disabled={loading}
+            disabled={loadingRole === 'promoter'}
             onClick={() => handleLogin('promoter')}
             className="w-full py-2 rounded font-medium transition hover:brightness-110 disabled:opacity-50"
             style={{ backgroundColor: '#2563eb', color: '#fff' }}
           >
-            {loading ? 'Processing...' : 'Login as Promoter'}
+            {loadingRole === 'promoter' ? 'Processing...' : 'Login as Promoter'}
           </button>
         </div>
       </div>
@@ -73,12 +74,12 @@ export const Login = () => {
         </div>
         <div className="mt-4">
           <button
-            disabled={loading}
+            disabled={loadingRole === 'hunter'}
             onClick={() => handleLogin('hunter')}
             className="w-full py-2 rounded font-medium transition hover:brightness-110 disabled:opacity-50"
             style={{ backgroundColor: '#16a34a', color: '#fff' }}
           >
-            {loading ? 'Processing...' : 'Login as Hunter'}
+            {loadingRole === 'hunter' ? 'Processing...' : 'Login as Hunter'}
           </button>
         </div>
       </div>
