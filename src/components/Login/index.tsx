@@ -1,8 +1,32 @@
 'use client'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 export const Login = () => {
   const router = useRouter()
+  const { data: session } = useSession() // ambil userId dari session
+
+  // fungsi handle login dan update role
+  const handleLogin = async (role: 'promoter' | 'hunter') => {
+    if (!session?.user?.id) {
+      alert('User not logged in');
+      return;
+    }
+
+    const res = await fetch('/api/roles/set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: session.user.id, role }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      // redirect sesuai role
+      router.push(role === 'promoter' ? '/dashboard/promoter' : '/dashboard/hunter');
+    } else {
+      alert('Gagal update role: ' + data.message);
+    }
+  };
 
   return (
     <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
@@ -16,9 +40,9 @@ export const Login = () => {
         </div>
         <div className="mt-4">
           <button
-            onClick={() => router.push('/dashboard/promoter')}
+            onClick={() => handleLogin('promoter')}
             className="w-full py-2 rounded font-medium transition hover:brightness-110"
-            style={{ backgroundColor: '#2563eb', color: '#fff' }} // force biru
+            style={{ backgroundColor: '#2563eb', color: '#fff' }}
           >
             Login as Promoter
           </button>
@@ -35,9 +59,9 @@ export const Login = () => {
         </div>
         <div className="mt-4">
           <button
-            onClick={() => router.push('/dashboard/hunter')}
+            onClick={() => handleLogin('hunter')}
             className="w-full py-2 rounded font-medium transition hover:brightness-110"
-            style={{ backgroundColor: '#16a34a', color: '#fff' }} // force hijau
+            style={{ backgroundColor: '#16a34a', color: '#fff' }}
           >
             Login as Hunter
           </button>
