@@ -162,33 +162,33 @@ export default function PromoterDashboard() {
                 </h3>
 
                 {Array.isArray(c.links) && c.links.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {c.links.map((l, i) => (
-                      <a
-                        key={i}
-                        href={l.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 underline text-sm block break-all"
-                      >
-                        {l.label || l.url}
-                      </a>
-                    ))}
-                  </div>
-                )}
+  <div className="mt-2 space-y-1">
+    {c.links.map((l, i) => (
+      <a
+        key={i}
+        href={l.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="!text-blue-500 underline hover:!text-blue-600 text-sm block break-all"
+      >
+        {l.label || l.url}
+      </a>
+    ))}
+  </div>
+)}
 
-                {!c.links?.length && c.link && (
-                  <p className="mt-2">
-                    <a
-                      href={c.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 underline break-all"
-                    >
-                      {c.link}
-                    </a>
-                  </p>
-                )}
+{!c.links?.length && c.link && (
+  <p className="mt-2">
+    <a
+      href={c.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="!text-blue-500 underline hover:!text-blue-600 break-all"
+    >
+      {c.link}
+    </a>
+  </p>
+)}
 
                 <p className="text-gray-300 my-2 whitespace-pre-wrap">
                   {c.description}
