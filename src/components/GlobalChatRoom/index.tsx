@@ -17,11 +17,28 @@ export const GlobalChatRoom = () => {
 
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
+  const [role, setRole] = useState<string>('unknown')
   const chatRef = useRef<HTMLDivElement>(null)
 
   const username =
     session?.user?.username || session?.user?.walletAddress?.split('@')[0] || 'anon'
-  const role = session?.user?.id || session?.user?.id || 'unknown'
+
+  // ✅ Fetch role dari DB, bukan session
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const res = await fetch('/api/roles/get')
+        const data = await res.json()
+        if (data.success && data.activeRole) {
+          setRole(data.activeRole)
+        }
+      } catch (err) {
+        console.error('Failed to fetch role', err)
+      }
+    }
+
+    fetchRole()
+  }, [])
 
   useEffect(() => {
     // Fetch messages
@@ -62,7 +79,7 @@ export const GlobalChatRoom = () => {
 
     await supabase.from('messages').insert({
       username,
-      role,
+      role, // ✅ pakai role hasil fetch DB
       text: input.trim(),
     })
 
