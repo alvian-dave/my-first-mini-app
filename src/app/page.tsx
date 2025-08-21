@@ -34,11 +34,11 @@ export default function Home() {
           }
         } else {
           // User belum punya activeRole, redirect ke halaman login/role pilih
-          router.push('/login')
+          router.push('/home')
         }
       } catch (err) {
         console.error(err)
-        router.push('/login')
+        router.push('/home')
       }
     }
 
