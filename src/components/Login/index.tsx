@@ -1,32 +1,45 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useState } from 'react'
 
 export const Login = () => {
   const router = useRouter()
-  const { data: session } = useSession() // ambil userId dari session
+  const { data: session, status } = useSession()
+  const [loading, setLoading] = useState(false)
 
-  // fungsi handle login dan update role
+  if (status === 'loading') {
+    return <p>Loading session...</p>
+  }
+
+  if (!session?.user?.id) {
+    return <p>Please login first to continue.</p>
+  }
+
   const handleLogin = async (role: 'promoter' | 'hunter') => {
-    if (!session?.user?.id) {
-      alert('User not logged in');
-      return;
-    }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/roles/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }), // pakai API auth() jadi tidak perlu userId
+      })
 
-    const res = await fetch('/api/roles/set', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: session.user.id, role }),
-    });
+      if (!res.ok) throw new Error('Network response was not ok')
 
-    const data = await res.json();
-    if (data.success) {
-      // redirect sesuai role
-      router.push(role === 'promoter' ? '/dashboard/promoter' : '/dashboard/hunter');
-    } else {
-      alert('Gagal update role: ' + data.message);
+      const data = await res.json()
+      if (data.success) {
+        router.push(role === 'promoter' ? '/dashboard/promoter' : '/dashboard/hunter')
+      } else {
+        alert('Gagal update role: ' + data.message)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Terjadi kesalahan, cek console')
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
@@ -40,11 +53,12 @@ export const Login = () => {
         </div>
         <div className="mt-4">
           <button
+            disabled={loading}
             onClick={() => handleLogin('promoter')}
-            className="w-full py-2 rounded font-medium transition hover:brightness-110"
+            className="w-full py-2 rounded font-medium transition hover:brightness-110 disabled:opacity-50"
             style={{ backgroundColor: '#2563eb', color: '#fff' }}
           >
-            Login as Promoter
+            {loading ? 'Processing...' : 'Login as Promoter'}
           </button>
         </div>
       </div>
@@ -59,11 +73,12 @@ export const Login = () => {
         </div>
         <div className="mt-4">
           <button
+            disabled={loading}
             onClick={() => handleLogin('hunter')}
-            className="w-full py-2 rounded font-medium transition hover:brightness-110"
+            className="w-full py-2 rounded font-medium transition hover:brightness-110 disabled:opacity-50"
             style={{ backgroundColor: '#16a34a', color: '#fff' }}
           >
-            Login as Hunter
+            {loading ? 'Processing...' : 'Login as Hunter'}
           </button>
         </div>
       </div>
