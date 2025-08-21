@@ -1,29 +1,40 @@
-import dbConnect from '@/lib/mongodb';
-import Role from '@/models/Role';
+import { NextResponse } from 'next/server'
+import dbConnect from '@/lib/mongodb'
+import Role from '@/models/Role'
+import { auth } from '@/auth'   // pakai auth() langsung
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+export async function POST(req: Request) {
+  await dbConnect()
 
-  await dbConnect();
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+  }
 
-  const { userId, role } = req.body;
-  if (!userId || !role) return res.status(400).json({ success: false, message: 'Missing parameters' });
+  const body = await req.json()
+  const { role } = body
+  if (!role) return NextResponse.json({ success: false, message: 'Missing role' }, { status: 400 })
 
   try {
-    let userRole = await Role.findOne({ userId });
+    let userRole = await Role.findOne({ userId: session.user.id })
+
     if (!userRole) {
-      // buat role baru kalau belum ada
-      userRole = await Role.create({ userId, roles: [role], activeRole: role });
+      // buat baru kalau belum ada
+      userRole = await Role.create({
+        userId: session.user.id,
+        roles: [role],
+        activeRole: role,
+      })
     } else {
       // update roles & activeRole
-      if (!userRole.roles.includes(role)) userRole.roles.push(role);
-      userRole.activeRole = role;
-      await userRole.save();
+      if (!userRole.roles.includes(role)) userRole.roles.push(role)
+      userRole.activeRole = role
+      await userRole.save()
     }
 
-    res.status(200).json({ success: true, activeRole: userRole.activeRole });
+    return NextResponse.json({ success: true, activeRole: userRole.activeRole })
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error(err)
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 })
   }
 }
