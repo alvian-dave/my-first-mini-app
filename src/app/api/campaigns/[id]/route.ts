@@ -4,15 +4,22 @@ import { Campaign } from "@/models/Campaign"
 import { Types } from "mongoose"
 import { auth } from "@/auth"
 
-// ✅ PUT: update campaign by ID
-export async function PUT(req: Request, context) {
+// helper type biar rapih
+type ParamsPromise = Promise<{ id: string }>
+
+// ✅ PUT: update campaign by ID (Next.js 15: params is a Promise)
+export async function PUT(
+  req: Request,
+  { params }: { params: ParamsPromise }
+) {
   const session = await auth()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const { id } = await params
+
   await dbConnect()
-  const { id } = context.params
 
   if (!Types.ObjectId.isValid(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
@@ -32,6 +39,7 @@ export async function PUT(req: Request, context) {
 
     return NextResponse.json(updated)
   } catch (err) {
+    console.error(err)
     return NextResponse.json(
       { error: "Failed to update campaign" },
       { status: 500 }
@@ -39,15 +47,19 @@ export async function PUT(req: Request, context) {
   }
 }
 
-// ✅ DELETE: hapus campaign by ID
-export async function DELETE(req: Request, context) {
+// ✅ DELETE: hapus campaign by ID (Next.js 15: params is a Promise)
+export async function DELETE(
+  _req: Request,
+  { params }: { params: ParamsPromise }
+) {
   const session = await auth()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const { id } = await params
+
   await dbConnect()
-  const { id } = context.params
 
   if (!Types.ObjectId.isValid(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
@@ -69,6 +81,7 @@ export async function DELETE(req: Request, context) {
     await Campaign.findByIdAndDelete(id)
     return NextResponse.json({ success: true })
   } catch (err) {
+    console.error(err)
     return NextResponse.json(
       { error: "Failed to delete campaign" },
       { status: 500 }
