@@ -92,9 +92,13 @@ export const Topbar = () => {
                 onMouseLeave={() => setIsMenuOpen(false)}
               >
                 <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
-                  <p className="text-xs text-green-600 uppercase">{role}</p>
-                </div>
+  <p className="text-sm font-semibold text-gray-900 truncate">
+    {session?.user?.username || 'Unknown User'}
+  </p>
+  <p className="text-xs text-green-600 uppercase">
+    {role || 'No role'} {/* role diambil dari state, hasil fetch dari DB */}
+  </p>
+</div>
 
                 <ul className="divide-y divide-gray-200 text-sm">
                   <li className="flex justify-between items-center px-4 py-2 text-gray-400 cursor-not-allowed">
