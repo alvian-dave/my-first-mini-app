@@ -14,6 +14,7 @@ type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
   link?: string
+  createdBy?: string
 }
 
 export default function PromoterDashboard() {
@@ -32,44 +33,72 @@ export default function PromoterDashboard() {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
-  // Load campaign list
-  const loadCampaigns = async () => {
-    const res = await fetch('/api/campaigns')
-    const data = await res.json()
-    setCampaigns(data as UICampaign[])
-  }
-
+  // Load campaign list dan filter berdasarkan user yang login
   useEffect(() => {
+    if (!session?.user) return
+
+    const loadCampaigns = async () => {
+      try {
+        const res = await fetch('/api/campaigns')
+        const data = await res.json()
+        // Filter hanya campaign milik user ini
+        const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
+        setCampaigns(filtered)
+      } catch (err) {
+        console.error('Failed to load campaigns:', err)
+      }
+    }
+
     loadCampaigns()
-  }, [])
+  }, [session])
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
   // ⬇️ onSubmit harus menerima BaseCampaign (sesuai CampaignForm Props)
   const handleSubmit = async (newCampaign: BaseCampaign) => {
-    const res = await fetch('/api/campaigns', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCampaign),
-    })
-    await loadCampaigns()
-    setIsModalOpen(false)
+    try {
+      await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCampaign),
+      })
+      // Reload campaigns setelah submit
+      const res = await fetch('/api/campaigns')
+      const data = await res.json()
+      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
+      setCampaigns(filtered)
+      setIsModalOpen(false)
+    } catch (err) {
+      console.error('Failed to submit campaign:', err)
+    }
   }
 
   const handleMarkFinished = async (id: string) => {
-    await fetch(`/api/campaigns/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'finished' }),
-    })
-    await loadCampaigns()
+    try {
+      await fetch(`/api/campaigns/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'finished' }),
+      })
+      // Reload campaigns
+      const res = await fetch('/api/campaigns')
+      const data = await res.json()
+      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
+      setCampaigns(filtered)
+    } catch (err) {
+      console.error('Failed to mark finished:', err)
+    }
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this campaign?')) {
+    if (!confirm('Delete this campaign?')) return
+
+    try {
       await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
       setCampaigns(prev => prev.filter(p => p._id !== id))
+    } catch (err) {
+      console.error('Failed to delete campaign:', err)
     }
   }
 
@@ -123,7 +152,6 @@ export default function PromoterDashboard() {
                 key={c._id}
                 className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition"
               >
-                {/* Title → clickable link */}
                 <h3 className="text-lg font-bold">
                   <a
                     href={`/campaigns/${c._id}`}
@@ -133,7 +161,6 @@ export default function PromoterDashboard() {
                   </a>
                 </h3>
 
-                {/* ⬇️ Label link warna biru (mendukung schema "links" dari types + CampaignForm) */}
                 {Array.isArray(c.links) && c.links.length > 0 && (
                   <div className="mt-2 space-y-1">
                     {c.links.map((l, i) => (
@@ -150,7 +177,6 @@ export default function PromoterDashboard() {
                   </div>
                 )}
 
-                {/* fallback kalau ada properti legacy "link" tunggal */}
                 {!c.links?.length && c.link && (
                   <p className="mt-2">
                     <a
@@ -174,11 +200,10 @@ export default function PromoterDashboard() {
                   Contributors: <b>{c.contributors ?? 0}</b>
                 </p>
 
-                {/* Action buttons */}
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => {
-                      setEditingCampaign(c) // UICampaign → BaseCampaign OK (structural)
+                      setEditingCampaign(c)
                       setIsModalOpen(true)
                     }}
                     className="px-3 py-1 rounded font-medium"
