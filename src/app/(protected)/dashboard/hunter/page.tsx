@@ -13,6 +13,7 @@ interface Campaign {
   reward: string
   status: 'active' | 'finished' | 'rejected'
   links?: { url: string; label: string }[]
+  contributors?: number
 }
 
 export default function HunterDashboard() {
@@ -41,18 +42,39 @@ export default function HunterDashboard() {
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  const filtered = campaigns.filter((c) => {
-    if (activeTab === 'active') {
-      return c.status === 'active' && !submittedTasks.includes(c._id)
+  const filtered = campaigns
+    .filter((c) => {
+      if (activeTab === 'active') {
+        return c.status === 'active' && !submittedTasks.includes(c._id)
+      }
+      if (activeTab === 'completed') {
+        return submittedTasks.includes(c._id)
+      }
+      if (activeTab === 'rejected') {
+        return c.status === 'rejected'
+      }
+      return false
+    })
+    .sort((a, b) => (a._id > b._id ? -1 : 1))
+
+  const handleSubmitTask = async (campaignId: string) => {
+    try {
+      await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ $inc: { contributors: 1 } }),
+      })
+
+      setSubmittedTasks((prev) => [...prev, campaignId])
+      setCampaigns((prev) =>
+        prev.map((c) =>
+          c._id === campaignId ? { ...c, contributors: (c.contributors || 0) + 1 } : c
+        )
+      )
+    } catch (err) {
+      console.error('Failed to submit task', err)
     }
-    if (activeTab === 'completed') {
-      return submittedTasks.includes(c._id) // bisa status active / finished
-    }
-    if (activeTab === 'rejected') {
-      return c.status === 'rejected'
-    }
-    return false
-  }).sort((a, b) => (a._id > b._id ? -1 : 1))
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white w-full">
@@ -121,7 +143,7 @@ export default function HunterDashboard() {
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
                     style={{ backgroundColor: '#16a34a' }}
-                    onClick={() => setSubmittedTasks(prev => [...prev, c._id])}
+                    onClick={() => handleSubmitTask(c._id)}
                   >
                     Submit Task
                   </button>

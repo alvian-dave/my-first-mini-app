@@ -26,10 +26,12 @@ export default function PromoterDashboard() {
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
 
+  // Redirect kalau belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
+  // Load campaign list
   useEffect(() => {
     const loadCampaigns = async () => {
       const res = await fetch('/api/campaigns')
@@ -62,6 +64,7 @@ export default function PromoterDashboard() {
     <div className="min-h-screen bg-gray-900 text-white">
       <Topbar />
       <main className="w-full px-4 md:px-12 py-6">
+        {/* Balance + Topup */}
         <div className="flex justify-between items-center mb-6">
           <div className="text-lg font-medium">
             Balance{' '}
@@ -76,6 +79,7 @@ export default function PromoterDashboard() {
           </button>
         </div>
 
+        {/* Create Campaign */}
         <div className="text-center mb-6">
           <button
             onClick={() => {
@@ -89,8 +93,10 @@ export default function PromoterDashboard() {
           </button>
         </div>
 
+        {/* Tabs */}
         <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
+        {/* Campaign list */}
         {current.length === 0 ? (
           <p className="text-center text-gray-400">No campaigns in this tab.</p>
         ) : (
@@ -100,12 +106,26 @@ export default function PromoterDashboard() {
                 key={c._id}
                 className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition"
               >
-                <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
-                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
-                <p className="text-sm text-green-400 font-semibold">Reward: {c.reward}</p>
+                {/* Title → clickable link */}
+                <h3 className="text-lg font-bold">
+                  <a
+                    href={`/campaigns/${c._id}`}
+                    className="text-blue-400 hover:underline"
+                  >
+                    {c.title}
+                  </a>
+                </h3>
+                <p className="text-gray-300 my-2 whitespace-pre-wrap">
+                  {c.description}
+                </p>
+                <p className="text-sm text-green-400 font-semibold">
+                  Reward: {c.reward}
+                </p>
                 <p className="text-sm text-gray-400">
                   Contributors: <b>{c.contributors}</b>
                 </p>
+
+                {/* Action buttons */}
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => {
@@ -127,7 +147,9 @@ export default function PromoterDashboard() {
                         })
                         setCampaigns(prev =>
                           prev.map(p =>
-                            p._id === c._id ? { ...p, status: 'finished' } as UICampaign : p
+                            p._id === c._id
+                              ? ({ ...p, status: 'finished' } as UICampaign)
+                              : p
                           )
                         )
                       }}
@@ -156,6 +178,7 @@ export default function PromoterDashboard() {
           </div>
         )}
 
+        {/* Modal form */}
         <CampaignForm
           isOpen={isModalOpen}
           onClose={() => {
