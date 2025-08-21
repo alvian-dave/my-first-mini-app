@@ -6,7 +6,7 @@ import { auth } from "@/auth"
 
 type ParamsPromise = Promise<{ id: string }>
 
-// ✅ PUT: update campaign by ID
+// ✅ PUT: update campaign by ID (Next.js 15)
 export async function PUT(
   req: Request,
   { params }: { params: ParamsPromise }
@@ -38,13 +38,18 @@ export async function PUT(
     return NextResponse.json(updated)
   } catch (err) {
     console.error(err)
-    return NextResponse.json({ error: "Failed to update campaign" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to update campaign" },
+      { status: 500 }
+    )
   }
 }
 
-// ✅ PATCH: tambah contributors & ubah status task jadi "finished"
+// ✅ PATCH: increment contributors (atomic) ketika hunter submit task
+//   - Hanya menaikkan "contributors" supaya promoter lihat naik
+//   - TIDAK memaksa ubah status global campaign
 export async function PATCH(
-  req: Request,
+  _req: Request,
   { params }: { params: ParamsPromise }
 ) {
   const session = await auth()
@@ -60,26 +65,27 @@ export async function PATCH(
   }
 
   try {
-    const campaign = await Campaign.findById(id)
-    if (!campaign) {
+    const updated = await Campaign.findByIdAndUpdate(
+      id,
+      { $inc: { contributors: 1 } },  // ← atomic increment
+      { new: true }
+    )
+
+    if (!updated) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
 
-    // ✅ increment contributors
-    campaign.contributors = (campaign.contributors || 0) + 1
-    // ✅ langsung ubah status jadi finished supaya hunter ga lihat di active lagi
-    campaign.status = "finished"
-
-    await campaign.save()
-
-    return NextResponse.json(campaign)
+    return NextResponse.json(updated)
   } catch (err) {
     console.error(err)
-    return NextResponse.json({ error: "Failed to update contributors" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to update contributors" },
+      { status: 500 }
+    )
   }
 }
 
-// ✅ DELETE: hapus campaign by ID (jangan hapus kalau sudah ada contributors)
+// ✅ DELETE: hapus campaign by ID (block jika sudah ada contributors)
 export async function DELETE(
   _req: Request,
   { params }: { params: ParamsPromise }
@@ -113,6 +119,9 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error(err)
-    return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to delete campaign" },
+      { status: 500 }
+    )
   }
 }

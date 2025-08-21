@@ -133,14 +133,31 @@ export default function PromoterDashboard() {
                   </a>
                 </h3>
 
-                {/* ⬇️ Label link warna biru */}
-                {c.link && (
-                  <p className="mt-1">
+                {/* ⬇️ Label link warna biru (mendukung schema "links" dari types + CampaignForm) */}
+                {Array.isArray(c.links) && c.links.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {c.links.map((l, i) => (
+                      <a
+                        key={i}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 underline text-sm block break-all"
+                      >
+                        {l.label || l.url}
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {/* fallback kalau ada properti legacy "link" tunggal */}
+                {!c.links?.length && c.link && (
+                  <p className="mt-2">
                     <a
                       href={c.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-400 underline"
+                      className="text-blue-400 underline break-all"
                     >
                       {c.link}
                     </a>
@@ -154,7 +171,7 @@ export default function PromoterDashboard() {
                   Reward: {c.reward}
                 </p>
                 <p className="text-sm text-gray-400">
-                  Contributors: <b>{c.contributors}</b>
+                  Contributors: <b>{c.contributors ?? 0}</b>
                 </p>
 
                 {/* Action buttons */}
