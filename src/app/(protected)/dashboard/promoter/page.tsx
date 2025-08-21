@@ -23,7 +23,7 @@ export default function PromoterDashboard() {
   const [campaigns, setCampaigns] = useState<UICampaign[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'rejected'>('active')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
+  const [editingCampaign, setEditingCampaign] = useState<BaseCampaign | null>(null)
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
 
@@ -46,31 +46,15 @@ export default function PromoterDashboard() {
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // ⬇️ onSubmit harus handle Create vs Edit
-  const handleSubmit = async (campaign: BaseCampaign) => {
-    try {
-      if (editingCampaign?._id) {
-        // Mode EDIT → PUT ke /api/campaigns/:id
-        await fetch(`/api/campaigns/${editingCampaign._id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(campaign),
-        })
-      } else {
-        // Mode CREATE → POST ke /api/campaigns
-        await fetch('/api/campaigns', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(campaign),
-        })
-      }
-
-      await loadCampaigns()
-      setIsModalOpen(false)
-      setEditingCampaign(null)
-    } catch (err) {
-      console.error('Error saving campaign:', err)
-    }
+  // ⬇️ onSubmit harus menerima BaseCampaign (sesuai CampaignForm Props)
+  const handleSubmit = async (newCampaign: BaseCampaign) => {
+    const res = await fetch('/api/campaigns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCampaign),
+    })
+    await loadCampaigns()
+    setIsModalOpen(false)
   }
 
   const handleMarkFinished = async (id: string) => {
@@ -194,7 +178,7 @@ export default function PromoterDashboard() {
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => {
-                      setEditingCampaign(c)
+                      setEditingCampaign(c) // UICampaign → BaseCampaign OK (structural)
                       setIsModalOpen(true)
                     }}
                     className="px-3 py-1 rounded font-medium"
