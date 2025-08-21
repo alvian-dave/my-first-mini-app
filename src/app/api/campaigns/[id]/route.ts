@@ -7,7 +7,7 @@ import { auth } from "@/auth"
 // ✅ PUT: update campaign by ID
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   const session = await auth()
   if (!session) {
@@ -15,7 +15,7 @@ export async function PUT(
   }
 
   await dbConnect()
-  const { id } = params
+  const { id } = context.params
 
   if (!Types.ObjectId.isValid(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
@@ -45,7 +45,7 @@ export async function PUT(
 // ✅ DELETE: hapus campaign by ID
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   const session = await auth()
   if (!session) {
@@ -53,7 +53,7 @@ export async function DELETE(
   }
 
   await dbConnect()
-  const { id } = params
+  const { id } = context.params
 
   if (!Types.ObjectId.isValid(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
