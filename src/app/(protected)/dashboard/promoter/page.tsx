@@ -196,6 +196,9 @@ export default function PromoterDashboard() {
                 <p className="text-sm text-green-400 font-semibold">
                   Reward: {c.reward}
                 </p>
+                <p className="text-sm text-yellow-400 font-semibold">
+                  Budget: {c.budget}
+                </p>
                 <p className="text-sm text-gray-400">
                   Contributors: <b>{c.contributors ?? 0}</b>
                 </p>
