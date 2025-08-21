@@ -7,7 +7,7 @@ import { Campaign } from '@/types'
 interface Props {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (campaign: Campaign) => void | Promise<void> // ✅ support async
+  onSubmit: (campaign: Campaign) => void | Promise<void>
   editingCampaign: Campaign | null
   setEditingCampaign: (c: Campaign | null) => void
 }
@@ -23,8 +23,8 @@ export const CampaignForm = ({
     id: Date.now(),
     title: '',
     description: '',
-    budget: '0', // ✅ pake default string
-    reward: '0',
+    budget: '', // ✅ kosong biar placeholder jalan
+    reward: '',
     status: 'active',
     links: [],
   })
@@ -33,15 +33,16 @@ export const CampaignForm = ({
     if (editingCampaign) {
       setCampaign({
         ...editingCampaign,
-        budget: editingCampaign.budget ?? '0', // ✅ aman kalo undefined
+        budget: editingCampaign.budget ?? '',
+        reward: editingCampaign.reward ?? '',
       })
     } else {
       setCampaign({
         id: Date.now(),
         title: '',
         description: '',
-        budget: '0',
-        reward: '0',
+        budget: '',
+        reward: '',
         status: 'active',
         links: [],
       })
@@ -73,12 +74,15 @@ export const CampaignForm = ({
       alert('Description is required')
       return
     }
-    if (parseFloat(campaign.reward) > parseFloat(campaign.budget ?? '0')) {
+    if (
+      parseFloat(campaign.reward || '0') >
+      parseFloat(campaign.budget || '0')
+    ) {
       alert('Reward cannot be greater than total budget')
       return
     }
 
-    onSubmit(campaign) // ✅ support async/void
+    onSubmit(campaign)
     setEditingCampaign(null)
     onClose()
   }
@@ -123,7 +127,7 @@ export const CampaignForm = ({
                   min={0}
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
                   placeholder="Total Budget (e.g. 1000 WR)"
-                  value={campaign.budget ?? '0'}
+                  value={campaign.budget || ''}
                   onChange={(e) => handleChange('budget', e.target.value)}
                 />
 
@@ -132,7 +136,7 @@ export const CampaignForm = ({
                   min={0}
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
                   placeholder="Reward per Task (e.g. 10 WR)"
-                  value={campaign.reward}
+                  value={campaign.reward || ''}
                   onChange={(e) => handleChange('reward', e.target.value)}
                 />
 
@@ -164,7 +168,10 @@ export const CampaignForm = ({
                 {(campaign.links || []).length < 5 && (
                   <button
                     onClick={() =>
-                      handleChange('links', [...(campaign.links || []), { url: '', label: '' }])
+                      handleChange('links', [
+                        ...(campaign.links || []),
+                        { url: '', label: '' },
+                      ])
                     }
                     className="px-3 py-2 rounded font-medium transition hover:brightness-110"
                     style={{ backgroundColor: '#2563eb', color: '#fff' }}
