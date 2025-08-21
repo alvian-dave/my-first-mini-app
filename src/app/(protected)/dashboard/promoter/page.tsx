@@ -7,14 +7,11 @@ import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
+import type { Campaign as BaseCampaign } from '@/types'
 
-interface Campaign {
+// ⬇️ type untuk data yang datang dari API (punya _id & contributors)
+type UICampaign = BaseCampaign & {
   _id: string
-  title: string
-  description: string
-  reward: string
-  status: 'active' | 'finished' | 'rejected'
-  links?: { url: string; label: string }[]
   contributors: number
 }
 
@@ -22,10 +19,10 @@ export default function PromoterDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [campaigns, setCampaigns] = useState<UICampaign[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'rejected'>('active')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+  const [editingCampaign, setEditingCampaign] = useState<BaseCampaign | null>(null)
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
 
@@ -37,7 +34,7 @@ export default function PromoterDashboard() {
     const loadCampaigns = async () => {
       const res = await fetch('/api/campaigns')
       const data = await res.json()
-      setCampaigns(data)
+      setCampaigns(data as UICampaign[])
     }
     loadCampaigns()
   }, [])
@@ -45,14 +42,15 @@ export default function PromoterDashboard() {
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  const handleSubmit = async (newCampaign: Campaign) => {
+  // ⬇️ onSubmit harus menerima BaseCampaign (sesuai CampaignForm Props)
+  const handleSubmit = async (newCampaign: BaseCampaign) => {
     const res = await fetch('/api/campaigns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newCampaign),
     })
     const saved = await res.json()
-    setCampaigns(prev => [...prev, saved])
+    setCampaigns(prev => [...prev, saved as UICampaign])
     setIsModalOpen(false)
   }
 
@@ -66,7 +64,7 @@ export default function PromoterDashboard() {
       <main className="w-full px-4 md:px-12 py-6">
         <div className="flex justify-between items-center mb-6">
           <div className="text-lg font-medium">
-            Balance:{' '}
+            Balance{' '}
             <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
           </div>
           <button
@@ -111,7 +109,7 @@ export default function PromoterDashboard() {
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => {
-                      setEditingCampaign(c)
+                      setEditingCampaign(c) // UICampaign → BaseCampaign OK (structural)
                       setIsModalOpen(true)
                     }}
                     className="px-3 py-1 rounded font-medium"
@@ -129,7 +127,7 @@ export default function PromoterDashboard() {
                         })
                         setCampaigns(prev =>
                           prev.map(p =>
-                            p._id === c._id ? { ...p, status: 'finished' } : p
+                            p._id === c._id ? { ...p, status: 'finished' } as UICampaign : p
                           )
                         )
                       }}
@@ -164,8 +162,8 @@ export default function PromoterDashboard() {
             setIsModalOpen(false)
             setEditingCampaign(null)
           }}
-          onSubmit={handleSubmit}
-          editingCampaign={editingCampaign}
+          onSubmit={handleSubmit}              // ← now compatible
+          editingCampaign={editingCampaign}    // BaseCampaign | null
           setEditingCampaign={setEditingCampaign}
         />
       </main>
