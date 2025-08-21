@@ -26,17 +26,21 @@ export const Login = () => {
         body: JSON.stringify({ role }), // API akan ambil userId dari auth()
       })
 
-      if (!res.ok) throw new Error('Network response was not ok')
-
       const data = await res.json()
+
+      if (!res.ok) {
+        const msg = data?.message || 'Unknown error'
+        throw new Error(msg)
+      }
+
       if (data.success) {
         router.push(role === 'promoter' ? '/dashboard/promoter' : '/dashboard/hunter')
       } else {
-        alert('Gagal update role: ' + data.message)
+        throw new Error(data.message || 'Failed to update role')
       }
-    } catch (err) {
-      console.error(err)
-      alert('Terjadi kesalahan, cek console')
+    } catch (err: any) {
+      console.error('Error updating role:', err)
+      alert(`Terjadi kesalahan: ${err.message}`)
     } finally {
       setLoadingRole(null)
     }
