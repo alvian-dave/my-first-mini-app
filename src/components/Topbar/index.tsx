@@ -1,14 +1,12 @@
 'use client'
 
 import { useSession, signOut } from 'next-auth/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
 // Lazy-load ProfileModal agar tidak membebani SSR
-const ProfileModal = dynamic(() => import('@/components/ProfileModal'), {
-  ssr: false,
-})
+const ProfileModal = dynamic(() => import('@/components/ProfileModal'), { ssr: false })
 
 export const Topbar = () => {
   const { data: session, status } = useSession()
@@ -17,20 +15,34 @@ export const Topbar = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [role, setRole] = useState('')
 
   const username =
-    session?.user?.name ||
+    session?.user?.username ||
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
 
-  // sementara role pakai user.id
-  const role = session?.user?.id || ''
+  // Ambil activeRole dari database
+  useEffect(() => {
+    const fetchRole = async () => {
+      if (!session?.user?.id) return
+      try {
+        const res = await fetch('/api/roles/get')
+        const data = await res.json()
+        if (data.success && data.activeRole) setRole(data.activeRole)
+      } catch (err) {
+        console.error('Failed to fetch activeRole:', err)
+      }
+    }
+
+    fetchRole()
+  }, [session])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
-      await signOut({ redirect: false }) // hapus cookie manual sudah tidak perlu
-      router.push('/home') // lebih rapi pakai router push
+      await signOut({ redirect: false })
+      router.push('/home')
     } catch (err) {
       console.error('❌ Logout failed:', err)
     } finally {
@@ -80,9 +92,7 @@ export const Topbar = () => {
                 onMouseLeave={() => setIsMenuOpen(false)}
               >
                 <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
-                    {username}
-                  </p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
                   <p className="text-xs text-green-600 uppercase">{role}</p>
                 </div>
 
@@ -96,7 +106,7 @@ export const Topbar = () => {
                     <span className="font-medium">—</span>
                   </li>
 
-                  {/* ✅ Active profile button */}
+                  {/* Active profile button */}
                   <li>
                     <button
                       onClick={handleGoToProfile}
