@@ -4,6 +4,7 @@ const CampaignSchema = new Schema(
   {
     title: { type: String, required: true },
     description: { type: String, required: true },
+    budget: { type: String, required: true }, // ✅ tambahkan budget
     reward: { type: String, required: true },
     status: {
       type: String,

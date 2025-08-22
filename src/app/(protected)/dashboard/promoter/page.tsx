@@ -56,23 +56,39 @@ export default function PromoterDashboard() {
   if (!session?.user) return null
 
   // ⬇️ onSubmit harus menerima BaseCampaign (sesuai CampaignForm Props)
-  const handleSubmit = async (newCampaign: BaseCampaign) => {
-    try {
+  const handleSubmit = async (campaign: BaseCampaign) => {
+  try {
+    if (editingCampaign) {
+      // UPDATE
+      await fetch(`/api/campaigns/${editingCampaign._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campaign),
+      })
+    } else {
+      // CREATE
       await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCampaign),
+        body: JSON.stringify(campaign),
       })
-      // Reload campaigns setelah submit
-      const res = await fetch('/api/campaigns')
-      const data = await res.json()
-      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
-      setCampaigns(filtered)
-      setIsModalOpen(false)
-    } catch (err) {
-      console.error('Failed to submit campaign:', err)
     }
+
+    // reload campaign list
+    const res = await fetch('/api/campaigns')
+    const data = await res.json()
+    const filtered = (data as UICampaign[]).filter(
+      c => c.createdBy === session.user.id
+    )
+    setCampaigns(filtered)
+
+    setIsModalOpen(false)
+    setEditingCampaign(null)
+  } catch (err) {
+    console.error('Failed to submit campaign:', err)
   }
+}
+
 
   const handleMarkFinished = async (id: string) => {
     try {
