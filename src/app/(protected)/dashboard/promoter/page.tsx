@@ -220,34 +220,38 @@ export default function PromoterDashboard() {
                 </p>
 
                 <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => {
-                      setEditingCampaign(c)
-                      setIsModalOpen(true)
-                    }}
-                    className="px-3 py-1 rounded font-medium"
-                    style={{ backgroundColor: '#facc15', color: '#000' }}
-                  >
-                    Edit
-                  </button>
-                  {c.contributors > 0 ? (
-                    <button
-                      onClick={() => handleMarkFinished(c._id)}
-                      className="px-3 py-1 rounded font-medium"
-                      style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                    >
-                      Mark Finished
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleDelete(c._id)}
-                      className="px-3 py-1 rounded font-medium"
-                      style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
+  {c.status !== 'finished' && (
+    <>
+      <button
+        onClick={() => {
+          setEditingCampaign(c)
+          setIsModalOpen(true)
+        }}
+        className="px-3 py-1 rounded font-medium"
+        style={{ backgroundColor: '#facc15', color: '#000' }}
+      >
+        Edit
+      </button>
+      {c.contributors > 0 ? (
+        <button
+          onClick={() => handleMarkFinished(c._id)}
+          className="px-3 py-1 rounded font-medium"
+          style={{ backgroundColor: '#2563eb', color: '#fff' }}
+        >
+          Mark Finished
+        </button>
+      ) : (
+        <button
+          onClick={() => handleDelete(c._id)}
+          className="px-3 py-1 rounded font-medium"
+          style={{ backgroundColor: '#dc2626', color: '#fff' }}
+        >
+          Delete
+        </button>
+      )}
+    </>
+  )}
+</div>
               </div>
             ))}
           </div>
