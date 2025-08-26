@@ -37,8 +37,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Already submitted" }, { status: 400 })
   }
 
-  // cari campaign
-  const campaign = await Campaign.findById(campaignId).lean()
+  // cari campaign (pakai lean + typing supaya TS ngerti ada reward)
+  const campaign = await Campaign.findById(campaignId).lean<{
+    _id: string
+    reward: number
+    budget: number
+    title: string
+    status: string
+    contributors: number
+  }>()
   if (!campaign) {
     return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
   }
