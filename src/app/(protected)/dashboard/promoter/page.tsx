@@ -136,7 +136,7 @@ export default function PromoterDashboard() {
   // Handler topup
   const handleTopup = async () => {
     if (topupPassword !== "wrc123") {
-      alert("Password salah!")
+      alert("Wrong password!")
       return
     }
     try {
@@ -149,10 +149,10 @@ export default function PromoterDashboard() {
       if (data.success) {
         setBalance(data.balance.amount)
         setShowTopup(false)
-        setTopupAmount(0)
+        setTopupAmount()
         setTopupPassword("")
       } else {
-        alert("Gagal topup")
+        alert("Topup failed")
       }
     } catch (err) {
       console.error("Topup error:", err)
