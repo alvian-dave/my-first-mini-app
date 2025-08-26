@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const submissions = await Submission.find({ userId: session.user.id })
+  const submissions = await Submission.find({ userId: session.user.id }).lean()
   return NextResponse.json(submissions)
 }
 
@@ -32,13 +32,13 @@ export async function POST(req: Request) {
   const exists = await Submission.findOne({
     userId: session.user.id,
     campaignId,
-  })
+  }).lean()
   if (exists) {
     return NextResponse.json({ error: "Already submitted" }, { status: 400 })
   }
 
   // cari campaign
-  const campaign = await Campaign.findById(campaignId)
+  const campaign = await Campaign.findById(campaignId).lean()
   if (!campaign) {
     return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
   }
@@ -57,7 +57,11 @@ export async function POST(req: Request) {
     session.user.id,
     { $inc: { balance: Number(campaign.reward) } },
     { new: true }
-  )
+  ).lean()
 
-  return NextResponse.json({ submission, campaign, user: updatedUser })
+  return NextResponse.json({
+    submission: submission.toObject(),
+    campaign,
+    user: updatedUser,
+  })
 }
