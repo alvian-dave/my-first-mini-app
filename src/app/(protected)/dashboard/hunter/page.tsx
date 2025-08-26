@@ -5,24 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
-
-interface Campaign {
-  _id: string
-  title: string
-  description: string
-  reward: string
-  status: 'active' | 'finished' | 'rejected'
-  links?: { url: string; label: string }[]
-  contributors?: number
-}
-
-interface Submission {
-  _id: string
-  campaignId: string
-  userId: string
-  status: 'submitted' | 'approved' | 'rejected'
-  createdAt: string
-}
+import type { Campaign, Submission } from '@/types'
 
 export default function HunterDashboard() {
   const { data: session, status } = useSession()
@@ -33,7 +16,7 @@ export default function HunterDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'rejected'>('active')
   const [showChat, setShowChat] = useState(false)
-  const [loadingIds, setLoadingIds] = useState<string[]>([]) // track which campaign is submitting
+  const [loadingIds, setLoadingIds] = useState<string[]>([])
 
   // Redirect kalau belum login
   useEffect(() => {
@@ -42,117 +25,97 @@ export default function HunterDashboard() {
 
   // Load campaigns
   useEffect(() => {
-    const loadCampaigns = async () => {
+    const load = async () => {
       try {
-        const res = await fetch('/api/campaigns', { cache: 'no-store' })
-        if (!res.ok) {
-          console.error('Failed to fetch campaigns', await res.text())
-          return
-        }
-        const data = await res.json()
-        setCampaigns(data)
+        const res = await fetch('/api/campaign', { cache: 'no-store' })
+        if (!res.ok) throw new Error(await res.text())
+        setCampaigns(await res.json())
       } catch (err) {
         console.error('Failed to load campaigns', err)
       }
     }
-    loadCampaigns()
+    load()
   }, [])
 
-  // Load hunter balance dari API
+  // Load hunter balance
   useEffect(() => {
     const loadBalance = async () => {
+      if (!session?.user?.id) return
       try {
-        const res = await fetch('/api/balance', { cache: 'no-store' })
-        if (!res.ok) return
+        const res = await fetch(`/api/balance/${session.user.id}`, { cache: 'no-store' })
+        if (!res.ok) throw new Error(await res.text())
         const data = await res.json()
         setHunterBalance(data.balance || 0)
       } catch (err) {
         console.error('Failed to load balance', err)
       }
     }
-    if (session?.user) loadBalance()
-  }, [session?.user])
+    loadBalance()
+  }, [session?.user?.id])
 
-  // Load submissions hunter dari API
+  // Load submissions by hunter
   useEffect(() => {
-    const loadSubmissions = async () => {
+    const loadSubs = async () => {
+      if (!session?.user?.id) return
       try {
-        const res = await fetch('/api/submissions', { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json()
-        setSubmissions(data)
+        const res = await fetch(`/api/submission?userId=${session.user.id}`, { cache: 'no-store' })
+        if (!res.ok) throw new Error(await res.text())
+        setSubmissions(await res.json())
       } catch (err) {
         console.error('Failed to load submissions', err)
       }
     }
-    if (session?.user) loadSubmissions()
-  }, [session?.user])
+    loadSubs()
+  }, [session?.user?.id])
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // Helper untuk cek sudah submit campaign
-  const hasSubmitted = (campaignId: string) =>
-    submissions.some((s) => s.campaignId === campaignId)
+  // Campaign IDs yang sudah disubmit hunter
+  const submittedIds = submissions.map((s) => s.campaignId)
 
-  // Filter logic
-  const filtered = campaigns
-    .filter((c) => {
-      if (activeTab === 'active') {
-        return c.status === 'active' && !hasSubmitted(c._id)
-      }
-      if (activeTab === 'completed') {
-        return hasSubmitted(c._id) || c.status === 'finished'
-      }
-      if (activeTab === 'rejected') {
-        return c.status === 'rejected'
-      }
-      return false
-    })
-    .sort((a, b) => (a._id > b._id ? -1 : 1))
+  const filtered = campaigns.filter((c) => {
+    if (activeTab === 'active') {
+      return c.status === 'active' && !submittedIds.includes(c._id)
+    }
+    if (activeTab === 'completed') {
+      return submittedIds.includes(c._id) || c.status === 'finished'
+    }
+    if (activeTab === 'rejected') {
+      return c.status === 'rejected'
+    }
+    return false
+  })
 
-  // Loading marker
+  // Helper loading
   const setLoadingFor = (id: string, loading: boolean) => {
-    setLoadingIds(prev => (loading ? [...prev, id] : prev.filter(x => x !== id)))
+    setLoadingIds((prev) => (loading ? [...prev, id] : prev.filter((x) => x !== id)))
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // Submit task: POST /api/submissions
+  // Submit task (simpan ke DB via /api/submission)
   const handleSubmitTask = async (campaignId: string, reward: string) => {
-    if (hasSubmitted(campaignId)) return
-
+    if (submittedIds.includes(campaignId)) return
     try {
       setLoadingFor(campaignId, true)
 
-      const res = await fetch(`/api/submissions`, {
+      const res = await fetch(`/api/submission`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId }),
+        body: JSON.stringify({
+          userId: session?.user?.id,
+          campaignId,
+        }),
       })
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        console.error('Submit task failed', res.status, text)
-        alert('Gagal submit task. Coba lagi.')
-        return
-      }
+      if (!res.ok) throw new Error(await res.text())
+      const newSub: Submission = await res.json()
 
-      const data = await res.json()
-      const { updatedCampaign, newSubmission, newBalance } = data
-
-      // Update campaigns
-      setCampaigns(prev =>
-        prev.map(c => (c._id === campaignId ? updatedCampaign : c))
-      )
-
-      // Update submissions
-      setSubmissions(prev => [...prev, newSubmission])
-
-      // Update balance
-      setHunterBalance(newBalance || 0)
+      setSubmissions((prev) => [...prev, newSub])
+      setHunterBalance((prev) => prev + (parseFloat(reward) || 0))
     } catch (err) {
-      console.error('Failed to submit task', err)
-      alert('Gagal submit task. Coba lagi.')
+      console.error('Submit task failed', err)
+      alert('Gagal submit task.')
     } finally {
       setLoadingFor(campaignId, false)
     }
@@ -163,13 +126,6 @@ export default function HunterDashboard() {
       <Topbar />
 
       <div className="w-full px-6 py-8">
-        <div
-          className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
-          style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
-        >
-          "Every task you complete brings you closer to greatness..."
-        </div>
-
         {/* Tabs */}
         <div className="flex justify-center gap-4 mb-8">
           {['active', 'completed', 'rejected'].map((tab) => (
@@ -205,7 +161,7 @@ export default function HunterDashboard() {
               >
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
-                  {hasSubmitted(c._id) && (
+                  {submittedIds.includes(c._id) && (
                     <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
                       Submitted
                     </span>
@@ -213,26 +169,12 @@ export default function HunterDashboard() {
                 </div>
 
                 <p className="text-gray-300 mb-2">{c.description}</p>
-
                 <p className="text-sm text-gray-400 mb-2">
                   Reward:{' '}
                   <span className="text-green-400 font-semibold">{c.reward}</span>
                 </p>
 
-                {/* Links */}
-                {c.links?.map((l, i) => (
-                  <a
-                    key={i}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 underline text-sm block mb-1 break-all"
-                  >
-                    {l.label}
-                  </a>
-                ))}
-
-                {!hasSubmitted(c._id) ? (
+                {!submittedIds.includes(c._id) ? (
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
                     style={{ backgroundColor: '#16a34a' }}
