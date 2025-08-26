@@ -4,35 +4,37 @@ import Balance from "@/models/Balance"
 import Role from "@/models/Role"
 import { auth } from "@/auth"
 
-type ParamsPromise = Promise<{ id: string }>
-
 // ✅ GET /api/balance/[id]
 export async function GET(
-  _req: Request,
-  { params }: { params: ParamsPromise }
+  _req: Request
 ) {
+  // ambil session user
   const session = await auth()
-  if (!session) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { id } = await params
-  if (session.user.id !== id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+  const userId = session.user.id
   await dbConnect()
 
   try {
-    const balance = await Balance.findOne({ userId: id }).lean()
-    const roleDoc = await Role.findOne({ userId: id }).lean()
+    // ambil balance dari collection Balance
+    const balance = await Balance.findOne({ userId }).lean() as {
+      userId: string
+      amount: number
+    } | null
+
+    // ambil role dari collection Role
+    const roleDoc = await Role.findOne({ userId }).lean() as {
+      activeRole: string
+    } | null
 
     return NextResponse.json({
       success: true,
       balance: {
-        userId: id,
-        amount: balance?.amount || 0,
-        role: roleDoc?.activeRole,
+        userId,
+        amount: balance?.amount ?? 0, // default 0 kalau belum ada
+        role: roleDoc?.activeRole,     // ambil dari Role collection
       },
     })
   } catch (err) {
@@ -44,25 +46,22 @@ export async function GET(
   }
 }
 
-// ✅ POST /api/balance/[id]
+// ✅ POST /api/balance/[id] → update atau tambah balance
 export async function POST(
-  req: Request,
-  { params }: { params: ParamsPromise }
+  req: Request
 ) {
+  // ambil session user
   const session = await auth()
-  if (!session) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { id } = await params
-  if (session.user.id !== id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+  const userId = session.user.id
   await dbConnect()
 
   try {
     const { amount } = await req.json()
+
     if (typeof amount !== "number") {
       return NextResponse.json(
         { success: false, error: "Invalid amount" },
@@ -70,17 +69,26 @@ export async function POST(
       )
     }
 
-    // ambil role dari Role collection
-    const roleDoc = await Role.findOne({ userId: id }).lean()
-    const role = roleDoc?.activeRole
-
+    // update atau buat balance
     const updated = await Balance.findOneAndUpdate(
-      { userId: id },
-      { $set: { role }, $inc: { amount } },
+      { userId },
+      { $inc: { amount } }, // tambah amount
       { new: true, upsert: true }
     )
 
-    return NextResponse.json({ success: true, balance: updated })
+    // ambil role terbaru
+    const roleDoc = await Role.findOne({ userId }).lean() as {
+      activeRole: string
+    } | null
+
+    return NextResponse.json({
+      success: true,
+      balance: {
+        userId,
+        amount: updated?.amount ?? 0,
+        role: roleDoc?.activeRole,
+      },
+    })
   } catch (err) {
     console.error("❌ POST /api/balance/[id] error:", err)
     return NextResponse.json(
