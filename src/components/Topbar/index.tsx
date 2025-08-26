@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
-// Lazy-load ProfileModal agar tidak membebani SSR
 const ProfileModal = dynamic(() => import('@/components/ProfileModal'), { ssr: false })
 
 export const Topbar = () => {
@@ -16,13 +15,15 @@ export const Topbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [role, setRole] = useState('')
+  const [mainBalance, setMainBalance] = useState<number | null>(null)
+  const [stakingBalance, setStakingBalance] = useState<number | null>(null)
 
   const username =
     session?.user?.username ||
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
 
-  // Ambil activeRole dari database
+  // Ambil activeRole dari DB
   useEffect(() => {
     const fetchRole = async () => {
       if (!session?.user?.id) return
@@ -36,6 +37,25 @@ export const Topbar = () => {
     }
 
     fetchRole()
+  }, [session])
+
+  // Ambil balance dari DB
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!session?.user?.id) return
+      try {
+        const res = await fetch(`/api/balance/${session.user.id}`)
+        const data = await res.json()
+        if (data.success) {
+          setMainBalance(data.balance?.amount ?? 0)
+          setStakingBalance(data.balance?.staking ?? 0)
+        }
+      } catch (err) {
+        console.error('Failed to fetch balance:', err)
+      }
+    }
+
+    fetchBalance()
   }, [session])
 
   const handleLogout = async () => {
@@ -78,11 +98,7 @@ export const Topbar = () => {
                 stroke="currentColor"
                 className="w-6 h-6"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
               </svg>
             </button>
 
@@ -92,25 +108,26 @@ export const Topbar = () => {
                 onMouseLeave={() => setIsMenuOpen(false)}
               >
                 <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
-  <p className="text-sm font-semibold text-gray-900 truncate">
-    {session?.user?.username || 'Unknown User'}
-  </p>
-  <p className="text-xs text-green-600 uppercase">
-    {role || 'No role'} {/* role diambil dari state, hasil fetch dari DB */}
-  </p>
-</div>
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {session?.user?.username || 'Unknown User'}
+                  </p>
+                  <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
+                </div>
 
                 <ul className="divide-y divide-gray-200 text-sm">
-                  <li className="flex justify-between items-center px-4 py-2 text-gray-400 cursor-not-allowed">
+                  <li className="flex justify-between items-center px-4 py-2">
                     <span>Main balance</span>
-                    <span className="font-medium">—</span>
+                    <span className="font-medium">
+                      {mainBalance !== null ? `${mainBalance} WRC` : '—'}
+                    </span>
                   </li>
-                  <li className="flex justify-between items-center px-4 py-2 text-gray-400 cursor-not-allowed">
+                  <li className="flex justify-between items-center px-4 py-2">
                     <span>Staking balance</span>
-                    <span className="font-medium">—</span>
+                    <span className="font-medium">
+                      {stakingBalance !== null ? `${stakingBalance} WRC` : '—'}
+                    </span>
                   </li>
 
-                  {/* Active profile button */}
                   <li>
                     <button
                       onClick={handleGoToProfile}

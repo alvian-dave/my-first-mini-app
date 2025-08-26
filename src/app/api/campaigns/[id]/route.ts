@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
+import Balance from "@/models/Balance"
 import { Types } from "mongoose"
 import { auth } from "@/auth"
 
@@ -26,7 +27,6 @@ export async function PUT(
   try {
     const body = await req.json()
 
-    // Hanya update campaign yang dibuat oleh user ini
     const updated = await Campaign.findOneAndUpdate(
       { _id: id, createdBy: session.user.id },
       { $set: body },
@@ -34,7 +34,10 @@ export async function PUT(
     )
 
     if (!updated) {
-      return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Not found or unauthorized" },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json(updated)
@@ -47,10 +50,9 @@ export async function PUT(
   }
 }
 
-// ✅ PATCH: increment contributors (atomic) ketika hunter submit task
-//    Tidak perlu filter createdBy, hunter boleh submit ke campaign manapun
+// ✅ PATCH: hunter submit OR promoter finish
 export async function PATCH(
-  _req: Request,
+  req: Request,
   { params }: { params: ParamsPromise }
 ) {
   const session = await auth()
@@ -66,27 +68,68 @@ export async function PATCH(
   }
 
   try {
-    const updated = await Campaign.findByIdAndUpdate(
-      id,
-      { $inc: { contributors: 1 } },
-      { new: true }
-    )
+    const body = await req.json()
 
-    if (!updated) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    // Hunter submit → increment contributors
+    if (body.action === "contribute") {
+      const updated = await Campaign.findByIdAndUpdate(
+        id,
+        { $inc: { contributors: 1 } },
+        { new: true }
+      )
+
+      if (!updated) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 })
+      }
+
+      return NextResponse.json(updated)
     }
 
-    return NextResponse.json(updated)
+    // Promoter finish → mark finished + refund sisa budget
+    if (body.action === "finish") {
+      const campaign = await Campaign.findOne({
+        _id: id,
+        createdBy: session.user.id,
+      })
+      if (!campaign) {
+        return NextResponse.json(
+          { error: "Not found or unauthorized" },
+          { status: 404 }
+        )
+      }
+
+      const used = Number(campaign.contributors) * Number(campaign.reward)
+      const remaining = Number(campaign.budget) - used
+
+      // refund balance promoter
+      if (remaining > 0) {
+        let promoterBalance = await Balance.findOne({ userId: session.user.id })
+        if (!promoterBalance) {
+          promoterBalance = await Balance.create({
+            userId: session.user.id,
+            amount: 0,
+          })
+        }
+        promoterBalance.amount += remaining
+        await promoterBalance.save()
+      }
+
+      campaign.status = "finished"
+      await campaign.save()
+      return NextResponse.json(campaign)
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
   } catch (err) {
     console.error(err)
     return NextResponse.json(
-      { error: "Failed to update contributors" },
+      { error: "Failed to update campaign" },
       { status: 500 }
     )
   }
 }
 
-// ✅ DELETE: hapus campaign by ID (hanya jika milik user dan contributors = 0)
+// ✅ DELETE: hapus campaign kalau belum ada submissions
 export async function DELETE(
   _req: Request,
   { params }: { params: ParamsPromise }
@@ -104,11 +147,16 @@ export async function DELETE(
   }
 
   try {
-    // Hanya hapus campaign yang dibuat user ini
-    const campaign = await Campaign.findOne({ _id: id, createdBy: session.user.id })
+    const campaign = await Campaign.findOne({
+      _id: id,
+      createdBy: session.user.id,
+    })
 
     if (!campaign) {
-      return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Not found or unauthorized" },
+        { status: 404 }
+      )
     }
 
     if (campaign.contributors && campaign.contributors > 0) {
