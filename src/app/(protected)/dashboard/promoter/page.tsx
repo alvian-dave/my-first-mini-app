@@ -149,7 +149,7 @@ export default function PromoterDashboard() {
       if (data.success) {
         setBalance(data.balance.amount)
         setShowTopup(false)
-        setTopupAmount()
+        setTopupAmount(0)
         setTopupPassword("")
       } else {
         alert("Topup failed")
