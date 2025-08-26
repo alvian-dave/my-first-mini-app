@@ -5,12 +5,12 @@ import Balance from "@/models/Balance"
 // ✅ GET /api/balance/[id]
 export async function GET(
   _req: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   await dbConnect()
 
   try {
-    const id = context.params.id
+    const { id } = params
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing userId" },
@@ -40,12 +40,12 @@ export async function GET(
 // ✅ POST /api/balance/[id]
 export async function POST(
   req: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   await dbConnect()
 
   try {
-    const id = context.params.id
+    const { id } = params
     const { amount, role } = await req.json()
 
     if (!id) {
