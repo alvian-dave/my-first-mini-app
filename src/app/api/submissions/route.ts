@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import Submission from "@/models/Submission"
-import Campaign from "@/models/Campaign"
+import { Campaign } from "@/models/Campaign"
 import User from "@/models/User"
 import { auth } from "@/auth"
 
