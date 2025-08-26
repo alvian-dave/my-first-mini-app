@@ -16,7 +16,13 @@ interface Campaign {
   contributors?: number
 }
 
-const SUBMITTED_STORAGE_KEY = 'wr_submitted_tasks_v1'
+interface Submission {
+  _id: string
+  campaignId: string
+  userId: string
+  status: 'submitted' | 'approved' | 'rejected'
+  createdAt: string
+}
 
 export default function HunterDashboard() {
   const { data: session, status } = useSession()
@@ -24,7 +30,7 @@ export default function HunterDashboard() {
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [hunterBalance, setHunterBalance] = useState(0)
-  const [submittedTasks, setSubmittedTasks] = useState<string[]>([])
+  const [submissions, setSubmissions] = useState<Submission[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'rejected'>('active')
   const [showChat, setShowChat] = useState(false)
   const [loadingIds, setLoadingIds] = useState<string[]>([]) // track which campaign is submitting
@@ -34,29 +40,7 @@ export default function HunterDashboard() {
     if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
 
-  // Load submittedTasks dari localStorage supaya persist antar reload/leave
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SUBMITTED_STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as string[]
-        setSubmittedTasks(Array.isArray(parsed) ? parsed : [])
-      }
-    } catch (e) {
-      console.error('Failed to load submitted tasks from localStorage', e)
-    }
-  }, [])
-
-  // Simpan submittedTasks ke localStorage saat berubah
-  useEffect(() => {
-    try {
-      localStorage.setItem(SUBMITTED_STORAGE_KEY, JSON.stringify(submittedTasks))
-    } catch (e) {
-      console.error('Failed to save submitted tasks to localStorage', e)
-    }
-  }, [submittedTasks])
-
-  // Ambil semua campaign dari API
+  // Load campaigns
   useEffect(() => {
     const loadCampaigns = async () => {
       try {
@@ -74,20 +58,51 @@ export default function HunterDashboard() {
     loadCampaigns()
   }, [])
 
+  // Load hunter balance dari API
+  useEffect(() => {
+    const loadBalance = async () => {
+      try {
+        const res = await fetch('/api/balance', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        setHunterBalance(data.balance || 0)
+      } catch (err) {
+        console.error('Failed to load balance', err)
+      }
+    }
+    if (session?.user) loadBalance()
+  }, [session?.user])
+
+  // Load submissions hunter dari API
+  useEffect(() => {
+    const loadSubmissions = async () => {
+      try {
+        const res = await fetch('/api/submissions', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        setSubmissions(data)
+      } catch (err) {
+        console.error('Failed to load submissions', err)
+      }
+    }
+    if (session?.user) loadSubmissions()
+  }, [session?.user])
+
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // Filter logic:
-  // - Active tab: campaigns with status 'active' and NOT submitted by this hunter
-  // - Completed tab: campaigns that the hunter has submitted OR campaigns that are finished
-  // - Rejected tab: campaigns with status 'rejected'
+  // Helper untuk cek sudah submit campaign
+  const hasSubmitted = (campaignId: string) =>
+    submissions.some((s) => s.campaignId === campaignId)
+
+  // Filter logic
   const filtered = campaigns
     .filter((c) => {
       if (activeTab === 'active') {
-        return c.status === 'active' && !submittedTasks.includes(c._id)
+        return c.status === 'active' && !hasSubmitted(c._id)
       }
       if (activeTab === 'completed') {
-        return submittedTasks.includes(c._id) || c.status === 'finished'
+        return hasSubmitted(c._id) || c.status === 'finished'
       }
       if (activeTab === 'rejected') {
         return c.status === 'rejected'
@@ -96,25 +111,23 @@ export default function HunterDashboard() {
     })
     .sort((a, b) => (a._id > b._id ? -1 : 1))
 
-  // Helper to mark loading for a specific campaign id
+  // Loading marker
   const setLoadingFor = (id: string, loading: boolean) => {
     setLoadingIds(prev => (loading ? [...prev, id] : prev.filter(x => x !== id)))
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // Submit task:
-  // - Call PATCH /api/campaigns/:id to increment contributors atomically (server-side)
-  // - Update local campaigns state with returned campaign object
-  // - Add to submittedTasks (and persist via localStorage)
-  // - Increase hunterBalance by reward
+  // Submit task: POST /api/submissions
   const handleSubmitTask = async (campaignId: string, reward: string) => {
-    if (submittedTasks.includes(campaignId)) return // already submitted
+    if (hasSubmitted(campaignId)) return
 
     try {
       setLoadingFor(campaignId, true)
 
-      const res = await fetch(`/api/campaigns/${campaignId}`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/submissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId }),
       })
 
       if (!res.ok) {
@@ -124,20 +137,19 @@ export default function HunterDashboard() {
         return
       }
 
-      const updated: Campaign = await res.json()
+      const data = await res.json()
+      const { updatedCampaign, newSubmission, newBalance } = data
 
-      // Tambah ke submittedTasks + persist
-      setSubmittedTasks(prev => {
-        if (prev.includes(campaignId)) return prev
-        return [...prev, campaignId]
-      })
+      // Update campaigns
+      setCampaigns(prev =>
+        prev.map(c => (c._id === campaignId ? updatedCampaign : c))
+      )
 
-      // Update campaigns in state with server response (so contributors persisted)
-      setCampaigns(prev => prev.map(c => (c._id === campaignId ? updated : c)))
+      // Update submissions
+      setSubmissions(prev => [...prev, newSubmission])
 
-      // Update hunter balance (parse reward, fallback 0)
-      const r = parseFloat(reward as string) || 0
-      setHunterBalance(prev => Number((prev + r).toFixed(6))) // keep reasonable precision
+      // Update balance
+      setHunterBalance(newBalance || 0)
     } catch (err) {
       console.error('Failed to submit task', err)
       alert('Gagal submit task. Coba lagi.')
@@ -193,7 +205,7 @@ export default function HunterDashboard() {
               >
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
-                  {submittedTasks.includes(c._id) && (
+                  {hasSubmitted(c._id) && (
                     <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
                       Submitted
                     </span>
@@ -207,7 +219,7 @@ export default function HunterDashboard() {
                   <span className="text-green-400 font-semibold">{c.reward}</span>
                 </p>
 
-                {/* Links (blue, underline) */}
+                {/* Links */}
                 {c.links?.map((l, i) => (
                   <a
                     key={i}
@@ -220,7 +232,7 @@ export default function HunterDashboard() {
                   </a>
                 ))}
 
-                {!submittedTasks.includes(c._id) ? (
+                {!hasSubmitted(c._id) ? (
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
                     style={{ backgroundColor: '#16a34a' }}
