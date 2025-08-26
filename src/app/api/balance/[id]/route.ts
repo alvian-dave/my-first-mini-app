@@ -5,14 +5,17 @@ import Balance from "@/models/Balance"
 // ✅ GET /api/balance/[id]
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   await dbConnect()
 
   try {
-    const { id } = params
+    const id = context.params.id
     if (!id) {
-      return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: "Missing userId" },
+        { status: 400 }
+      )
     }
 
     const balance = await Balance.findOne({ userId: id }).lean()
@@ -34,23 +37,29 @@ export async function GET(
   }
 }
 
-// ✅ POST /api/balance/[id] → update atau buat balance
+// ✅ POST /api/balance/[id]
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   await dbConnect()
 
   try {
-    const { id } = params
+    const id = context.params.id
     const { amount, role } = await req.json()
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "Missing userId" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: "Missing userId" },
+        { status: 400 }
+      )
     }
 
     if (typeof amount !== "number") {
-      return NextResponse.json({ success: false, error: "Invalid amount" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: "Invalid amount" },
+        { status: 400 }
+      )
     }
 
     const updated = await Balance.findOneAndUpdate(
