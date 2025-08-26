@@ -16,14 +16,13 @@ export const Topbar = () => {
   const [showProfile, setShowProfile] = useState(false)
   const [role, setRole] = useState('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
-  const [stakingBalance, setStakingBalance] = useState<number | null>(null)
 
   const username =
     session?.user?.username ||
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
 
-  // Ambil activeRole dari DB
+  // Fetch activeRole
   useEffect(() => {
     const fetchRole = async () => {
       if (!session?.user?.id) return
@@ -35,29 +34,34 @@ export const Topbar = () => {
         console.error('Failed to fetch activeRole:', err)
       }
     }
-
     fetchRole()
   }, [session])
 
-  // Ambil balance dari DB
-  useEffect(() => {
-    const fetchBalance = async () => {
-      if (!session?.user?.id) return
-      try {
-        const res = await fetch(`/api/balance/${session.user.id}`)
-        const data = await res.json()
-        if (data.success) {
-          setMainBalance(data.balance?.amount ?? 0)
-          setStakingBalance(data.balance?.staking ?? 0)
-        }
-      } catch (err) {
-        console.error('Failed to fetch balance:', err)
-      }
+  // Fetch main balance initially
+  const fetchBalance = async () => {
+    if (!session?.user?.id) return
+    try {
+      const res = await fetch(`/api/balance/${session.user.id}`)
+      const data = await res.json()
+      if (data.success && data.balance) setMainBalance(data.balance.amount ?? 0)
+    } catch (err) {
+      console.error('Failed to fetch balance:', err)
     }
+  }
 
+  useEffect(() => {
     fetchBalance()
   }, [session])
 
+  // Optional: polling untuk update balance realtime setiap 5 detik
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchBalance()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [session])
+
+  // Handler logout
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
@@ -98,7 +102,11 @@ export const Topbar = () => {
                 stroke="currentColor"
                 className="w-6 h-6"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"
+                />
               </svg>
             </button>
 
@@ -109,7 +117,7 @@ export const Topbar = () => {
               >
                 <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
                   <p className="text-sm font-semibold text-gray-900 truncate">
-                    {session?.user?.username || 'Unknown User'}
+                    {username}
                   </p>
                   <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
                 </div>
@@ -118,13 +126,7 @@ export const Topbar = () => {
                   <li className="flex justify-between items-center px-4 py-2">
                     <span>Main balance</span>
                     <span className="font-medium">
-                      {mainBalance !== null ? `${mainBalance} WRC` : '—'}
-                    </span>
-                  </li>
-                  <li className="flex justify-between items-center px-4 py-2">
-                    <span>Staking balance</span>
-                    <span className="font-medium">
-                      {stakingBalance !== null ? `${stakingBalance} WRC` : '—'}
+                      {mainBalance !== null ? `${mainBalance} WR` : '—'}
                     </span>
                   </li>
 
