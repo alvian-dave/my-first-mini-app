@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
+import Balance from "@/models/Balance"
 import { Types } from "mongoose"
 import { auth } from "@/auth"
 
@@ -48,13 +49,13 @@ export async function PUT(
 }
 
 // ✅ PATCH: increment contributors (atomic) ketika hunter submit task
-//    Tidak perlu filter createdBy, hunter boleh submit ke campaign manapun
+//    + update balance hunter
 export async function PATCH(
   _req: Request,
   { params }: { params: ParamsPromise }
 ) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -66,21 +67,31 @@ export async function PATCH(
   }
 
   try {
-    const updated = await Campaign.findByIdAndUpdate(
+    const campaign = await Campaign.findByIdAndUpdate(
       id,
       { $inc: { contributors: 1 } },
       { new: true }
     )
 
-    if (!updated) {
+    if (!campaign) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
 
-    return NextResponse.json(updated)
+    // Ambil reward campaign, pastikan numeric
+    const rewardNum = parseFloat(campaign.reward as unknown as string) || 0
+
+    // Update balance hunter di DB
+    await Balance.findOneAndUpdate(
+      { userId: session.user.id },
+      { $inc: { amount: rewardNum }, $setOnInsert: { role: "hunter" } },
+      { new: true, upsert: true }
+    )
+
+    return NextResponse.json(campaign)
   } catch (err) {
     console.error(err)
     return NextResponse.json(
-      { error: "Failed to update contributors" },
+      { error: "Failed to update contributors / balance" },
       { status: 500 }
     )
   }

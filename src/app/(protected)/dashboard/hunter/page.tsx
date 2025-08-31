@@ -23,7 +23,7 @@ export default function HunterDashboard() {
   const router = useRouter()
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [hunterBalance, setHunterBalance] = useState(0)
+  const [dbBalance, setDbBalance] = useState<number>(0) // balance dari DB
   const [submittedTasks, setSubmittedTasks] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'rejected'>('active')
   const [showChat, setShowChat] = useState(false)
@@ -74,13 +74,29 @@ export default function HunterDashboard() {
     loadCampaigns()
   }, [])
 
+  // Ambil balance hunter dari DB
+  const fetchBalance = async () => {
+    if (!session?.user?.id) return
+    try {
+      const res = await fetch(`/api/balance/${session.user.id}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.success) {
+        setDbBalance(data.balance.amount ?? 0)
+      }
+    } catch (err) {
+      console.error('Failed to fetch hunter balance', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchBalance()
+  }, [session])
+
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // Filter logic:
-  // - Active tab: campaigns with status 'active' and NOT submitted by this hunter
-  // - Completed tab: campaigns that the hunter has submitted OR campaigns that are finished
-  // - Rejected tab: campaigns with status 'rejected'
+  // Filter logic
   const filtered = campaigns
     .filter((c) => {
       if (activeTab === 'active') {
@@ -96,19 +112,15 @@ export default function HunterDashboard() {
     })
     .sort((a, b) => (a._id > b._id ? -1 : 1))
 
-  // Helper to mark loading for a specific campaign id
+  // Helper
   const setLoadingFor = (id: string, loading: boolean) => {
     setLoadingIds(prev => (loading ? [...prev, id] : prev.filter(x => x !== id)))
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // Submit task:
-  // - Call PATCH /api/campaigns/:id to increment contributors atomically (server-side)
-  // - Update local campaigns state with returned campaign object
-  // - Add to submittedTasks (and persist via localStorage)
-  // - Increase hunterBalance by reward
-  const handleSubmitTask = async (campaignId: string, reward: string) => {
-    if (submittedTasks.includes(campaignId)) return // already submitted
+  // Submit task
+  const handleSubmitTask = async (campaignId: string) => {
+    if (submittedTasks.includes(campaignId)) return
 
     try {
       setLoadingFor(campaignId, true)
@@ -126,18 +138,15 @@ export default function HunterDashboard() {
 
       const updated: Campaign = await res.json()
 
-      // Tambah ke submittedTasks + persist
       setSubmittedTasks(prev => {
         if (prev.includes(campaignId)) return prev
         return [...prev, campaignId]
       })
 
-      // Update campaigns in state with server response (so contributors persisted)
       setCampaigns(prev => prev.map(c => (c._id === campaignId ? updated : c)))
 
-      // Update hunter balance (parse reward, fallback 0)
-      const r = parseFloat(reward as string) || 0
-      setHunterBalance(prev => Number((prev + r).toFixed(6))) // keep reasonable precision
+      // Refresh balance dari DB setelah submit
+      fetchBalance()
     } catch (err) {
       console.error('Failed to submit task', err)
       alert('Gagal submit task. Coba lagi.')
@@ -177,7 +186,8 @@ export default function HunterDashboard() {
         {/* Balance */}
         <div className="text-center mb-6">
           <p className="text-gray-300">
-            Your Balance: <span className="text-green-400 font-bold">{hunterBalance}</span>
+            Your Balance:{' '}
+            <span className="text-green-400 font-bold">{dbBalance} WR</span>
           </p>
         </div>
 
@@ -207,7 +217,6 @@ export default function HunterDashboard() {
                   <span className="text-green-400 font-semibold">{c.reward}</span>
                 </p>
 
-                {/* Links (blue, underline) */}
                 {c.links?.map((l, i) => (
                   <a
                     key={i}
@@ -224,7 +233,7 @@ export default function HunterDashboard() {
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
                     style={{ backgroundColor: '#16a34a' }}
-                    onClick={() => handleSubmitTask(c._id, c.reward)}
+                    onClick={() => handleSubmitTask(c._id)}
                     disabled={isLoading(c._id)}
                   >
                     {isLoading(c._id) ? 'Submitting...' : 'Submit Task'}
