@@ -13,7 +13,7 @@ interface Campaign {
   reward: string
   status: 'active' | 'finished' | 'rejected'
   links?: { url: string; label: string }[]
-  participants?: string[] // backend sudah ada field ini
+  participants?: string[] // backend already has this field
 }
 
 export default function HunterDashboard() {
@@ -21,18 +21,18 @@ export default function HunterDashboard() {
   const router = useRouter()
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [completedCampaigns, setCompletedCampaigns] = useState<Campaign[]>([]) // dari /api/campaigns/completed
+  const [completedCampaigns, setCompletedCampaigns] = useState<Campaign[]>([])
   const [dbBalance, setDbBalance] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'rejected'>('active')
   const [showChat, setShowChat] = useState(false)
   const [loadingIds, setLoadingIds] = useState<string[]>([])
 
-  // Redirect kalau belum login
+  // Redirect if not logged in
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
 
-  // Ambil semua campaign dari API
+  // Load all campaigns
   useEffect(() => {
     const loadCampaigns = async () => {
       try {
@@ -50,7 +50,7 @@ export default function HunterDashboard() {
     loadCampaigns()
   }, [])
 
-  // Ambil campaign yang sudah diikuti hunter (completed)
+  // Load completed campaigns
   useEffect(() => {
     const loadCompleted = async () => {
       if (!session?.user?.id) return
@@ -69,7 +69,7 @@ export default function HunterDashboard() {
     loadCompleted()
   }, [session])
 
-  // Ambil balance hunter dari DB
+  // Load hunter balance
   const fetchBalance = async () => {
     if (!session?.user?.id) return
     try {
@@ -94,10 +94,12 @@ export default function HunterDashboard() {
   // Filter logic
   const filtered = (() => {
     if (activeTab === 'active') {
-      return campaigns.filter((c) => c.status === 'active')
+      // 🔥 Exclude campaigns already in completed
+      const completedIds = new Set(completedCampaigns.map(c => c._id))
+      return campaigns.filter((c) => c.status === 'active' && !completedIds.has(c._id))
     }
     if (activeTab === 'completed') {
-      return completedCampaigns // langsung dari API
+      return completedCampaigns
     }
     if (activeTab === 'rejected') {
       return campaigns.filter((c) => c.status === 'rejected')
@@ -105,7 +107,7 @@ export default function HunterDashboard() {
     return []
   })().sort((a, b) => (a._id > b._id ? -1 : 1))
 
-  // Helper
+  // Helpers
   const setLoadingFor = (id: string, loading: boolean) => {
     setLoadingIds(prev => (loading ? [...prev, id] : prev.filter(x => x !== id)))
   }
@@ -123,25 +125,25 @@ export default function HunterDashboard() {
       if (!res.ok) {
         const text = await res.text().catch(() => '')
         console.error('Submit task failed', res.status, text)
-        alert('Gagal submit task. Coba lagi.')
+        alert('Failed to submit task. Please try again.')
         return
       }
 
-      const updated: Campaign = await res.json()
-
-      // 🔥 Hapus dari active list, biar pindah ke completed
-      setCampaigns(prev => prev.filter(c => c._id !== campaignId))
-
-      // Refresh completed + balance setelah submit
+      // Refresh both lists
       const completedRes = await fetch('/api/campaigns/completed', { cache: 'no-store' })
       if (completedRes.ok) {
         setCompletedCampaigns(await completedRes.json())
       }
 
+      const campaignsRes = await fetch('/api/campaigns', { cache: 'no-store' })
+      if (campaignsRes.ok) {
+        setCampaigns(await campaignsRes.json())
+      }
+
       fetchBalance()
     } catch (err) {
       console.error('Failed to submit task', err)
-      alert('Gagal submit task. Coba lagi.')
+      alert('Failed to submit task. Please try again.')
     } finally {
       setLoadingFor(campaignId, false)
     }
