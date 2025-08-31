@@ -129,7 +129,8 @@ export default function HunterDashboard() {
 
       const updated: Campaign = await res.json()
 
-      setCampaigns(prev => prev.map(c => (c._id === campaignId ? updated : c)))
+      // 🔥 Hapus dari active list, biar pindah ke completed
+      setCampaigns(prev => prev.filter(c => c._id !== campaignId))
 
       // Refresh completed + balance setelah submit
       const completedRes = await fetch('/api/campaigns/completed', { cache: 'no-store' })
