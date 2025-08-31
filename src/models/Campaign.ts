@@ -13,7 +13,12 @@ const CampaignSchema = new Schema(
     },
     links: [{ url: String, label: String }],
     createdBy: { type: String, required: true }, // userId promoter
-    contributors: { type: Number, default: 0 },  // jumlah hunter yg submit
+
+    // ✅ jumlah hunter yg submit (counter)
+    contributors: { type: Number, default: 0 },
+
+    // ✅ daftar hunter yang sudah submit (buat tab Completed)
+    participants: [{ type: String }], 
   },
   { timestamps: true }
 )

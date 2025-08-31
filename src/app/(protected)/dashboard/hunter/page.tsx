@@ -13,48 +13,24 @@ interface Campaign {
   reward: string
   status: 'active' | 'finished' | 'rejected'
   links?: { url: string; label: string }[]
-  contributors?: number
+  participants?: string[] // backend sudah ada field ini
 }
-
-const SUBMITTED_STORAGE_KEY = 'wr_submitted_tasks_v1'
 
 export default function HunterDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [dbBalance, setDbBalance] = useState<number>(0) // balance dari DB
-  const [submittedTasks, setSubmittedTasks] = useState<string[]>([])
+  const [completedCampaigns, setCompletedCampaigns] = useState<Campaign[]>([]) // dari /api/campaigns/completed
+  const [dbBalance, setDbBalance] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'rejected'>('active')
   const [showChat, setShowChat] = useState(false)
-  const [loadingIds, setLoadingIds] = useState<string[]>([]) // track which campaign is submitting
+  const [loadingIds, setLoadingIds] = useState<string[]>([])
 
   // Redirect kalau belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
-
-  // Load submittedTasks dari localStorage supaya persist antar reload/leave
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SUBMITTED_STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as string[]
-        setSubmittedTasks(Array.isArray(parsed) ? parsed : [])
-      }
-    } catch (e) {
-      console.error('Failed to load submitted tasks from localStorage', e)
-    }
-  }, [])
-
-  // Simpan submittedTasks ke localStorage saat berubah
-  useEffect(() => {
-    try {
-      localStorage.setItem(SUBMITTED_STORAGE_KEY, JSON.stringify(submittedTasks))
-    } catch (e) {
-      console.error('Failed to save submitted tasks to localStorage', e)
-    }
-  }, [submittedTasks])
 
   // Ambil semua campaign dari API
   useEffect(() => {
@@ -73,6 +49,25 @@ export default function HunterDashboard() {
     }
     loadCampaigns()
   }, [])
+
+  // Ambil campaign yang sudah diikuti hunter (completed)
+  useEffect(() => {
+    const loadCompleted = async () => {
+      if (!session?.user?.id) return
+      try {
+        const res = await fetch('/api/campaigns/completed', { cache: 'no-store' })
+        if (!res.ok) {
+          console.error('Failed to fetch completed campaigns', await res.text())
+          return
+        }
+        const data = await res.json()
+        setCompletedCampaigns(data)
+      } catch (err) {
+        console.error('Failed to load completed campaigns', err)
+      }
+    }
+    loadCompleted()
+  }, [session])
 
   // Ambil balance hunter dari DB
   const fetchBalance = async () => {
@@ -97,20 +92,18 @@ export default function HunterDashboard() {
   if (!session?.user) return null
 
   // Filter logic
-  const filtered = campaigns
-    .filter((c) => {
-      if (activeTab === 'active') {
-        return c.status === 'active' && !submittedTasks.includes(c._id)
-      }
-      if (activeTab === 'completed') {
-        return submittedTasks.includes(c._id) || c.status === 'finished'
-      }
-      if (activeTab === 'rejected') {
-        return c.status === 'rejected'
-      }
-      return false
-    })
-    .sort((a, b) => (a._id > b._id ? -1 : 1))
+  const filtered = (() => {
+    if (activeTab === 'active') {
+      return campaigns.filter((c) => c.status === 'active')
+    }
+    if (activeTab === 'completed') {
+      return completedCampaigns // langsung dari API
+    }
+    if (activeTab === 'rejected') {
+      return campaigns.filter((c) => c.status === 'rejected')
+    }
+    return []
+  })().sort((a, b) => (a._id > b._id ? -1 : 1))
 
   // Helper
   const setLoadingFor = (id: string, loading: boolean) => {
@@ -120,8 +113,6 @@ export default function HunterDashboard() {
 
   // Submit task
   const handleSubmitTask = async (campaignId: string) => {
-    if (submittedTasks.includes(campaignId)) return
-
     try {
       setLoadingFor(campaignId, true)
 
@@ -138,14 +129,14 @@ export default function HunterDashboard() {
 
       const updated: Campaign = await res.json()
 
-      setSubmittedTasks(prev => {
-        if (prev.includes(campaignId)) return prev
-        return [...prev, campaignId]
-      })
-
       setCampaigns(prev => prev.map(c => (c._id === campaignId ? updated : c)))
 
-      // Refresh balance dari DB setelah submit
+      // Refresh completed + balance setelah submit
+      const completedRes = await fetch('/api/campaigns/completed', { cache: 'no-store' })
+      if (completedRes.ok) {
+        setCompletedCampaigns(await completedRes.json())
+      }
+
       fetchBalance()
     } catch (err) {
       console.error('Failed to submit task', err)
@@ -203,7 +194,7 @@ export default function HunterDashboard() {
               >
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
-                  {submittedTasks.includes(c._id) && (
+                  {activeTab === 'completed' && (
                     <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
                       Submitted
                     </span>
@@ -229,7 +220,7 @@ export default function HunterDashboard() {
                   </a>
                 ))}
 
-                {!submittedTasks.includes(c._id) ? (
+                {activeTab === 'active' ? (
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
                     style={{ backgroundColor: '#16a34a' }}
@@ -238,7 +229,7 @@ export default function HunterDashboard() {
                   >
                     {isLoading(c._id) ? 'Submitting...' : 'Submit Task'}
                   </button>
-                ) : (
+                ) : activeTab === 'completed' ? (
                   <p className="text-green-400 mt-2 font-medium">
                     Task Submitted — Status:{' '}
                     <span
@@ -249,7 +240,7 @@ export default function HunterDashboard() {
                       {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
                     </span>
                   </p>
-                )}
+                ) : null}
               </div>
             ))
           )}

@@ -35,7 +35,10 @@ export async function PUT(
     )
 
     if (!updated) {
-      return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Not found or unauthorized" },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json(updated)
@@ -48,7 +51,9 @@ export async function PUT(
   }
 }
 
-// ✅ PATCH: increment contributors (atomic) ketika hunter submit task
+// ✅ PATCH: hunter submit task
+//    + increment contributors (atomic)
+//    + add hunter ke participants (unik, biar tab Completed bisa query)
 //    + update balance hunter
 export async function PATCH(
   _req: Request,
@@ -67,20 +72,27 @@ export async function PATCH(
   }
 
   try {
-    const campaign = await Campaign.findByIdAndUpdate(
-      id,
-      { $inc: { contributors: 1 } },
+    // ✅ Update campaign: add participant + inc contributors (jika belum pernah submit)
+    const campaign = await Campaign.findOneAndUpdate(
+      { _id: id, participants: { $ne: session.user.id } }, // hanya kalau belum ikut
+      {
+        $addToSet: { participants: session.user.id }, // tambah userId ke participants
+        $inc: { contributors: 1 }, // tambah counter
+      },
       { new: true }
     )
 
     if (!campaign) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Not found / already submitted" },
+        { status: 400 }
+      )
     }
 
     // Ambil reward campaign, pastikan numeric
     const rewardNum = parseFloat(campaign.reward as unknown as string) || 0
 
-    // Update balance hunter di DB
+    // ✅ Update balance hunter di DB
     await Balance.findOneAndUpdate(
       { userId: session.user.id },
       { $inc: { amount: rewardNum }, $setOnInsert: { role: "hunter" } },
@@ -116,10 +128,16 @@ export async function DELETE(
 
   try {
     // Hanya hapus campaign yang dibuat user ini
-    const campaign = await Campaign.findOne({ _id: id, createdBy: session.user.id })
+    const campaign = await Campaign.findOne({
+      _id: id,
+      createdBy: session.user.id,
+    })
 
     if (!campaign) {
-      return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Not found or unauthorized" },
+        { status: 404 }
+      )
     }
 
     if (campaign.contributors && campaign.contributors > 0) {
