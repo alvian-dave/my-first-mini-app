@@ -15,6 +15,7 @@ type UICampaign = BaseCampaign & {
   contributors: number
   link?: string
   createdBy?: string
+  participants?: { _id: string; username: string }[]
 }
 
 export default function PromoterDashboard() {
