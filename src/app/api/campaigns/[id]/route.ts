@@ -74,13 +74,13 @@ export async function PATCH(
   try {
     // ✅ Update campaign: add participant + inc contributors (jika belum pernah submit)
     const campaign = await Campaign.findOneAndUpdate(
-  { _id: id, participants: { $ne: new Types.ObjectId(session.user.id) } }, // cek ObjectId
-  {
-    $addToSet: { participants: new Types.ObjectId(session.user.id) }, // simpan ObjectId
-    $inc: { contributors: 1 },
-  },
-  { new: true }
-).populate("participants", "username")
+      { _id: id, participants: { $ne: session.user.id } }, // hanya kalau belum ikut
+      {
+        $addToSet: { participants: session.user.id }, // tambah userId ke participants
+        $inc: { contributors: 1 }, // tambah counter
+      },
+      { new: true }
+    )
 
     if (!campaign) {
       return NextResponse.json(

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
 import { auth } from "@/auth"
-import { Types } from "mongoose"
 
 // ✅ GET: semua campaign yg sudah diikuti hunter
 export async function GET() {
@@ -15,7 +14,7 @@ export async function GET() {
 
   try {
     const campaigns = await Campaign.find({
-      participants: new Types.ObjectId(session.user.id),
+      participants: session.user.id,
     }).sort({ createdAt: -1 })
 
     return NextResponse.json(campaigns)
