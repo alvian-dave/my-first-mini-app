@@ -82,33 +82,49 @@ export default function PromoterDashboard() {
   if (!session?.user) return null
 
   // Handler create / update campaign
-  const handleSubmit = async (campaign: BaseCampaign) => {
-    try {
-      if (editingCampaign) {
-        await fetch(`/api/campaigns/${editingCampaign._id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(campaign),
-        })
-      } else {
-        await fetch('/api/campaigns', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(campaign),
-        })
-      }
-
-      const res = await fetch('/api/campaigns')
+const handleSubmit = async (campaign: BaseCampaign) => {
+  try {
+    if (editingCampaign) {
+      // update campaign lama
+      await fetch(`/api/campaigns/${editingCampaign._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campaign),
+      })
+    } else {
+      // buat campaign baru
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campaign),
+      })
       const data = await res.json()
-      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
-      setCampaigns(filtered)
 
-      setIsModalOpen(false)
-      setEditingCampaign(null)
-    } catch (err) {
-      console.error('Failed to submit campaign:', err)
+      if (data.error) {
+        if (data.error.includes('insufficient balance')) {
+          alert('Failed to create campaign: insufficient balance')
+          return
+        } else {
+          alert('Failed to create campaign')
+          return
+        }
+      }
     }
+
+    // reload campaigns setelah create/update
+    const res2 = await fetch('/api/campaigns')
+    const data2 = await res2.json()
+    const filtered = (data2 as UICampaign[]).filter(c => c.createdBy === session.user.id)
+    setCampaigns(filtered)
+
+    setIsModalOpen(false)
+    setEditingCampaign(null)
+  } catch (err) {
+    console.error('Failed to submit campaign:', err)
+    alert('Failed to create campaign')
   }
+}
+
 
   // Handler mark finished
   const handleMarkFinished = async (id: string) => {
