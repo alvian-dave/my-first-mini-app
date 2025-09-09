@@ -80,7 +80,7 @@ export async function PATCH(
         $inc: { contributors: 1 }, // tambah counter
       },
       { new: true }
-    )
+    ).populate('participants', 'username') // 🔥 populate username
 
     if (!campaign) {
       return NextResponse.json(

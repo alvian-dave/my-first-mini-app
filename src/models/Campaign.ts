@@ -18,7 +18,7 @@ const CampaignSchema = new Schema(
     contributors: { type: Number, default: 0 },
 
     // ✅ daftar hunter yang sudah submit (buat tab Completed)
-    participants: [{ type: String }], 
+    participants: [{ type: Schema.Types.ObjectId, ref: 'User' }], 
   },
   { timestamps: true }
 )

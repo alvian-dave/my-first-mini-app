@@ -33,6 +33,10 @@ export default function PromoterDashboard() {
   const [topupAmount, setTopupAmount] = useState(0)
   const [topupPassword, setTopupPassword] = useState("")
 
+  // state untuk modal participants
+  const [showParticipants, setShowParticipants] = useState(false)
+  const [participants, setParticipants] = useState<{ _id: string; username: string }[]>([])
+
   // Redirect kalau belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
@@ -256,9 +260,16 @@ export default function PromoterDashboard() {
                 <p className="text-sm text-yellow-400 font-semibold">
                   Budget: {c.budget}
                 </p>
-                <p className="text-sm text-gray-400">
-                  Contributors: <b>{c.contributors ?? 0}</b>
-                </p>
+                <p
+  className="text-sm text-gray-400 cursor-pointer hover:underline"
+  onClick={() => {
+    // ambil participants dari campaign
+    setParticipants(c.participants as { _id: string; username: string }[] || [])
+    setShowParticipants(true)
+  }}
+>
+  Contributors: <b>{c.contributors ?? 0}</b>
+</p>
 
                 <div className="flex gap-2 mt-3">
                   {c.status !== "finished" && (
@@ -309,6 +320,36 @@ export default function PromoterDashboard() {
           editingCampaign={editingCampaign}
           setEditingCampaign={setEditingCampaign}
         />
+
+        {showParticipants && (
+  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
+      <h2 className="text-lg font-bold mb-4">Participants</h2>
+
+      {participants.length === 0 ? (
+        <p className="text-gray-400">No participants yet.</p>
+      ) : (
+        <ul className="list-disc list-inside space-y-1">
+          {participants.map((p) => (
+            <li key={p._id} className="text-sm text-gray-200">
+              {p.username}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex justify-end mt-4">
+        <button
+          onClick={() => setShowParticipants(false)}
+          className="px-4 py-2 rounded bg-green-600"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
       </main>
 
       {/* Topup Modal */}
