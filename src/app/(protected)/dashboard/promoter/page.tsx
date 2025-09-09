@@ -362,7 +362,7 @@ export default function PromoterDashboard() {
               type="number"
               placeholder="Amount"
               value={topupAmount}
-              onChange={e => setTopupAmount(Number(e.target.value))}
+              onChange={e => setTopupAmount(e.target.value)}
               className="w-full mb-3 p-2 rounded text-black"
             />
             <input
