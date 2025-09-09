@@ -15,7 +15,7 @@ type UICampaign = BaseCampaign & {
   contributors: number
   link?: string
   createdBy?: string
-  participants?: { _id: string; username: string }[]
+  participants?: string
 }
 
 export default function PromoterDashboard() {
@@ -36,7 +36,7 @@ export default function PromoterDashboard() {
 
   // state untuk modal participants
   const [showParticipants, setShowParticipants] = useState(false)
-  const [participants, setParticipants] = useState<{ _id: string; username: string }[]>([])
+  const [participants, setParticipants] = useState<string[]>([])
 
   // Redirect kalau belum login
   useEffect(() => {
@@ -265,7 +265,7 @@ export default function PromoterDashboard() {
   className="text-sm text-gray-400 cursor-pointer hover:underline"
   onClick={() => {
     // ambil participants dari campaign
-    setParticipants(c.participants as { _id: string; username: string }[] || [])
+    setParticipants(c.participants as string[] || [])
     setShowParticipants(true)
   }}
 >
@@ -332,9 +332,9 @@ export default function PromoterDashboard() {
       ) : (
         <ul className="list-disc list-inside space-y-1">
           {participants.map((p) => (
-            <li key={p._id} className="text-sm text-gray-200">
-              {p.username}
-            </li>
+  <li key={p} className="text-sm text-gray-200">
+    {p} {/* langsung tampilkan userId */}
+  </li>
           ))}
         </ul>
       )}
