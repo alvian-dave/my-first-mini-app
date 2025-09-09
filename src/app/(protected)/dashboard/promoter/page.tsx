@@ -265,7 +265,7 @@ export default function PromoterDashboard() {
   className="text-sm text-gray-400 cursor-pointer hover:underline"
   onClick={() => {
     // ambil participants dari campaign
-    setParticipants(c.participants as string[] || [])
+    setParticipants(Array.isArray(c.participants) ? c.participants : [])
     setShowParticipants(true)
   }}
 >
@@ -322,7 +322,8 @@ export default function PromoterDashboard() {
           setEditingCampaign={setEditingCampaign}
         />
 
-        {showParticipants && (
+// Modal Participants
+{showParticipants && (
   <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
     <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
       <h2 className="text-lg font-bold mb-4">Participants</h2>
@@ -332,9 +333,9 @@ export default function PromoterDashboard() {
       ) : (
         <ul className="list-disc list-inside space-y-1">
           {participants.map((p) => (
-  <li key={p} className="text-sm text-gray-200">
-    {p} {/* langsung tampilkan userId */}
-  </li>
+            <li key={p} className="text-sm text-gray-200">
+              {p} {/* tampilkan userId langsung */}
+            </li>
           ))}
         </ul>
       )}
