@@ -31,7 +31,7 @@ export default function PromoterDashboard() {
 
   // state untuk modal topup
   const [showTopup, setShowTopup] = useState(false)
-  const [topupAmount, setTopupAmount] = useState(0)
+  const [topupAmount, setTopupAmount] = useState("")
   const [topupPassword, setTopupPassword] = useState("")
 
   // state untuk modal participants
@@ -154,7 +154,7 @@ export default function PromoterDashboard() {
       if (data.success) {
         setBalance(data.balance.amount)
         setShowTopup(false)
-        setTopupAmount(0)
+        setTopupAmount("")
         setTopupPassword("")
       } else {
         alert("Topup failed")
