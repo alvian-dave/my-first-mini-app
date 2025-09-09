@@ -14,7 +14,7 @@ export async function GET() {
 
   try {
     const campaigns = await Campaign.find({
-      participants: session.user.id,
+      participants: new Types.ObjectId(session.user.id),
     }).sort({ createdAt: -1 })
 
     return NextResponse.json(campaigns)
