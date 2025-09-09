@@ -218,7 +218,7 @@ export default function HunterDashboard() {
   href={l.url}
   target="_blank"
   rel="noopener noreferrer"
-  className="text-blue-400 underline text-sm block mb-1 break-all flex items-center gap-1 hover:text-blue-300"
+  className="!text-blue-400 underline text-sm block mb-1 break-all flex items-center gap-1 hover:text-blue-300"
 >
   {l.label}
   <ExternalLink className="w-3 h-3" />
