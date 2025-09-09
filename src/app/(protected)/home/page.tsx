@@ -8,7 +8,7 @@ export default function LandingPage() {
       {/* Welcome Text */}
       <div className="text-center mb-10">
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
-          Welcome to <span className="text-blue-400">Bounty Platform</span>
+          Welcome to <span className="text-blue-400">WR Bounty Platform</span>
         </h1>
         <p className="mt-4 text-gray-300 text-lg md:text-xl max-w-2xl mx-auto">
           A mini app where <span className="text-green-400">hunters</span> earn
@@ -22,7 +22,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="mt-16 text-gray-500 text-sm">
-        © {new Date().getFullYear()} Bounty Platform. All rights reserved.
+        © {new Date().getFullYear()} WR Bounty Platform. All rights reserved.
       </footer>
     </main>
   );
