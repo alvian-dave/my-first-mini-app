@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
+import { ExternalLink } from 'lucide-react'
 
 interface Campaign {
   _id: string
@@ -213,14 +214,15 @@ export default function HunterDashboard() {
 
                 {c.links?.map((l, i) => (
                   <a
-                    key={i}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 underline text-sm block mb-1 break-all"
-                  >
-                    {l.label}
-                  </a>
+  key={i}
+  href={l.url}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-blue-400 underline text-sm block mb-1 break-all flex items-center gap-1 hover:text-blue-300"
+>
+  {l.label}
+  <ExternalLink className="w-3 h-3" />
+</a>
                 ))}
 
                 {activeTab === 'active' ? (
