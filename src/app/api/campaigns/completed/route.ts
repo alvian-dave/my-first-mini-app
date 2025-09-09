@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
 import { auth } from "@/auth"
+import { Types } from "mongoose"
 
 // ✅ GET: semua campaign yg sudah diikuti hunter
 export async function GET() {
