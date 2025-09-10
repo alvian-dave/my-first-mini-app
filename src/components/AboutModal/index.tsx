@@ -17,7 +17,8 @@ export default function AboutModal({ onClose }: AboutModalProps) {
           <X size={20} />
         </button>
 
-        <div className="p-6 space-y-4">
+        {/* Konten bisa discroll kalau melebihi layar */}
+        <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
           <h2 className="text-xl font-bold text-gray-900">About</h2>
 
           <section>
