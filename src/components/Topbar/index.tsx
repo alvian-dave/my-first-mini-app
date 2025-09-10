@@ -81,6 +81,11 @@ export const Topbar = () => {
     setShowProfile(true)
   }
 
+  const handleGoToAbout = () => {
+    setIsMenuOpen(false)
+    setShowAbout(true)
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center">
@@ -143,10 +148,22 @@ export const Topbar = () => {
 
                   <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Top-up</li>
                   <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Notification</li>
-                  <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Contact us</li>
+
+                  {/* ✅ Contact us aktif ke Telegram */}
+                  <li>
+                    <a
+                      href="https://t.me/WRC_Community"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block px-4 py-2 hover:bg-gray-100 transition"
+                    >
+                      Contact us
+                    </a>
+                  </li>
+
                   <li>
                     <button
-                      onClick={() => setShowAbout(true)}
+                      onClick={handleGoToAbout}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
                     >
                       About
