@@ -202,7 +202,7 @@ export default function PromoterDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="sticky top-16 bg-gray-900 z-40 pb-3">
+        <div className="sticky top-18 bg-gray-900 z-40 pb-3">
   <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 </div>
 
