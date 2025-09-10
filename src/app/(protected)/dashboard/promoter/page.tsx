@@ -170,25 +170,22 @@ export default function PromoterDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-  {/* Topbar fixed */}
-  <Topbar className="fixed top-0 left-0 w-full z-50" />
-
-  {/* Konten dikasih padding-top biar ga ketiban Topbar */}
-  <main className="w-full px-4 md:px-12 py-6 pt-16">
-    {/* Balance + Topup */}
-    <div className="flex justify-between items-center mb-6">
-      <div className="text-lg font-medium">
-        Balance{" "}
-        <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
-      </div>
-      <button
-        onClick={() => setShowTopup(true)}
-        className="px-4 py-1 rounded font-medium"
-        style={{ backgroundColor: "#2563eb", color: "#fff" }}
-      >
-        Topup
-      </button>
-    </div>
+      <Topbar />
+      <main className="w-full px-4 md:px-12 py-6">
+        {/* Balance + Topup */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="text-lg font-medium">
+            Balance{" "}
+            <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
+          </div>
+          <button
+            onClick={() => setShowTopup(true)}
+            className="px-4 py-1 rounded font-medium"
+            style={{ backgroundColor: "#2563eb", color: "#fff" }}
+          >
+            Topup
+          </button>
+        </div>
 
         {/* Create Campaign */}
         <div className="text-center mb-6">
