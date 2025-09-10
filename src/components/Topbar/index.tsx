@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
 const ProfileModal = dynamic(() => import('@/components/ProfileModal'), { ssr: false })
+const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
 
 export const Topbar = () => {
   const { data: session, status } = useSession()
@@ -14,6 +15,7 @@ export const Topbar = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   const [role, setRole] = useState('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
 
@@ -140,9 +142,16 @@ export const Topbar = () => {
                   </li>
 
                   <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Top-up</li>
-                  <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Withdraw</li>
                   <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Notification</li>
                   <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Contact us</li>
+                  <li>
+                    <button
+                      onClick={() => setShowAbout(true)}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                    >
+                      About
+                    </button>
+                  </li>
 
                   <li className="px-4 py-2">
                     <button
@@ -163,6 +172,7 @@ export const Topbar = () => {
       </header>
 
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </>
   )
 }
