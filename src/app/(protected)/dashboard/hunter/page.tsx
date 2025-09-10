@@ -163,7 +163,7 @@ export default function HunterDashboard() {
         </div>
 
         {/* Tabs freeze */}
-<div className="sticky top-0 bg-gray-900 z-40 pb-3">
+<div className="sticky top-0 z-40 bg-gray-900 flex justify-center gap-4 py-3">
   {['active', 'completed', 'rejected'].map((tab) => (
     <button
       key={tab}
