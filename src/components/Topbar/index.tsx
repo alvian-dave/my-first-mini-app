@@ -81,7 +81,7 @@ export const Topbar = () => {
 
   return (
     <>
-      <header className="w-full bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center relative z-40">
+      <header className="w-full bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center relative z-50">
         <div className="flex items-center gap-3 select-none">
           <img src="/logo.png" alt="Logo" className="w-8 h-8" />
           <h1 className="text-xl font-bold tracking-wide">World Reward</h1>
