@@ -151,32 +151,34 @@ export default function HunterDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white w-full">
-      <Topbar />
+  <div className="min-h-screen bg-gray-900 text-white w-full">
+    {/* Topbar fixed */}
+    <Topbar className="fixed top-0 left-0 w-full z-50" />
 
-      <div className="w-full px-6 py-8">
-        <div
-          className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
-          style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
-        >
-          "Every task you complete brings you closer to greatness..."
-        </div>
+    <div className="w-full px-6 py-8 pt-20">
+      {/* Quote box */}
+      <div
+        className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
+        style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
+      >
+        "Every task you complete brings you closer to greatness..."
+      </div>
 
-        {/* Tabs freeze */}
-<div className="sticky top-0 z-40 bg-gray-900 flex justify-center gap-4 py-3">
-  {['active', 'completed', 'rejected'].map((tab) => (
-    <button
-      key={tab}
-      onClick={() => setActiveTab(tab as any)}
-      className="px-5 py-2 rounded-full font-semibold text-white"
-      style={{
-        backgroundColor: activeTab === tab ? '#16a34a' : '#374151',
-      }}
-    >
-      {tab.charAt(0).toUpperCase() + tab.slice(1)}
-    </button>
-  ))}
-</div>
+      {/* Tabs freeze */}
+      <div className="sticky top-12 z-40 bg-gray-900 flex justify-center gap-4 py-3">
+        {['active', 'completed', 'rejected'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab as any)}
+            className="px-5 py-2 rounded-full font-semibold text-white"
+            style={{
+              backgroundColor: activeTab === tab ? '#16a34a' : '#374151',
+            }}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
 
 
         {/* Balance */}
