@@ -162,21 +162,22 @@ export default function HunterDashboard() {
           "Every task you complete brings you closer to greatness..."
         </div>
 
-        {/* Tabs */}
-        <div className="flex justify-center gap-4 mb-8">
-          {['active', 'completed', 'rejected'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className="px-5 py-2 rounded-full font-semibold text-white"
-              style={{
-                backgroundColor: activeTab === tab ? '#16a34a' : '#374151',
-              }}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
+        {/* Tabs freeze */}
+<div className="sticky top-14 z-40 bg-gray-900 flex justify-center gap-4 py-3">
+  {['active', 'completed', 'rejected'].map((tab) => (
+    <button
+      key={tab}
+      onClick={() => setActiveTab(tab as any)}
+      className="px-5 py-2 rounded-full font-semibold text-white"
+      style={{
+        backgroundColor: activeTab === tab ? '#16a34a' : '#374151',
+      }}
+    >
+      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+    </button>
+  ))}
+</div>
+
 
         {/* Balance */}
         <div className="text-center mb-6">
