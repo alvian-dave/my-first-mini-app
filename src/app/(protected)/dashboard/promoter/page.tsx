@@ -202,7 +202,9 @@ export default function PromoterDashboard() {
         </div>
 
         {/* Tabs */}
-        <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        <div className="sticky top-0 bg-gray-900 z-40 pb-3">
+  <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+</div>
 
         {/* Campaign list */}
         {current.length === 0 ? (
