@@ -7,6 +7,7 @@ import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
+import TopupModal from '@/components/TopupModal'
 import type { Campaign as BaseCampaign } from '@/types'
 
 // ⬇️ type untuk data yang datang dari API (punya _id & contributors)
@@ -31,8 +32,6 @@ export default function PromoterDashboard() {
 
   // state untuk modal topup
   const [showTopup, setShowTopup] = useState(false)
-  const [topupAmount, setTopupAmount] = useState("")
-  const [topupPassword, setTopupPassword] = useState("")
 
   // state untuk modal participants
   const [showParticipants, setShowParticipants] = useState(false)
@@ -138,32 +137,6 @@ export default function PromoterDashboard() {
     }
   }
 
-  // Handler topup
-  const handleTopup = async () => {
-    if (topupPassword !== "wrc123") {
-      alert("Wrong password!")
-      return
-    }
-    try {
-      const res = await fetch(`/api/balance/${session?.user.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: topupAmount, role: "promoter" }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setBalance(data.balance.amount)
-        setShowTopup(false)
-        setTopupAmount("")
-        setTopupPassword("")
-      } else {
-        alert("Topup failed")
-      }
-    } catch (err) {
-      console.error("Topup error:", err)
-    }
-  }
-
   const current = campaigns
     .filter(c => (c.status || 'active') === activeTab)
     .sort((a, b) => (a._id > b._id ? -1 : 1))
@@ -203,8 +176,8 @@ export default function PromoterDashboard() {
 
         {/* Tabs */}
         <div className="sticky top-18 bg-gray-900 z-40 pb-3">
-  <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-</div>
+          <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        </div>
 
         {/* Campaign list */}
         {current.length === 0 ? (
@@ -264,15 +237,14 @@ export default function PromoterDashboard() {
                   Budget: {c.budget}
                 </p>
                 <p
-  className="text-sm text-gray-400 cursor-pointer hover:underline"
-  onClick={() => {
-    // ambil participants dari campaign
-    setParticipants(Array.isArray(c.participants) ? c.participants : [])
-    setShowParticipants(true)
-  }}
->
-  Contributors: <b>{c.contributors ?? 0}</b>
-</p>
+                  className="text-sm text-gray-400 cursor-pointer hover:underline"
+                  onClick={() => {
+                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
+                    setShowParticipants(true)
+                  }}
+                >
+                  Contributors: <b>{c.contributors ?? 0}</b>
+                </p>
 
                 <div className="flex gap-2 mt-3">
                   {c.status !== "finished" && (
@@ -324,72 +296,44 @@ export default function PromoterDashboard() {
           setEditingCampaign={setEditingCampaign}
         />
 
-{showParticipants && (
-  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-    <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
-      <h2 className="text-lg font-bold mb-4">Participants</h2>
+        {showParticipants && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+            <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
+              <h2 className="text-lg font-bold mb-4">Participants</h2>
 
-      {participants.length === 0 ? (
-        <p className="text-gray-400">No participants yet.</p>
-      ) : (
-        <ul className="list-disc list-inside space-y-1">
-          {participants.map((p) => (
-            <li key={p} className="text-sm text-gray-200">
-              {p} {/* tampilkan userId langsung */}
-            </li>
-          ))}
-        </ul>
-      )}
+              {participants.length === 0 ? (
+                <p className="text-gray-400">No participants yet.</p>
+              ) : (
+                <ul className="list-disc list-inside space-y-1">
+                  {participants.map((p) => (
+                    <li key={p} className="text-sm text-gray-200">
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-      <div className="flex justify-end mt-4">
-        <button
-          onClick={() => setShowParticipants(false)}
-          className="px-4 py-2 rounded bg-green-600"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={() => setShowParticipants(false)}
+                  className="px-4 py-2 rounded bg-green-600"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </main>
 
-      {/* Topup Modal */}
-      {showTopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-80">
-            <h2 className="text-lg font-bold mb-4">Topup Balance</h2>
-            <input
-              type="number"
-              placeholder="Amount"
-              value={topupAmount}
-              onChange={e => setTopupAmount(e.target.value)}
-              className="w-full mb-3 p-2 rounded text-black"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={topupPassword}
-              onChange={e => setTopupPassword(e.target.value)}
-              className="w-full mb-3 p-2 rounded text-black"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowTopup(false)}
-                className="px-3 py-1 rounded bg-gray-500"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleTopup}
-                className="px-3 py-1 rounded bg-green-600"
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ✅ Topup Modal pakai component */}
+      {showTopup && session?.user?.id && (
+        <TopupModal
+          userId={session.user.id}
+          onClose={() => setShowTopup(false)}
+          onSuccess={(newBalance) => setBalance(newBalance)}
+        />
       )}
 
       {/* Floating Chat */}
