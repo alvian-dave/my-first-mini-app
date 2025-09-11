@@ -13,15 +13,18 @@ export default function TopupModal({ userId, onClose, onSuccess }: TopupModalPro
   const [password, setPassword] = useState("")
 
   const handleSubmit = async () => {
-    if (password !== "wrc123") {
-      alert("Wrong password!")
+    const amountNumber = parseInt(amount, 10)
+
+    if (isNaN(amountNumber) || amountNumber <= 0) {
+      alert("Invalid amount")
       return
     }
+
     try {
       const res = await fetch(`/api/balance/${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, role: "promoter" }),
+        body: JSON.stringify({ amount: amountNumber, password }),
       })
       const data = await res.json()
       if (data.success) {
@@ -30,7 +33,7 @@ export default function TopupModal({ userId, onClose, onSuccess }: TopupModalPro
         setPassword("")
         onClose()
       } else {
-        alert("Topup failed")
+        alert(data.error || "Topup failed")
       }
     } catch (err) {
       console.error("Topup error:", err)

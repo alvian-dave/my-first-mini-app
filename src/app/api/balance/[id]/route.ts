@@ -46,7 +46,7 @@ export async function GET(
   }
 }
 
-// ✅ POST /api/balance/[id] → update atau tambah balance
+// ✅ POST /api/balance/[id] → update atau tambah balance (topup)
 export async function POST(
   req: Request
 ) {
@@ -60,9 +60,17 @@ export async function POST(
   await dbConnect()
 
   try {
-    const { amount } = await req.json()
+    const { amount, password } = await req.json()
 
-    if (typeof amount !== "number") {
+    // cek password khusus topup
+    if (password !== "wrc123") {
+      return NextResponse.json(
+        { success: false, error: "Invalid password" },
+        { status: 401 }
+      )
+    }
+
+    if (typeof amount !== "number" || amount <= 0) {
       return NextResponse.json(
         { success: false, error: "Invalid amount" },
         { status: 400 }
