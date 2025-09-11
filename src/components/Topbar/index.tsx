@@ -257,46 +257,64 @@ export const Topbar = () => {
         )}
       </header>
 
-      {/* --- Modals --- */}
-      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
-      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
-      {showTopup && session?.user?.id && (
-        <TopupModal onClose={() => setShowTopup(false)} userId={session.user.id} onSuccess={() => fetchBalance()} />
-      )}
+{/* --- Modals --- */}
+{showProfile && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
+      <ProfileModal onClose={() => setShowProfile(false)} />
+    </div>
+  </div>
+)}
 
-      {/* --- Notification Modal --- */}
-      {showNotificationsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white w-96 max-h-[70vh] overflow-y-auto rounded-lg shadow-lg p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Notifications</h2>
-              <button
-                onClick={() => setShowNotificationsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                Close
-              </button>
-            </div>
+{showAbout && (
+  <AboutModal onClose={() => setShowAbout(false)} />
+)}
 
-            {notifications.length > 0 ? (
-              notifications.map((n) => (
-                <div
-                  key={n._id}
-                  onClick={() => markAsRead(n._id)}
-                  className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
-                    n.isRead ? 'bg-white' : 'bg-gray-100 font-medium'
-                  } hover:bg-gray-200 transition`}
-                >
-                  <p className="text-sm">{n.message}</p>
-                  <p className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</p>
-                </div>
-              ))
-            ) : (
-              <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
-            )}
+{showTopup && session?.user?.id && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
+      <TopupModal 
+        onClose={() => setShowTopup(false)} 
+        userId={session.user.id} 
+        onSuccess={() => fetchBalance()} 
+      />
+    </div>
+  </div>
+)}
+
+{/* --- Notification Modal --- */}
+{showNotificationsModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="bg-white w-96 max-h-[70vh] overflow-y-auto rounded-lg shadow-lg p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Notifications</h2>
+        <button
+          onClick={() => setShowNotificationsModal(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          Close
+        </button>
+      </div>
+
+      {notifications.length > 0 ? (
+        notifications.map((n) => (
+          <div
+            key={n._id}
+            onClick={() => markAsRead(n._id)}
+            className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
+              n.isRead ? 'bg-white' : 'bg-gray-100 font-medium'
+            } hover:bg-gray-200 transition`}
+          >
+            <p className="text-sm">{n.message}</p>
+            <p className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</p>
           </div>
-        </div>
+        ))
+      ) : (
+        <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
       )}
+    </div>
+  </div>
+)}
     </>
   )
 }
