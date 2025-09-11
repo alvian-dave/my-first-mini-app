@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
-import { Notification } from "@/lib/models/Notification"
+import { Notification } from "@/models/Notification"
 import { auth } from "@/auth" // session auth jika perlu
 
 type ParamsPromise = Promise<{ userId: string }>
