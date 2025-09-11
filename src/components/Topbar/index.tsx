@@ -302,15 +302,21 @@ export const Topbar = () => {
             key={n._id}
             onClick={() => markAsRead(n._id)}
             className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
-              n.isRead ? 'bg-white' : 'bg-gray-100 font-medium'
+              n.isRead
+                ? 'bg-white text-gray-800'
+                : 'bg-gray-100 font-medium text-gray-900'
             } hover:bg-gray-200 transition`}
           >
             <p className="text-sm">{n.message}</p>
-            <p className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</p>
+            <p className="text-xs text-gray-600">
+              {new Date(n.createdAt).toLocaleString()}
+            </p>
           </div>
         ))
       ) : (
-        <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
+        <p className="px-4 py-2 text-sm text-gray-500 text-center">
+          No notifications yet
+        </p>
       )}
     </div>
   </div>
