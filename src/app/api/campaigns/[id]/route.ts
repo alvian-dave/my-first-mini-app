@@ -8,7 +8,7 @@ import { auth } from "@/auth"
 
 type ParamsPromise = Promise<{ id: string }>
 
-// ✅ PUT: update campaign by ID (Promoter hanya bisa update campaign miliknya)
+// ✅ PUT: update campaign by ID (Promoter only)
 export async function PUT(
   req: Request,
   { params }: { params: ParamsPromise }
@@ -39,12 +39,12 @@ export async function PUT(
       )
     }
 
-    // ✅ Buat notifikasi untuk promoter
+    // ✅ Notification for promoter (English)
     await Notification.create({
       userId: session.user.id,
       role: "promoter",
       type: "campaign_updated",
-      message: `Campaign "${updated.title}" berhasil diupdate`,
+      message: `Your campaign "${updated.title}" has been successfully updated.`,
     })
 
     return NextResponse.json(updated)
@@ -89,20 +89,20 @@ export async function PATCH(
       { new: true, upsert: true }
     )
 
-    // ✅ Notifikasi untuk hunter
+    // ✅ Notification for hunter (English)
     await Notification.create({
       userId: session.user.id,
       role: "hunter",
       type: "task_submitted",
-      message: `Anda berhasil submit task untuk campaign "${campaign.title}"`,
+      message: `You successfully submitted a task for the campaign "${campaign.title}".`,
     })
 
-    // ✅ Notifikasi untuk promoter campaign
+    // ✅ Notification for promoter (English)
     await Notification.create({
       userId: campaign.createdBy,
       role: "promoter",
       type: "task_submitted",
-      message: `Hunter "${session.user.username}" submit task di campaign "${campaign.title}"`,
+      message: `Hunter "${session.user.username || session.user.id}" submitted a task for your campaign "${campaign.title}".`,
     })
 
     return NextResponse.json(campaign)
@@ -115,7 +115,7 @@ export async function PATCH(
   }
 }
 
-// ✅ DELETE: hapus campaign by ID
+// ✅ DELETE: delete campaign by ID
 export async function DELETE(
   _req: Request,
   { params }: { params: ParamsPromise }
@@ -146,12 +146,12 @@ export async function DELETE(
 
     await Campaign.findByIdAndDelete(id)
 
-    // ✅ Notifikasi untuk promoter
+    // ✅ Notification for promoter (English)
     await Notification.create({
       userId: session.user.id,
       role: "promoter",
       type: "campaign_deleted",
-      message: `Campaign "${campaign.title}" berhasil dihapus`,
+      message: `Your campaign "${campaign.title}" has been successfully deleted.`,
     })
 
     return NextResponse.json({ success: true })
