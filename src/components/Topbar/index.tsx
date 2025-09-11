@@ -97,16 +97,26 @@ export const Topbar = () => {
     return () => clearInterval(interval)
   }, [session, role])
 
+  // Optimistic update untuk markAsRead
   const markAsRead = async (id: string) => {
+    // Optimistic update lokal
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+    )
+    setUnreadCount((prev) => Math.max(prev - 1, 0))
+
     try {
-      await fetch(`/api/notifications/${session?.user?.id}`, {
+      const res = await fetch(`/api/notifications/${session?.user?.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       })
-      fetchNotifications()
+      const data = await res.json()
+      if (!data.success) throw new Error('Failed to update notification')
     } catch (err) {
       console.error('Failed to mark notification as read:', err)
+      // Rollback kalau gagal
+      fetchNotifications()
     }
   }
 
@@ -257,74 +267,72 @@ export const Topbar = () => {
         )}
       </header>
 
-{/* --- Modals --- */}
-{showProfile && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-    <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
-      <ProfileModal onClose={() => setShowProfile(false)} />
-    </div>
-  </div>
-)}
+      {/* --- Modals --- */}
+      {showProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
+            <ProfileModal onClose={() => setShowProfile(false)} />
+          </div>
+        </div>
+      )}
 
-{showAbout && (
-  <AboutModal onClose={() => setShowAbout(false)} />
-)}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
 
-{showTopup && session?.user?.id && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-    <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
-      <TopupModal 
-        onClose={() => setShowTopup(false)} 
-        userId={session.user.id} 
-        onSuccess={() => fetchBalance()} 
-      />
-    </div>
-  </div>
-)}
+      {showTopup && session?.user?.id && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
+            <TopupModal
+              onClose={() => setShowTopup(false)}
+              userId={session.user.id}
+              onSuccess={() => fetchBalance()}
+            />
+          </div>
+        </div>
+      )}
 
-{/* --- Notification Modal --- */}
-{showNotificationsModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-    <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
-      {/* Header sticky */}
-      <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
-        <h2 className="text-lg font-semibold">Notifications</h2>
-        <button
-          onClick={() => setShowNotificationsModal(false)}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          Close
-        </button>
-      </div>
-
-      {/* Scrollable content */}
-      <div className="overflow-y-auto flex-1">
-        {notifications.length > 0 ? (
-          notifications.map((n) => (
-            <div
-              key={n._id}
-              onClick={() => markAsRead(n._id)}
-              className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
-                n.isRead
-                  ? 'bg-white text-gray-800'
-                  : 'bg-gray-100 font-medium text-gray-900'
-              } hover:bg-gray-200 transition`}
-            >
-              <p className="text-sm">{n.message}</p>
-              <p className="text-xs text-gray-600">
-                {new Date(n.createdAt).toLocaleString()}
-              </p>
+      {/* --- Notification Modal --- */}
+      {showNotificationsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
+            {/* Header sticky */}
+            <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
+              <h2 className="text-lg font-semibold">Notifications</h2>
+              <button
+                onClick={() => setShowNotificationsModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
             </div>
-          ))
-        ) : (
-          <p className="px-4 py-2 text-sm text-gray-500 text-center">
-            No notifications yet
-          </p>
-        )}
-      </div>
-    </div>
-  </div>
-)}
+
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1">
+              {notifications.length > 0 ? (
+                notifications.map((n) => (
+                  <div
+                    key={n._id}
+                    onClick={() => markAsRead(n._id)}
+                    className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
+                      n.isRead
+                        ? 'bg-white text-gray-800'
+                        : 'bg-gray-100 font-medium text-gray-900'
+                    } hover:bg-gray-200 transition`}
+                  >
+                    <p className="text-sm">{n.message}</p>
+                    <p className="text-xs text-gray-600">
+                      {new Date(n.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="px-4 py-2 text-sm text-gray-500 text-center">
+                  No notifications yet
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
