@@ -285,8 +285,9 @@ export const Topbar = () => {
 {/* --- Notification Modal --- */}
 {showNotificationsModal && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-    <div className="bg-white w-96 max-h-[70vh] overflow-y-auto rounded-lg shadow-lg p-4">
-      <div className="flex justify-between items-center mb-4">
+    <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
+      {/* Header sticky */}
+      <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
         <h2 className="text-lg font-semibold">Notifications</h2>
         <button
           onClick={() => setShowNotificationsModal(false)}
@@ -296,28 +297,31 @@ export const Topbar = () => {
         </button>
       </div>
 
-      {notifications.length > 0 ? (
-        notifications.map((n) => (
-          <div
-            key={n._id}
-            onClick={() => markAsRead(n._id)}
-            className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
-              n.isRead
-                ? 'bg-white text-gray-800'
-                : 'bg-gray-100 font-medium text-gray-900'
-            } hover:bg-gray-200 transition`}
-          >
-            <p className="text-sm">{n.message}</p>
-            <p className="text-xs text-gray-600">
-              {new Date(n.createdAt).toLocaleString()}
-            </p>
-          </div>
-        ))
-      ) : (
-        <p className="px-4 py-2 text-sm text-gray-500 text-center">
-          No notifications yet
-        </p>
-      )}
+      {/* Scrollable content */}
+      <div className="overflow-y-auto flex-1">
+        {notifications.length > 0 ? (
+          notifications.map((n) => (
+            <div
+              key={n._id}
+              onClick={() => markAsRead(n._id)}
+              className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
+                n.isRead
+                  ? 'bg-white text-gray-800'
+                  : 'bg-gray-100 font-medium text-gray-900'
+              } hover:bg-gray-200 transition`}
+            >
+              <p className="text-sm">{n.message}</p>
+              <p className="text-xs text-gray-600">
+                {new Date(n.createdAt).toLocaleString()}
+              </p>
+            </div>
+          ))
+        ) : (
+          <p className="px-4 py-2 text-sm text-gray-500 text-center">
+            No notifications yet
+          </p>
+        )}
+      </div>
     </div>
   </div>
 )}
