@@ -207,7 +207,14 @@ export const Topbar = () => {
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
       {showTopup && session?.user?.id && (
-        <TopupModal onClose={() => setShowTopup(false)} userId={session.user.id} />
+        <TopupModal
+          onClose={() => setShowTopup(false)}
+          userId={session.user.id}
+          onSuccess={() => {
+            // ✅ refresh balance langsung setelah topup berhasil
+            fetchBalance()
+          }}
+        />
       )}
     </>
   )
