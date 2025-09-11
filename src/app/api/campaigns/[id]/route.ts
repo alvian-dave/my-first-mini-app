@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
 import Balance from "@/models/Balance"
+import { Notification } from "@/lib/models/Notification"
 import { Types } from "mongoose"
 import { auth } from "@/auth"
 
@@ -13,9 +14,7 @@ export async function PUT(
   { params }: { params: ParamsPromise }
 ) {
   const session = await auth()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
   await dbConnect()
@@ -27,7 +26,6 @@ export async function PUT(
   try {
     const body = await req.json()
 
-    // Hanya update campaign yang dibuat oleh user ini
     const updated = await Campaign.findOneAndUpdate(
       { _id: id, createdBy: session.user.id },
       { $set: body },
@@ -41,28 +39,28 @@ export async function PUT(
       )
     }
 
+    // ✅ Buat notifikasi untuk promoter
+    await Notification.create({
+      userId: session.user.id,
+      role: "promoter",
+      type: "campaign_updated",
+      message: `Campaign "${updated.title}" berhasil diupdate`,
+    })
+
     return NextResponse.json(updated)
   } catch (err) {
     console.error(err)
-    return NextResponse.json(
-      { error: "Failed to update campaign" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Failed to update campaign" }, { status: 500 })
   }
 }
 
 // ✅ PATCH: hunter submit task
-//    + increment contributors (atomic)
-//    + add hunter ke participants (unik, biar tab Completed bisa query)
-//    + update balance hunter
 export async function PATCH(
   _req: Request,
   { params }: { params: ParamsPromise }
 ) {
   const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
   await dbConnect()
@@ -72,32 +70,40 @@ export async function PATCH(
   }
 
   try {
-    // ✅ Update campaign: add participant + inc contributors (jika belum pernah submit)
     const campaign = await Campaign.findOneAndUpdate(
-      { _id: id, participants: { $ne: session.user.id } }, // hanya kalau belum ikut
-      {
-        $addToSet: { participants: session.user.id }, // tambah userId ke participants
-        $inc: { contributors: 1 }, // tambah counter
-      },
+      { _id: id, participants: { $ne: session.user.id } },
+      { $addToSet: { participants: session.user.id }, $inc: { contributors: 1 } },
       { new: true }
     )
 
     if (!campaign) {
-      return NextResponse.json(
-        { error: "Not found / already submitted" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Not found / already submitted" }, { status: 400 })
     }
 
-    // Ambil reward campaign, pastikan numeric
     const rewardNum = parseFloat(campaign.reward as unknown as string) || 0
 
-    // ✅ Update balance hunter di DB
+    // Update balance hunter
     await Balance.findOneAndUpdate(
       { userId: session.user.id },
       { $inc: { amount: rewardNum }, $setOnInsert: { role: "hunter" } },
       { new: true, upsert: true }
     )
+
+    // ✅ Notifikasi untuk hunter
+    await Notification.create({
+      userId: session.user.id,
+      role: "hunter",
+      type: "task_submitted",
+      message: `Anda berhasil submit task untuk campaign "${campaign.title}"`,
+    })
+
+    // ✅ Notifikasi untuk promoter campaign
+    await Notification.create({
+      userId: campaign.createdBy,
+      role: "promoter",
+      type: "task_submitted",
+      message: `Hunter "${session.user.username}" submit task di campaign "${campaign.title}"`,
+    })
 
     return NextResponse.json(campaign)
   } catch (err) {
@@ -109,15 +115,13 @@ export async function PATCH(
   }
 }
 
-// ✅ DELETE: hapus campaign by ID (hanya jika milik user dan contributors = 0)
+// ✅ DELETE: hapus campaign by ID
 export async function DELETE(
   _req: Request,
   { params }: { params: ParamsPromise }
 ) {
   const session = await auth()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
   await dbConnect()
@@ -127,17 +131,10 @@ export async function DELETE(
   }
 
   try {
-    // Hanya hapus campaign yang dibuat user ini
-    const campaign = await Campaign.findOne({
-      _id: id,
-      createdBy: session.user.id,
-    })
+    const campaign = await Campaign.findOne({ _id: id, createdBy: session.user.id })
 
     if (!campaign) {
-      return NextResponse.json(
-        { error: "Not found or unauthorized" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 })
     }
 
     if (campaign.contributors && campaign.contributors > 0) {
@@ -148,12 +145,18 @@ export async function DELETE(
     }
 
     await Campaign.findByIdAndDelete(id)
+
+    // ✅ Notifikasi untuk promoter
+    await Notification.create({
+      userId: session.user.id,
+      role: "promoter",
+      type: "campaign_deleted",
+      message: `Campaign "${campaign.title}" berhasil dihapus`,
+    })
+
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error(err)
-    return NextResponse.json(
-      { error: "Failed to delete campaign" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 })
   }
 }

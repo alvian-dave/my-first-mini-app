@@ -17,9 +17,13 @@ export const Topbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
-  const [showTopup, setShowTopup] = useState(false) // ✅ new
+  const [showTopup, setShowTopup] = useState(false)
   const [role, setRole] = useState('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
+
+  // --- Notification state ---
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const username =
     session?.user?.username ||
@@ -41,7 +45,7 @@ export const Topbar = () => {
     fetchRole()
   }, [session])
 
-  // Fetch main balance initially
+  // Fetch main balance
   const fetchBalance = async () => {
     if (!session?.user?.id) return
     try {
@@ -64,6 +68,46 @@ export const Topbar = () => {
     }, 5000)
     return () => clearInterval(interval)
   }, [session])
+
+  // --- Notification functions ---
+  const fetchNotifications = async () => {
+    if (!session?.user?.id || !role) return
+    try {
+      const res = await fetch(`/api/notifications/${session.user.id}?role=${role}`)
+      const data = await res.json()
+      if (data.success && data.notifications) {
+        setNotifications(data.notifications)
+        const unread = data.notifications.filter((n: any) => !n.isRead).length
+        setUnreadCount(unread)
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [session, role])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchNotifications()
+    }, 10000) // polling setiap 10 detik
+    return () => clearInterval(interval)
+  }, [session, role])
+
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch(`/api/notifications/${session?.user?.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      fetchNotifications()
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err)
+    }
+  }
 
   // Logout
   const handleLogout = async () => {
@@ -154,7 +198,7 @@ export const Topbar = () => {
                     </button>
                   </li>
 
-                  {/* ✅ Topup aktif */}
+                  {/* Topup */}
                   <li>
                     <button
                       onClick={handleGoToTopup}
@@ -164,7 +208,43 @@ export const Topbar = () => {
                     </button>
                   </li>
 
-                  <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Notification</li>
+                  {/* Notification */}
+                  <li className="relative px-4 py-2">
+                    <button
+                      className="w-full text-left hover:bg-gray-100 transition flex justify-between items-center"
+                      onClick={() => {
+                        notifications.forEach((n) => {
+                          if (!n.isRead) markAsRead(n._id)
+                        })
+                      }}
+                    >
+                      Notification
+                      {unreadCount > 0 && (
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </button>
+                    {notifications.length > 0 && (
+                      <div className="mt-2 max-h-64 overflow-y-auto border border-gray-200 rounded-md shadow-lg bg-white absolute right-0 w-80 z-50">
+                        {notifications.map((n) => (
+                          <div
+                            key={n._id}
+                            onClick={() => markAsRead(n._id)}
+                            className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
+                              n.isRead ? 'bg-white' : 'bg-gray-100 font-medium'
+                            } hover:bg-gray-200 transition`}
+                          >
+                            <p className="text-sm">{n.message}</p>
+                            <p className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</p>
+                          </div>
+                        ))}
+                        {notifications.length === 0 && (
+                          <p className="px-4 py-2 text-sm text-gray-500">No notifications</p>
+                        )}
+                      </div>
+                    )}
+                  </li>
 
                   <li>
                     <a
@@ -211,7 +291,6 @@ export const Topbar = () => {
           onClose={() => setShowTopup(false)}
           userId={session.user.id}
           onSuccess={() => {
-            // ✅ refresh balance langsung setelah topup berhasil
             fetchBalance()
           }}
         />
