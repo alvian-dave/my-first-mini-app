@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
 import Balance from "@/models/Balance"
-import { Notification } from "@/lib/models/Notification"
+import { Notification } from "@/models/Notification"
 import { Types } from "mongoose"
 import { auth } from "@/auth"
 
