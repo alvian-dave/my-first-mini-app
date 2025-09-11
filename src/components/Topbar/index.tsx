@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 
 const ProfileModal = dynamic(() => import('@/components/ProfileModal'), { ssr: false })
 const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
+const TopupModal = dynamic(() => import('@/components/TopupModal'), { ssr: false })
 
 export const Topbar = () => {
   const { data: session, status } = useSession()
@@ -16,6 +17,7 @@ export const Topbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
+  const [showTopup, setShowTopup] = useState(false) // ✅ new
   const [role, setRole] = useState('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
 
@@ -55,7 +57,7 @@ export const Topbar = () => {
     fetchBalance()
   }, [session])
 
-  // Optional: polling untuk update balance realtime setiap 5 detik
+  // Poll balance every 5s
   useEffect(() => {
     const interval = setInterval(() => {
       fetchBalance()
@@ -63,7 +65,7 @@ export const Topbar = () => {
     return () => clearInterval(interval)
   }, [session])
 
-  // Handler logout
+  // Logout
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
@@ -86,6 +88,11 @@ export const Topbar = () => {
     setShowAbout(true)
   }
 
+  const handleGoToTopup = () => {
+    setIsMenuOpen(false)
+    setShowTopup(true)
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center">
@@ -101,6 +108,7 @@ export const Topbar = () => {
               aria-label="User menu"
               className="p-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
             >
+              {/* menu icon */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -146,10 +154,18 @@ export const Topbar = () => {
                     </button>
                   </li>
 
-                  <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Top-up</li>
+                  {/* ✅ Topup aktif */}
+                  <li>
+                    <button
+                      onClick={handleGoToTopup}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                    >
+                      Top-up
+                    </button>
+                  </li>
+
                   <li className="px-4 py-2 text-gray-400 cursor-not-allowed">Notification</li>
 
-                  {/* ✅ Contact us aktif ke Telegram */}
                   <li>
                     <a
                       href="https://t.me/WRC_Community"
@@ -190,6 +206,9 @@ export const Topbar = () => {
 
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+      {showTopup && session?.user?.id && (
+        <TopupModal onClose={() => setShowTopup(false)} userId={session.user.id} />
+      )}
     </>
   )
 }
