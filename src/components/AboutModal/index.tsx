@@ -19,9 +19,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
 
         {/* Konten bisa discroll kalau melebihi layar */}
         <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          <h2 className="text-xl font-bold text-gray-900 sticky top-0 bg-white z-10 py-2">
-  About
-</h2>
+          <h2 className="text-xl font-bold text-gray-900">About</h2>
 
           <section>
             <h3 className="text-lg font-semibold text-gray-800">WR Bounty Platform</h3>
