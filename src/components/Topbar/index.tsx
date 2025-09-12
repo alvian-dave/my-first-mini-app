@@ -205,14 +205,19 @@ export const Topbar = () => {
                     </button>
                   </li>
 
-                  <li>
-                    <button
-                      onClick={handleGoToTopup}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                    >
-                      Top-up
-                    </button>
-                  </li>
+{/* tampilkan skeleton kecil dulu supaya layout tidak lompat */}
+{role === '' ? (
+  <li className="px-4 py-2 text-gray-400 animate-pulse">Loading...</li>
+) : role === 'promoter' ? (
+  <li>
+    <button
+      onClick={handleGoToTopup}
+      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+    >
+      Top-up
+    </button>
+  </li>
+) : null}
 
                   {/* Notification button */}
                   <li>
