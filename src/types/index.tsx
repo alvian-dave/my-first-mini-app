@@ -31,6 +31,15 @@ export interface Balance {
 }
 
 // ==========================
+// Task
+// ==========================
+export interface Task {
+  service: "twitter" | "discord" | "telegram" | "" // "" default jika belum dipilih
+  type: string // misalnya "follow" | "retweet" | "join_channel"
+  url: string  // link target (profile, group, post, dll)
+}
+
+// ==========================
 // Campaign
 // ==========================
 export interface Campaign {
@@ -41,7 +50,7 @@ export interface Campaign {
   budget: string
   reward: string
   status: "active" | "finished" | "rejected"
-  links?: { url: string; label: string }[]
+  tasks: Task[]                // ✅ ganti links → tasks
   createdBy?: string           // userId promoter
   contributors?: number        // jumlah hunter yg submit
 }
