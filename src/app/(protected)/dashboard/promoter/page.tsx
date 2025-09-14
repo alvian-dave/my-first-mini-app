@@ -8,15 +8,16 @@ import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
 import TopupModal from '@/components/TopupModal'
-import type { Campaign as BaseCampaign } from '@/types'
+import type { Campaign as BaseCampaign, Task } from '@/types'
 
-// ⬇️ type untuk data yang datang dari API (punya _id & contributors)
+// ✅ Tambah type tasks di UICampaign
 type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
   link?: string
   createdBy?: string
-  participants?: string
+  participants?: string[]
+  tasks?: Task[]
 }
 
 export default function PromoterDashboard() {
@@ -26,23 +27,20 @@ export default function PromoterDashboard() {
   const [campaigns, setCampaigns] = useState<UICampaign[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'rejected'>('active')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingCampaign, setEditingCampaign] = useState<BaseCampaign | null>(null)
+  const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
 
-  // state untuk modal topup
   const [showTopup, setShowTopup] = useState(false)
-
-  // state untuk modal participants
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
 
-  // Redirect kalau belum login
+  // redirect kalau belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
-  // Fetch balance
+  // fetch balance
   useEffect(() => {
     if (!session?.user) return
     const fetchBalance = async () => {
@@ -53,16 +51,15 @@ export default function PromoterDashboard() {
           setBalance(data.balance.amount)
         }
       } catch (err) {
-        console.error("Failed to fetch balance:", err)
+        console.error('Failed to fetch balance:', err)
       }
     }
     fetchBalance()
   }, [session])
 
-  // Load campaign list
+  // load campaigns
   useEffect(() => {
     if (!session?.user) return
-
     const loadCampaigns = async () => {
       try {
         const res = await fetch('/api/campaigns')
@@ -73,15 +70,19 @@ export default function PromoterDashboard() {
         console.error('Failed to load campaigns:', err)
       }
     }
-
     loadCampaigns()
   }, [session])
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // Handler create / update campaign
+  // 🟢 create / update campaign
   const handleSubmit = async (campaign: BaseCampaign) => {
+    if (campaign.tasks && campaign.tasks.length > 3) {
+      alert('Max 3 tasks allowed per campaign!')
+      return
+    }
+
     try {
       if (editingCampaign) {
         await fetch(`/api/campaigns/${editingCampaign._id}`, {
@@ -97,6 +98,7 @@ export default function PromoterDashboard() {
         })
       }
 
+      // reload campaign list
       const res = await fetch('/api/campaigns')
       const data = await res.json()
       const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
@@ -109,7 +111,7 @@ export default function PromoterDashboard() {
     }
   }
 
-  // Handler mark finished
+  // mark finished
   const handleMarkFinished = async (id: string) => {
     try {
       await fetch(`/api/campaigns/${id}`, {
@@ -126,7 +128,6 @@ export default function PromoterDashboard() {
     }
   }
 
-  // Handler delete
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this campaign?')) return
     try {
@@ -145,7 +146,7 @@ export default function PromoterDashboard() {
     <div className="min-h-screen bg-gray-900 text-white">
       <Topbar />
       <main className="w-full px-4 md:px-12 py-6">
-        {/* Balance + Topup */}
+        {/* Balance */}
         <div className="flex justify-between items-center mb-6">
           <div className="text-lg font-medium">
             Balance{" "}
@@ -153,125 +154,76 @@ export default function PromoterDashboard() {
           </div>
           <button
             onClick={() => setShowTopup(true)}
-            className="px-4 py-1 rounded font-medium"
-            style={{ backgroundColor: "#2563eb", color: "#fff" }}
+            className="px-4 py-1 rounded font-medium bg-blue-600 text-white"
           >
             Topup
           </button>
         </div>
 
-        {/* Create Campaign */}
+        {/* Create campaign */}
         <div className="text-center mb-6">
           <button
             onClick={() => {
               setEditingCampaign(null)
               setIsModalOpen(true)
             }}
-            className="px-6 py-2 rounded font-semibold shadow"
-            style={{ backgroundColor: "#16a34a", color: "#fff" }}
+            className="px-6 py-2 rounded font-semibold shadow bg-green-600 text-white"
           >
             + Create Campaign
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="sticky top-18 bg-gray-900 z-40 pb-3">
           <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
 
-        {/* Campaign list */}
+        {/* List campaigns */}
         {current.length === 0 ? (
           <p className="text-center text-gray-400">No campaigns in this tab.</p>
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {current.map(c => (
-              <div
-                key={c._id}
-                className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition"
-              >
-                <h3 className="text-lg font-bold">
-                  <a
-                    href={`/campaigns/${c._id}`}
-                    className="text-blue-400 hover:underline"
-                  >
-                    {c.title}
-                  </a>
-                </h3>
+              <div key={c._id} className="bg-gray-800 p-5 rounded shadow">
+                <h3 className="text-lg font-bold">{c.title}</h3>
 
-                {Array.isArray(c.links) && c.links.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {c.links.map((l, i) => (
-                      <a
-                        key={i}
-                        href={l.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="!text-blue-500 underline hover:!text-blue-600 text-sm block break-all"
-                      >
-                        {l.label || l.url}
-                      </a>
+                {/* Tampilkan daftar task */}
+                {c.tasks && c.tasks.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {c.tasks.map((t, i) => (
+                      <li key={i} className="text-sm text-gray-300">
+                        ✅ {t.type.toUpperCase()} → {t.url || t.username}
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
 
-                {!c.links?.length && c.link && (
-                  <p className="mt-2">
-                    <a
-                      href={c.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="!text-blue-500 underline hover:!text-blue-600 break-all"
-                    >
-                      {c.link}
-                    </a>
-                  </p>
-                )}
-
-                <p className="text-gray-300 my-2 whitespace-pre-wrap">
-                  {c.description}
-                </p>
-                <p className="text-sm text-green-400 font-semibold">
-                  Reward: {c.reward}
-                </p>
-                <p className="text-sm text-yellow-400 font-semibold">
-                  Budget: {c.budget}
-                </p>
-                <p
-                  className="text-sm text-gray-400 cursor-pointer hover:underline"
-                  onClick={() => {
-                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
-                    setShowParticipants(true)
-                  }}
-                >
-                  Contributors: <b>{c.contributors ?? 0}</b>
-                </p>
+                <p className="text-gray-300 my-2">{c.description}</p>
+                <p className="text-sm text-green-400 font-semibold">Reward: {c.reward}</p>
+                <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
 
                 <div className="flex gap-2 mt-3">
-                  {c.status !== "finished" && (
+                  {c.status !== 'finished' && (
                     <>
                       <button
                         onClick={() => {
                           setEditingCampaign(c)
                           setIsModalOpen(true)
                         }}
-                        className="px-3 py-1 rounded font-medium"
-                        style={{ backgroundColor: "#facc15", color: "#000" }}
+                        className="px-3 py-1 rounded font-medium bg-yellow-400 text-black"
                       >
                         Edit
                       </button>
                       {c.contributors > 0 ? (
                         <button
                           onClick={() => handleMarkFinished(c._id)}
-                          className="px-3 py-1 rounded font-medium"
-                          style={{ backgroundColor: "#2563eb", color: "#fff" }}
+                          className="px-3 py-1 rounded font-medium bg-blue-600 text-white"
                         >
                           Mark Finished
                         </button>
                       ) : (
                         <button
                           onClick={() => handleDelete(c._id)}
-                          className="px-3 py-1 rounded font-medium"
-                          style={{ backgroundColor: "#dc2626", color: "#fff" }}
+                          className="px-3 py-1 rounded font-medium bg-red-600 text-white"
                         >
                           Delete
                         </button>
@@ -284,7 +236,6 @@ export default function PromoterDashboard() {
           </div>
         )}
 
-        {/* Modal form */}
         <CampaignForm
           isOpen={isModalOpen}
           onClose={() => {
@@ -293,26 +244,21 @@ export default function PromoterDashboard() {
           }}
           onSubmit={handleSubmit}
           editingCampaign={editingCampaign}
-          setEditingCampaign={setEditingCampaign}
         />
 
         {showParticipants && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
             <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
               <h2 className="text-lg font-bold mb-4">Participants</h2>
-
               {participants.length === 0 ? (
                 <p className="text-gray-400">No participants yet.</p>
               ) : (
                 <ul className="list-disc list-inside space-y-1">
                   {participants.map((p) => (
-                    <li key={p} className="text-sm text-gray-200">
-                      {p}
-                    </li>
+                    <li key={p} className="text-sm text-gray-200">{p}</li>
                   ))}
                 </ul>
               )}
-
               <div className="flex justify-end mt-4">
                 <button
                   onClick={() => setShowParticipants(false)}
@@ -324,10 +270,8 @@ export default function PromoterDashboard() {
             </div>
           </div>
         )}
-
       </main>
 
-      {/* ✅ Topup Modal pakai component */}
       {showTopup && session?.user?.id && (
         <TopupModal
           userId={session.user.id}
@@ -336,25 +280,18 @@ export default function PromoterDashboard() {
         />
       )}
 
-      {/* Floating Chat */}
+      {/* Chat */}
       <div className="fixed bottom-4 left-4 z-50">
         {!showChat ? (
-          <div className="text-center">
-            <button
-              className="p-3 rounded-full shadow hover:scale-105 transition"
-              style={{ backgroundColor: "#16a34a", color: "#fff" }}
-              onClick={() => setShowChat(true)}
-            >
-              💬
-            </button>
-            <p className="text-xs text-gray-400 mt-1">Chat</p>
-          </div>
+          <button
+            className="p-3 rounded-full shadow bg-green-600 text-white"
+            onClick={() => setShowChat(true)}
+          >
+            💬
+          </button>
         ) : (
           <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
-            <div
-              className="flex justify-between items-center px-4 py-2"
-              style={{ backgroundColor: "#16a34a", color: "#fff" }}
-            >
+            <div className="flex justify-between items-center px-4 py-2 bg-green-600 text-white">
               <span className="font-semibold">Global Chat</span>
               <button onClick={() => setShowChat(false)}>✕</button>
             </div>

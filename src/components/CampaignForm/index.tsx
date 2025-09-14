@@ -4,6 +4,31 @@ import { Dialog, Transition } from '@headlessui/react'
 import { Fragment, useState, useEffect } from 'react'
 import { Campaign } from '@/types'
 
+const MAX_TASKS = 3 // ✅ batas maksimal task per campaign
+
+const SERVICE_OPTIONS = [
+  { service: 'twitter', label: 'Twitter/X' },
+  { service: 'discord', label: 'Discord' },
+  { service: 'telegram', label: 'Telegram' },
+]
+
+const TASK_TYPE_OPTIONS: Record<string, { value: string; label: string; disabled?: boolean }[]> = {
+  twitter: [
+    { value: 'follow', label: 'Follow' },
+    { value: 'retweet', label: 'Retweet', disabled: true },
+    { value: 'post', label: 'Post', disabled: true },
+  ],
+  discord: [
+    { value: 'join', label: 'Join Group', disabled: true },
+    { value: 'comment', label: 'Comment in Group', disabled: true },
+  ],
+  telegram: [
+    { value: 'join_channel', label: 'Join Channel', disabled: true },
+    { value: 'join_group', label: 'Join Group', disabled: true },
+    { value: 'comment_group', label: 'Comment in Group', disabled: true },
+  ],
+}
+
 interface Props {
   isOpen: boolean
   onClose: () => void
@@ -23,10 +48,10 @@ export const CampaignForm = ({
     id: Date.now(),
     title: '',
     description: '',
-    budget: '', // ✅ kosong biar placeholder jalan
+    budget: '',
     reward: '',
     status: 'active',
-    links: [],
+    tasks: [],
   })
 
   useEffect(() => {
@@ -35,6 +60,7 @@ export const CampaignForm = ({
         ...editingCampaign,
         budget: editingCampaign.budget ?? '',
         reward: editingCampaign.reward ?? '',
+        tasks: editingCampaign.tasks ?? [],
       })
     } else {
       setCampaign({
@@ -44,7 +70,7 @@ export const CampaignForm = ({
         budget: '',
         reward: '',
         status: 'active',
-        links: [],
+        tasks: [],
       })
     }
   }, [editingCampaign])
@@ -53,16 +79,16 @@ export const CampaignForm = ({
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
-  const updateLink = (index: number, key: 'url' | 'label', value: string) => {
-    const newLinks = [...(campaign.links || [])]
-    newLinks[index][key] = value
-    setCampaign({ ...campaign, links: newLinks })
+  const updateTask = (index: number, key: 'service' | 'type' | 'url', value: string) => {
+    const newTasks = [...(campaign.tasks || [])]
+    newTasks[index][key] = value
+    setCampaign({ ...campaign, tasks: newTasks })
   }
 
-  const removeLink = (index: number) => {
-    const newLinks = [...(campaign.links || [])]
-    newLinks.splice(index, 1)
-    setCampaign({ ...campaign, links: newLinks })
+  const removeTask = (index: number) => {
+    const newTasks = [...(campaign.tasks || [])]
+    newTasks.splice(index, 1)
+    setCampaign({ ...campaign, tasks: newTasks })
   }
 
   const handleSubmit = () => {
@@ -74,10 +100,7 @@ export const CampaignForm = ({
       alert('Description is required')
       return
     }
-    if (
-      parseFloat(campaign.reward || '0') >
-      parseFloat(campaign.budget || '0')
-    ) {
+    if (parseFloat(campaign.reward || '0') > parseFloat(campaign.budget || '0')) {
       alert('Reward cannot be greater than total budget')
       return
     }
@@ -140,45 +163,69 @@ export const CampaignForm = ({
                   onChange={(e) => handleChange('reward', e.target.value)}
                 />
 
-                {(campaign.links || []).map((l, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <input
-                      className="flex-1 bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                      placeholder="Link URL"
-                      value={l.url}
-                      onChange={(e) => updateLink(i, 'url', e.target.value)}
-                    />
-                    <input
-                      className="flex-1 bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                      placeholder="Link Label"
-                      value={l.label}
-                      onChange={(e) => updateLink(i, 'label', e.target.value)}
-                    />
-                    <button
-                      onClick={() => removeLink(i)}
-                      className="px-3 py-2 rounded font-bold transition hover:brightness-110"
-                      style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                      title="Remove"
-                    >
-                      🗑
-                    </button>
-                  </div>
-                ))}
+                {/* Task Builder */}
+                <div className="space-y-3">
+                  {(campaign.tasks || []).map((task, i) => (
+                    <div key={i} className="bg-gray-700 p-3 rounded flex flex-col gap-2">
+                      <select
+                        value={task.service}
+                        onChange={(e) => updateTask(i, 'service', e.target.value)}
+                        className="bg-gray-600 rounded p-2"
+                      >
+                        <option value="">Select Service</option>
+                        {SERVICE_OPTIONS.map((s) => (
+                          <option key={s.service} value={s.service}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
 
-                {(campaign.links || []).length < 5 && (
-                  <button
-                    onClick={() =>
-                      handleChange('links', [
-                        ...(campaign.links || []),
-                        { url: '', label: '' },
-                      ])
-                    }
-                    className="px-3 py-2 rounded font-medium transition hover:brightness-110"
-                    style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                  >
-                    + Add Link
-                  </button>
-                )}
+                      {task.service && (
+                        <select
+                          value={task.type}
+                          onChange={(e) => updateTask(i, 'type', e.target.value)}
+                          className="bg-gray-600 rounded p-2"
+                        >
+                          <option value="">Select Task Type</option>
+                          {TASK_TYPE_OPTIONS[task.service].map((t) => (
+                            <option key={t.value} value={t.value} disabled={t.disabled}>
+                              {t.label} {t.disabled ? '(Coming Soon)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      <input
+                        className="bg-gray-600 rounded p-2 text-white"
+                        placeholder="Paste target URL (e.g. profile link)"
+                        value={task.url}
+                        onChange={(e) => updateTask(i, 'url', e.target.value)}
+                      />
+
+                      <button
+                        onClick={() => removeTask(i)}
+                        className="px-3 py-1 bg-red-600 rounded hover:bg-red-700"
+                      >
+                        Remove Task
+                      </button>
+                    </div>
+                  ))}
+
+                  {campaign.tasks.length < MAX_TASKS && (
+                    <button
+                      onClick={() =>
+                        handleChange('tasks', [
+                          ...(campaign.tasks || []),
+                          { service: '', type: '', url: '' },
+                        ])
+                      }
+                      className="px-3 py-2 rounded font-medium transition hover:brightness-110"
+                      style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                    >
+                      + Add Task
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Footer */}

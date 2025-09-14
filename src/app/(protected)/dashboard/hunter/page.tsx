@@ -6,6 +6,13 @@ import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { ExternalLink } from 'lucide-react'
+import { Dialog } from '@headlessui/react'
+
+interface Task {
+  service: string
+  type: string
+  url: string
+}
 
 interface Campaign {
   _id: string
@@ -13,8 +20,8 @@ interface Campaign {
   description: string
   reward: string
   status: 'active' | 'finished' | 'rejected'
-  links?: { url: string; label: string }[]
-  participants?: string[] // backend already has this field
+  tasks?: Task[]
+  participants?: string[]
 }
 
 export default function HunterDashboard() {
@@ -28,22 +35,22 @@ export default function HunterDashboard() {
   const [showChat, setShowChat] = useState(false)
   const [loadingIds, setLoadingIds] = useState<string[]>([])
 
+  // ✅ state untuk popup
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
+
   // Redirect if not logged in
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
 
-  // Load all campaigns
+  // Load campaigns
   useEffect(() => {
     const loadCampaigns = async () => {
       try {
         const res = await fetch('/api/campaigns', { cache: 'no-store' })
-        if (!res.ok) {
-          console.error('Failed to fetch campaigns', await res.text())
-          return
+        if (res.ok) {
+          setCampaigns(await res.json())
         }
-        const data = await res.json()
-        setCampaigns(data)
       } catch (err) {
         console.error('Failed to load campaigns', err)
       }
@@ -51,18 +58,15 @@ export default function HunterDashboard() {
     loadCampaigns()
   }, [])
 
-  // Load completed campaigns
+  // Load completed
   useEffect(() => {
     const loadCompleted = async () => {
       if (!session?.user?.id) return
       try {
         const res = await fetch('/api/campaigns/completed', { cache: 'no-store' })
-        if (!res.ok) {
-          console.error('Failed to fetch completed campaigns', await res.text())
-          return
+        if (res.ok) {
+          setCompletedCampaigns(await res.json())
         }
-        const data = await res.json()
-        setCompletedCampaigns(data)
       } catch (err) {
         console.error('Failed to load completed campaigns', err)
       }
@@ -70,16 +74,14 @@ export default function HunterDashboard() {
     loadCompleted()
   }, [session])
 
-  // Load hunter balance
+  // Load balance
   const fetchBalance = async () => {
     if (!session?.user?.id) return
     try {
       const res = await fetch(`/api/balance/${session.user.id}`, { cache: 'no-store' })
       if (!res.ok) return
       const data = await res.json()
-      if (data.success) {
-        setDbBalance(data.balance.amount ?? 0)
-      }
+      if (data.success) setDbBalance(data.balance.amount ?? 0)
     } catch (err) {
       console.error('Failed to fetch hunter balance', err)
     }
@@ -89,66 +91,52 @@ export default function HunterDashboard() {
     fetchBalance()
   }, [session])
 
-  if (status === 'loading') return <div className="text-white p-6">Loading...</div>
-  if (!session?.user) return null
-
-  // Filter logic
   const filtered = (() => {
     if (activeTab === 'active') {
-      // 🔥 Exclude campaigns already in completed
-      const completedIds = new Set(completedCampaigns.map(c => c._id))
+      const completedIds = new Set(completedCampaigns.map((c) => c._id))
       return campaigns.filter((c) => c.status === 'active' && !completedIds.has(c._id))
     }
-    if (activeTab === 'completed') {
-      return completedCampaigns
-    }
-    if (activeTab === 'rejected') {
-      return campaigns.filter((c) => c.status === 'rejected')
-    }
+    if (activeTab === 'completed') return completedCampaigns
+    if (activeTab === 'rejected') return campaigns.filter((c) => c.status === 'rejected')
     return []
   })().sort((a, b) => (a._id > b._id ? -1 : 1))
 
-  // Helpers
   const setLoadingFor = (id: string, loading: boolean) => {
-    setLoadingIds(prev => (loading ? [...prev, id] : prev.filter(x => x !== id)))
+    setLoadingIds((prev) => (loading ? [...prev, id] : prev.filter((x) => x !== id)))
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // Submit task
-  const handleSubmitTask = async (campaignId: string) => {
+  // ✅ ketika confirm task
+  const handleConfirmTask = async () => {
+    if (!selectedCampaign) return
     try {
-      setLoadingFor(campaignId, true)
-
-      const res = await fetch(`/api/campaigns/${campaignId}`, {
-        method: 'PATCH',
-      })
+      setLoadingFor(selectedCampaign._id, true)
+      const res = await fetch(`/api/campaigns/${selectedCampaign._id}`, { method: 'PATCH' })
 
       if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        console.error('Submit task failed', res.status, text)
         alert('Failed to submit task. Please try again.')
         return
       }
 
-      // Refresh both lists
-      const completedRes = await fetch('/api/campaigns/completed', { cache: 'no-store' })
-      if (completedRes.ok) {
-        setCompletedCampaigns(await completedRes.json())
-      }
+      // refresh list
+      const [completedRes, campaignsRes] = await Promise.all([
+        fetch('/api/campaigns/completed', { cache: 'no-store' }),
+        fetch('/api/campaigns', { cache: 'no-store' }),
+      ])
 
-      const campaignsRes = await fetch('/api/campaigns', { cache: 'no-store' })
-      if (campaignsRes.ok) {
-        setCampaigns(await campaignsRes.json())
-      }
-
+      if (completedRes.ok) setCompletedCampaigns(await completedRes.json())
+      if (campaignsRes.ok) setCampaigns(await campaignsRes.json())
       fetchBalance()
+      setSelectedCampaign(null)
     } catch (err) {
-      console.error('Failed to submit task', err)
-      alert('Failed to submit task. Please try again.')
+      console.error('Submit task failed', err)
     } finally {
-      setLoadingFor(campaignId, false)
+      if (selectedCampaign) setLoadingFor(selectedCampaign._id, false)
     }
   }
+
+  if (status === 'loading') return <div className="text-white p-6">Loading...</div>
+  if (!session?.user) return null
 
   return (
     <div className="min-h-screen bg-gray-900 text-white w-full">
@@ -162,28 +150,24 @@ export default function HunterDashboard() {
           "Every task you complete brings you closer to greatness..."
         </div>
 
-        {/* Tabs freeze */}
-<div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3">
-  {['active', 'completed', 'rejected'].map((tab) => (
-    <button
-      key={tab}
-      onClick={() => setActiveTab(tab as any)}
-      className="px-5 py-2 rounded-full font-semibold text-white"
-      style={{
-        backgroundColor: activeTab === tab ? '#16a34a' : '#374151',
-      }}
-    >
-      {tab.charAt(0).toUpperCase() + tab.slice(1)}
-    </button>
-  ))}
-</div>
-
+        {/* Tabs */}
+        <div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3">
+          {['active', 'completed', 'rejected'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className="px-5 py-2 rounded-full font-semibold text-white"
+              style={{ backgroundColor: activeTab === tab ? '#16a34a' : '#374151' }}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
 
         {/* Balance */}
         <div className="text-center mb-6">
           <p className="text-gray-300">
-            Your Balance:{' '}
-            <span className="text-green-400 font-bold">{dbBalance} WR</span>
+            Your Balance: <span className="text-green-400 font-bold">{dbBalance} WR</span>
           </p>
         </div>
 
@@ -209,40 +193,21 @@ export default function HunterDashboard() {
                 <p className="text-gray-300 mb-2">{c.description}</p>
 
                 <p className="text-sm text-gray-400 mb-2">
-                  Reward:{' '}
-                  <span className="text-green-400 font-semibold">{c.reward}</span>
+                  Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
                 </p>
-
-                {c.links?.map((l, i) => (
-                  <a
-  key={i}
-  href={l.url}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="!text-blue-400 underline text-sm block mb-1 break-all flex items-center gap-1 hover:text-blue-300"
->
-  {l.label}
-  <ExternalLink className="w-3 h-3" />
-</a>
-                ))}
 
                 {activeTab === 'active' ? (
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
                     style={{ backgroundColor: '#16a34a' }}
-                    onClick={() => handleSubmitTask(c._id)}
-                    disabled={isLoading(c._id)}
+                    onClick={() => setSelectedCampaign(c)}
                   >
                     {isLoading(c._id) ? 'Submitting...' : 'Submit Task'}
                   </button>
                 ) : activeTab === 'completed' ? (
                   <p className="text-green-400 mt-2 font-medium">
                     Task Submitted — Status:{' '}
-                    <span
-                      className={
-                        c.status === 'finished' ? 'text-blue-400' : 'text-green-400'
-                      }
-                    >
+                    <span className={c.status === 'finished' ? 'text-blue-400' : 'text-green-400'}>
                       {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
                     </span>
                   </p>
@@ -252,6 +217,46 @@ export default function HunterDashboard() {
           )}
         </div>
       </div>
+
+      {/* Modal untuk task */}
+      <Dialog open={!!selectedCampaign} onClose={() => setSelectedCampaign(null)} className="relative z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <Dialog.Panel className="bg-gray-800 text-white rounded-xl p-6 w-full max-w-lg">
+            <Dialog.Title className="text-lg font-bold mb-4">{selectedCampaign?.title}</Dialog.Title>
+            <p className="mb-4 text-gray-300">{selectedCampaign?.description}</p>
+
+            {selectedCampaign?.tasks?.length ? (
+              <div className="space-y-3 mb-4">
+                {selectedCampaign.tasks.map((task, i) => (
+                  <a
+                    key={i}
+                    href={task.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block bg-gray-700 p-3 rounded hover:bg-gray-600 flex justify-between items-center"
+                  >
+                    <span>
+                      {task.service.toUpperCase()} — {task.type}
+                    </span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">No tasks provided</p>
+            )}
+
+            <button
+              className="w-full py-2 rounded font-semibold mt-4"
+              style={{ backgroundColor: '#16a34a' }}
+              onClick={handleConfirmTask}
+              disabled={isLoading(selectedCampaign?._id || '')}
+            >
+              {isLoading(selectedCampaign?._id || '') ? 'Submitting...' : 'Confirm & Submit'}
+            </button>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
 
       {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">
