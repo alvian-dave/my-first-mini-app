@@ -10,11 +10,10 @@ import { CampaignTabs } from '@/components/CampaignTabs'
 import TopupModal from '@/components/TopupModal'
 import type { Campaign as BaseCampaign, Task } from '@/types'
 
-// ✅ Tambah type tasks di UICampaign
+// ✅ Type untuk campaign yang dipakai di UI
 type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
-  link?: string
   createdBy?: string
   participants?: string[]
   tasks?: Task[]
@@ -30,26 +29,23 @@ export default function PromoterDashboard() {
   const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
-
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
 
-  // redirect kalau belum login
+  // redirect jika belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
-  // fetch balance
+  // ambil balance user
   useEffect(() => {
     if (!session?.user) return
     const fetchBalance = async () => {
       try {
         const res = await fetch(`/api/balance/${session.user.id}`)
         const data = await res.json()
-        if (data.success) {
-          setBalance(data.balance.amount)
-        }
+        if (data.success) setBalance(data.balance.amount)
       } catch (err) {
         console.error('Failed to fetch balance:', err)
       }
@@ -57,7 +53,7 @@ export default function PromoterDashboard() {
     fetchBalance()
   }, [session])
 
-  // load campaigns
+  // ambil campaign yang dibuat oleh user ini
   useEffect(() => {
     if (!session?.user) return
     const loadCampaigns = async () => {
@@ -173,11 +169,12 @@ export default function PromoterDashboard() {
           </button>
         </div>
 
+        {/* Tabs */}
         <div className="sticky top-18 bg-gray-900 z-40 pb-3">
           <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
 
-        {/* List campaigns */}
+        {/* Campaign list */}
         {current.length === 0 ? (
           <p className="text-center text-gray-400">No campaigns in this tab.</p>
         ) : (
@@ -186,12 +183,12 @@ export default function PromoterDashboard() {
               <div key={c._id} className="bg-gray-800 p-5 rounded shadow">
                 <h3 className="text-lg font-bold">{c.title}</h3>
 
-                {/* Tampilkan daftar task */}
+                {/* Task list */}
                 {c.tasks && c.tasks.length > 0 && (
                   <ul className="mt-3 space-y-1">
                     {c.tasks.map((t, i) => (
                       <li key={i} className="text-sm text-gray-300">
-                        ✅ {t.type.toUpperCase()} → {t.url || t.username}
+                        ✅ [{t.service ? t.service.toUpperCase() : 'TASK'}] {t.type.toUpperCase()} → {t.url}
                       </li>
                     ))}
                   </ul>
@@ -236,6 +233,7 @@ export default function PromoterDashboard() {
           </div>
         )}
 
+        {/* Campaign form modal */}
         <CampaignForm
           isOpen={isModalOpen}
           onClose={() => {
@@ -246,6 +244,7 @@ export default function PromoterDashboard() {
           editingCampaign={editingCampaign}
         />
 
+        {/* Participants modal */}
         {showParticipants && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
             <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
@@ -272,6 +271,7 @@ export default function PromoterDashboard() {
         )}
       </main>
 
+      {/* Topup modal */}
       {showTopup && session?.user?.id && (
         <TopupModal
           userId={session.user.id}
@@ -280,7 +280,7 @@ export default function PromoterDashboard() {
         />
       )}
 
-      {/* Chat */}
+      {/* Chat widget */}
       <div className="fixed bottom-4 left-4 z-50">
         {!showChat ? (
           <button
