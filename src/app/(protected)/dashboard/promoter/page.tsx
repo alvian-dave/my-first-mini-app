@@ -8,15 +8,15 @@ import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
 import TopupModal from '@/components/TopupModal'
-import type { Campaign as BaseCampaign, Task } from '@/types'
+import type { Campaign as BaseCampaign } from '@/types'
 
-// ✅ Type untuk campaign yang dipakai di UI
+// UI Campaign type (tambahkan tasks)
 type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
   createdBy?: string
   participants?: string[]
-  tasks?: Task[]
+  tasks?: { service: string; type: string; url: string }[]
 }
 
 export default function PromoterDashboard() {
@@ -29,16 +29,15 @@ export default function PromoterDashboard() {
   const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
+
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
 
-  // redirect jika belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
-  // ambil balance user
   useEffect(() => {
     if (!session?.user) return
     const fetchBalance = async () => {
@@ -53,7 +52,6 @@ export default function PromoterDashboard() {
     fetchBalance()
   }, [session])
 
-  // ambil campaign yang dibuat oleh user ini
   useEffect(() => {
     if (!session?.user) return
     const loadCampaigns = async () => {
@@ -72,15 +70,10 @@ export default function PromoterDashboard() {
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // 🟢 create / update campaign
+  // create / update
   const handleSubmit = async (campaign: BaseCampaign) => {
-    if (campaign.tasks && campaign.tasks.length > 3) {
-      alert('Max 3 tasks allowed per campaign!')
-      return
-    }
-
     try {
-      if (editingCampaign) {
+      if (editingCampaign?._id) {
         await fetch(`/api/campaigns/${editingCampaign._id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -94,7 +87,6 @@ export default function PromoterDashboard() {
         })
       }
 
-      // reload campaign list
       const res = await fetch('/api/campaigns')
       const data = await res.json()
       const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
@@ -107,7 +99,6 @@ export default function PromoterDashboard() {
     }
   }
 
-  // mark finished
   const handleMarkFinished = async (id: string) => {
     try {
       await fetch(`/api/campaigns/${id}`, {
@@ -142,28 +133,29 @@ export default function PromoterDashboard() {
     <div className="min-h-screen bg-gray-900 text-white">
       <Topbar />
       <main className="w-full px-4 md:px-12 py-6">
-        {/* Balance */}
+        {/* Balance + Topup */}
         <div className="flex justify-between items-center mb-6">
           <div className="text-lg font-medium">
-            Balance{" "}
-            <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
+            Balance <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
           </div>
           <button
             onClick={() => setShowTopup(true)}
-            className="px-4 py-1 rounded font-medium bg-blue-600 text-white"
+            className="px-4 py-1 rounded font-medium"
+            style={{ backgroundColor: '#2563eb', color: '#fff' }}
           >
             Topup
           </button>
         </div>
 
-        {/* Create campaign */}
+        {/* Create Campaign */}
         <div className="text-center mb-6">
           <button
             onClick={() => {
               setEditingCampaign(null)
               setIsModalOpen(true)
             }}
-            className="px-6 py-2 rounded font-semibold shadow bg-green-600 text-white"
+            className="px-6 py-2 rounded font-semibold shadow"
+            style={{ backgroundColor: '#16a34a', color: '#fff' }}
           >
             + Create Campaign
           </button>
@@ -180,23 +172,47 @@ export default function PromoterDashboard() {
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {current.map(c => (
-              <div key={c._id} className="bg-gray-800 p-5 rounded shadow">
-                <h3 className="text-lg font-bold">{c.title}</h3>
+              <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
+                <h3 className="text-lg font-bold">
+                  <a href={`/campaigns/${c._id}`} className="text-blue-400 hover:underline">
+                    {c.title}
+                  </a>
+                </h3>
 
-                {/* Task list */}
-                {c.tasks && c.tasks.length > 0 && (
-                  <ul className="mt-3 space-y-1">
+                {/* Tampilkan task */}
+                {Array.isArray(c.tasks) && c.tasks.length > 0 && (
+                  <div className="mt-2 space-y-2">
                     {c.tasks.map((t, i) => (
-                      <li key={i} className="text-sm text-gray-300">
-                        ✅ [{t.service ? t.service.toUpperCase() : 'TASK'}] {t.type.toUpperCase()} → {t.url}
-                      </li>
+                      <div key={i} className="text-sm">
+                        <span className="text-yellow-300 font-semibold">{t.service}</span> -{' '}
+                        <span>{t.type}</span>{' '}
+                        {t.url && (
+                          <a
+                            href={t.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 underline break-all"
+                          >
+                            {t.url}
+                          </a>
+                        )}
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
 
-                <p className="text-gray-300 my-2">{c.description}</p>
+                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
                 <p className="text-sm text-green-400 font-semibold">Reward: {c.reward}</p>
                 <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
+                <p
+                  className="text-sm text-gray-400 cursor-pointer hover:underline"
+                  onClick={() => {
+                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
+                    setShowParticipants(true)
+                  }}
+                >
+                  Contributors: <b>{c.contributors ?? 0}</b>
+                </p>
 
                 <div className="flex gap-2 mt-3">
                   {c.status !== 'finished' && (
@@ -206,21 +222,24 @@ export default function PromoterDashboard() {
                           setEditingCampaign(c)
                           setIsModalOpen(true)
                         }}
-                        className="px-3 py-1 rounded font-medium bg-yellow-400 text-black"
+                        className="px-3 py-1 rounded font-medium"
+                        style={{ backgroundColor: '#facc15', color: '#000' }}
                       >
                         Edit
                       </button>
                       {c.contributors > 0 ? (
                         <button
                           onClick={() => handleMarkFinished(c._id)}
-                          className="px-3 py-1 rounded font-medium bg-blue-600 text-white"
+                          className="px-3 py-1 rounded font-medium"
+                          style={{ backgroundColor: '#2563eb', color: '#fff' }}
                         >
                           Mark Finished
                         </button>
                       ) : (
                         <button
                           onClick={() => handleDelete(c._id)}
-                          className="px-3 py-1 rounded font-medium bg-red-600 text-white"
+                          className="px-3 py-1 rounded font-medium"
+                          style={{ backgroundColor: '#dc2626', color: '#fff' }}
                         >
                           Delete
                         </button>
@@ -233,7 +252,7 @@ export default function PromoterDashboard() {
           </div>
         )}
 
-        {/* Campaign form modal */}
+        {/* Modal form */}
         <CampaignForm
           isOpen={isModalOpen}
           onClose={() => {
@@ -242,6 +261,7 @@ export default function PromoterDashboard() {
           }}
           onSubmit={handleSubmit}
           editingCampaign={editingCampaign}
+          setEditingCampaign={setEditingCampaign}
         />
 
         {/* Participants modal */}
@@ -253,8 +273,10 @@ export default function PromoterDashboard() {
                 <p className="text-gray-400">No participants yet.</p>
               ) : (
                 <ul className="list-disc list-inside space-y-1">
-                  {participants.map((p) => (
-                    <li key={p} className="text-sm text-gray-200">{p}</li>
+                  {participants.map(p => (
+                    <li key={p} className="text-sm text-gray-200">
+                      {p}
+                    </li>
                   ))}
                 </ul>
               )}
@@ -271,27 +293,30 @@ export default function PromoterDashboard() {
         )}
       </main>
 
-      {/* Topup modal */}
       {showTopup && session?.user?.id && (
         <TopupModal
           userId={session.user.id}
           onClose={() => setShowTopup(false)}
-          onSuccess={(newBalance) => setBalance(newBalance)}
+          onSuccess={newBalance => setBalance(newBalance)}
         />
       )}
 
-      {/* Chat widget */}
+      {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">
         {!showChat ? (
-          <button
-            className="p-3 rounded-full shadow bg-green-600 text-white"
-            onClick={() => setShowChat(true)}
-          >
-            💬
-          </button>
+          <div className="text-center">
+            <button
+              className="p-3 rounded-full shadow hover:scale-105 transition"
+              style={{ backgroundColor: '#16a34a', color: '#fff' }}
+              onClick={() => setShowChat(true)}
+            >
+              💬
+            </button>
+            <p className="text-xs text-gray-400 mt-1">Chat</p>
+          </div>
         ) : (
           <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center px-4 py-2 bg-green-600 text-white">
+            <div className="flex justify-between items-center px-4 py-2" style={{ backgroundColor: '#16a34a', color: '#fff' }}>
               <span className="font-semibold">Global Chat</span>
               <button onClick={() => setShowChat(false)}>✕</button>
             </div>
