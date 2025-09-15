@@ -79,9 +79,17 @@ export const CampaignForm = ({
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
+  // ✅ FIX: Type-safe updateTask
   const updateTask = (index: number, key: 'service' | 'type' | 'url', value: string) => {
     const newTasks = [...(campaign.tasks || [])]
-    newTasks[index][key] = value
+    if (!newTasks[index]) newTasks[index] = { service: '', type: '', url: '' }
+
+    if (key === 'service') {
+      newTasks[index][key] = value as '' | 'twitter' | 'discord' | 'telegram'
+    } else {
+      newTasks[index][key] = value
+    }
+
     setCampaign({ ...campaign, tasks: newTasks })
   }
 
