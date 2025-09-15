@@ -219,6 +219,7 @@ export default function PromoterDashboard() {
                     <>
                       <button
                         onClick={() => {
+                          // when editing, ensure editingCampaign matches UICampaign shape
                           setEditingCampaign(c)
                           setIsModalOpen(true)
                         }}
@@ -260,8 +261,10 @@ export default function PromoterDashboard() {
             setEditingCampaign(null)
           }}
           onSubmit={handleSubmit}
-          editingCampaign={editingCampaign}
-          setEditingCampaign={setEditingCampaign}
+          editingCampaign={editingCampaign as unknown as BaseCampaign | null}
+          // <-- wrapper: CampaignForm expects (c: Campaign | null) => void
+          //     we pass a function that forwards to our setter and cast to UICampaign
+          setEditingCampaign={(c: BaseCampaign | null) => setEditingCampaign(c as unknown as UICampaign | null)}
         />
 
         {/* Participants modal */}
