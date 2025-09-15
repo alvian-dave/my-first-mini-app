@@ -166,92 +166,99 @@ export default function PromoterDashboard() {
           <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
 
-        {/* Campaign list */}
-        {current.length === 0 ? (
-          <p className="text-center text-gray-400">No campaigns in this tab.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {current.map(c => (
-              <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
-                <h3 className="text-lg font-bold">
-                  <a href={`/campaigns/${c._id}`} className="text-blue-400 hover:underline">
-                    {c.title}
-                  </a>
-                </h3>
+{/* Campaign list */}
+{current.length === 0 ? (
+  <p className="text-center text-gray-400">No campaigns in this tab.</p>
+) : (
+  <div className="grid md:grid-cols-2 gap-6">
+    {current.map(c => (
+      <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
+        {/* Judul Campaign */}
+        <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
 
-                {/* Tampilkan task */}
-                {Array.isArray(c.tasks) && c.tasks.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    {c.tasks.map((t, i) => (
-                      <div key={i} className="text-sm">
-                        <span className="text-yellow-300 font-semibold">{t.service}</span> -{' '}
-                        <span>{t.type}</span>{' '}
-                        {t.url && (
-                          <a
-                            href={t.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 underline break-all"
-                          >
-                            {t.url}
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+        {/* Deskripsi */}
+        <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
 
-                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
-                <p className="text-sm text-green-400 font-semibold">Reward: {c.reward}</p>
-                <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
-                <p
-                  className="text-sm text-gray-400 cursor-pointer hover:underline"
-                  onClick={() => {
-                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
-                    setShowParticipants(true)
-                  }}
+{/* Task List */}
+{Array.isArray(c.tasks) && c.tasks.length > 0 && (
+  <div className="mt-2 flex flex-wrap gap-2">
+    {c.tasks.map((t, i) => {
+      const serviceIcon =
+        t.service.toLowerCase().includes('twitter') ? '🐦' :
+        t.service.toLowerCase().includes('discord') ? '💬' :
+        t.service.toLowerCase().includes('telegram') ? '📨' :
+        '🔗'
+
+      return (
+        <div
+          key={i}
+          className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
+        >
+          <span className="mr-2">{serviceIcon}</span>
+          <span className="text-yellow-300">{t.service}</span>
+          <span className="mx-1 text-gray-400">•</span>
+          <span className="text-gray-200">{t.type}</span>
+        </div>
+      )
+    })}
+  </div>
+)}
+
+
+        {/* Reward & Budget */}
+        <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
+        <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
+
+        {/* Contributors */}
+        <p
+          className="text-sm text-gray-400 cursor-pointer hover:underline"
+          onClick={() => {
+            setParticipants(Array.isArray(c.participants) ? c.participants : [])
+            setShowParticipants(true)
+          }}
+        >
+          Contributors: <b>{c.contributors ?? 0}</b>
+        </p>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-3">
+          {c.status !== 'finished' && (
+            <>
+              <button
+                onClick={() => {
+                  setEditingCampaign(c)
+                  setIsModalOpen(true)
+                }}
+                className="px-3 py-1 rounded font-medium"
+                style={{ backgroundColor: '#facc15', color: '#000' }}
+              >
+                Edit
+              </button>
+              {c.contributors > 0 ? (
+                <button
+                  onClick={() => handleMarkFinished(c._id)}
+                  className="px-3 py-1 rounded font-medium"
+                  style={{ backgroundColor: '#2563eb', color: '#fff' }}
                 >
-                  Contributors: <b>{c.contributors ?? 0}</b>
-                </p>
+                  Mark Finished
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleDelete(c._id)}
+                  className="px-3 py-1 rounded font-medium"
+                  style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                >
+                  Delete
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+)}
 
-                <div className="flex gap-2 mt-3">
-                  {c.status !== 'finished' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          // when editing, ensure editingCampaign matches UICampaign shape
-                          setEditingCampaign(c)
-                          setIsModalOpen(true)
-                        }}
-                        className="px-3 py-1 rounded font-medium"
-                        style={{ backgroundColor: '#facc15', color: '#000' }}
-                      >
-                        Edit
-                      </button>
-                      {c.contributors > 0 ? (
-                        <button
-                          onClick={() => handleMarkFinished(c._id)}
-                          className="px-3 py-1 rounded font-medium"
-                          style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                        >
-                          Mark Finished
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleDelete(c._id)}
-                          className="px-3 py-1 rounded font-medium"
-                          style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Modal form */}
         <CampaignForm
