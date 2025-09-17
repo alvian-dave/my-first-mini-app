@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Toast from './Toast'
+import Toast from '@/components/Toast'
 
 interface TopupModalProps {
   userId: string
