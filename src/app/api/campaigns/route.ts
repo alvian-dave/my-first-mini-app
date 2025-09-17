@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import dbConnect from '@/lib/mongodb'
 import { Campaign } from '@/models/Campaign'
-import { auth } from '@/auth'   // ✅ gantiin getServerSession
+import { Notification } from '@/models/Notification'
+import { auth } from '@/auth'
 
 // GET all campaigns
 export async function GET() {
@@ -14,8 +15,8 @@ export async function GET() {
 export async function POST(req: Request) {
   await dbConnect()
 
-  const session = await auth()   // ✅ ambil session pakai auth()
-  if (!session) {
+  const session = await auth()
+  if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -24,7 +25,15 @@ export async function POST(req: Request) {
   const newCampaign = await Campaign.create({
     ...body,
     status: 'active',
-    createdBy: session.user?.id || 'anonymous',  // ✅ akses session.user
+    createdBy: session.user.id,
+  })
+
+  // ✅ Notifikasi cuma dibuat sekali, di sini
+  await Notification.create({
+    userId: session.user.id,
+    role: 'promoter',
+    type: 'campaign_created',
+    message: `Your campaign "${newCampaign.title}" has been successfully created.`,
   })
 
   return NextResponse.json(newCampaign)
