@@ -153,13 +153,20 @@ export default function TaskModal({
           </div>
 
           <button
-            className="w-full py-2 rounded font-semibold mt-4"
-            style={{ backgroundColor: '#16a34a' }}
-            onClick={handleConfirm}
-            disabled={loading || !taskStates.every((t) => t.done)}
-          >
-            Confirm & Submit
-          </button>
+  className="w-full py-2 rounded font-semibold mt-4"
+  style={{ backgroundColor: '#16a34a' }}
+  onClick={() => {
+    if (!taskStates.every((t) => t.done)) {
+      alert('Please complete all tasks first.')
+      return
+    }
+    handleConfirm()
+  }}
+  disabled={loading}
+>
+  Confirm & Submit
+</button>
+
         </Dialog.Panel>
       </div>
     </Dialog>

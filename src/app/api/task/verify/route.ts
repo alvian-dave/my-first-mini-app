@@ -6,8 +6,6 @@ import { Campaign } from '@/models/Campaign'
 import SocialAccount from '@/models/SocialAccount'
 import Submission from '@/models/Submission'
 
-// NOTE: use global fetch available in Next.js runtime; node-fetch import not required here.
-
 type ServiceName = 'twitter' | 'discord' | 'telegram'
 
 interface CampaignTask {
@@ -24,7 +22,6 @@ interface SubmissionTask {
   verifiedAt?: Date
 }
 
-/** Minimal shape for Twitter following API */
 interface TwitterUser {
   id: string
   username: string
@@ -37,26 +34,21 @@ interface TwitterFollowingResponse {
 export async function POST(req: Request) {
   await dbConnect()
 
-  // 1) auth
+  // 1) Auth
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // 2) parse body
+  // 2) Parse body
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
 
-  const { campaignId, task } = body as {
-    campaignId?: string
-    task?: { service?: string; type?: string; url?: string }
-  }
-
+  const { campaignId, task } = body as { campaignId?: string; task?: { service?: string; type?: string; url?: string } }
   if (!campaignId || !task?.service || !task?.type || !task?.url) {
     return NextResponse.json({ error: 'Missing campaignId or task fields' }, { status: 400 })
   }
 
-  // normalize types
   const service = task.service as ServiceName
   const incomingTask: CampaignTask = {
     service,
@@ -64,61 +56,51 @@ export async function POST(req: Request) {
     url: task.url,
   }
 
-  // 3) load campaign (no .lean() so TS sees Document; we'll cast tasks)
+  // 3) Load campaign
   const campaignDoc = await Campaign.findById(campaignId)
   if (!campaignDoc) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
 
-  // ensure campaign.tasks is an array and typed
   const campaignTasks = (Array.isArray((campaignDoc as any).tasks) ? (campaignDoc as any).tasks : []) as CampaignTask[]
-  if (!Array.isArray(campaignTasks)) {
-    return NextResponse.json({ error: 'Campaign tasks invalid' }, { status: 500 })
-  }
+  if (!Array.isArray(campaignTasks)) return NextResponse.json({ error: 'Campaign tasks invalid' }, { status: 500 })
 
-  // 4) ensure this task is part of campaign
-  const taskInCampaign = campaignTasks.find((t: CampaignTask) =>
+  // 4) Ensure task exists in campaign
+  const taskInCampaign = campaignTasks.find((t) =>
     t.service === incomingTask.service && t.type === incomingTask.type && t.url === incomingTask.url
   )
-  if (!taskInCampaign) {
-    return NextResponse.json({ error: 'Task not in campaign' }, { status: 400 })
-  }
+  if (!taskInCampaign) return NextResponse.json({ error: 'Task not in campaign' }, { status: 400 })
 
-  // 5) Service-specific verification (Twitter implemented)
+  // 5) Service-specific verification (Twitter)
   if (incomingTask.service === 'twitter') {
-    // ensure user connected to twitter
-    const social = await SocialAccount.findOne({ userId: session.user.id, provider: 'twitter' })
-    if (!social) {
-      return NextResponse.json({ error: 'Twitter not connected', code: 'TWITTER_NOT_CONNECTED' }, { status: 400 })
-    }
-
-    // extract username from provided url (promoter should supply profile url)
-    let usernameToCheck: string
     try {
-      const u = new URL(incomingTask.url)
-      // handle urls like /username or /username/ etc.
-      usernameToCheck = u.pathname.replace(/^\/+|\/+$/g, '')
-      if (!usernameToCheck) throw new Error('empty username')
-    } catch (err) {
-      return NextResponse.json({ error: 'Invalid Twitter URL in task' }, { status: 400 })
-    }
+      const social = await SocialAccount.findOne({ userId: session.user.id, provider: 'twitter' })
+      if (!social?.accessToken || !social?.socialId) {
+        return NextResponse.json({ error: 'Twitter not connected', code: 'TWITTER_NOT_CONNECTED' }, { status: 400 })
+      }
 
-    // call Twitter API to fetch following list (note: may require pagination for large lists)
-    try {
+      // extract username from URL
+      let usernameToCheck: string
+      try {
+        const u = new URL(incomingTask.url)
+        usernameToCheck = u.pathname.replace(/^\/+|\/+$/g, '')
+        if (!usernameToCheck) throw new Error('empty username')
+      } catch {
+        return NextResponse.json({ error: 'Invalid Twitter URL in task' }, { status: 400 })
+      }
+
+      // fetch following safely
       const followUrl = `https://api.twitter.com/2/users/${social.socialId}/following?max_results=1000`
       const twitterRes = await fetch(followUrl, {
         headers: { Authorization: `Bearer ${social.accessToken}` },
       })
 
-      // guard on response
       if (!twitterRes.ok) {
-        // optionally forward twitter error message for debugging, but keep safe
         const text = await twitterRes.text().catch(() => '')
         console.error('Twitter API error (following):', twitterRes.status, text)
-        return NextResponse.json({ error: 'Failed to fetch Twitter following' }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to fetch Twitter following' }, { status: 400 })
       }
 
-      // parse and guard shape
       const raw = await twitterRes.text().catch(() => '')
-      let twitterData: TwitterFollowingResponse
+      let twitterData: TwitterFollowingResponse = {}
       try {
         twitterData = raw ? (JSON.parse(raw) as TwitterFollowingResponse) : {}
       } catch (err) {
@@ -127,11 +109,7 @@ export async function POST(req: Request) {
       }
 
       const followers = Array.isArray(twitterData.data) ? twitterData.data : []
-      const isFollowing = followers.some((u) => {
-        if (!u || typeof u.username !== 'string') return false
-        return u.username.toLowerCase() === usernameToCheck.toLowerCase()
-      })
-
+      const isFollowing = followers.some((u) => u?.username?.toLowerCase() === usernameToCheck.toLowerCase())
       if (!isFollowing) {
         return NextResponse.json({ error: 'Twitter task not completed (not following target)' }, { status: 400 })
       }
@@ -145,44 +123,33 @@ export async function POST(req: Request) {
   const now = new Date()
   let submission = await Submission.findOne({ userId: session.user.id, campaignId })
 
+  const newTask: SubmissionTask = { ...incomingTask, done: true, verifiedAt: now }
+
   if (!submission) {
-    const initialTask: SubmissionTask = {
-      service: incomingTask.service,
-      type: incomingTask.type,
-      url: incomingTask.url,
-      done: true,
-      verifiedAt: now,
-    }
-    const shouldAutoSubmit = campaignTasks.length === 1 // if promoter only supplied 1 task
     submission = await Submission.create({
       userId: session.user.id,
       campaignId,
-      tasks: [initialTask],
-      status: shouldAutoSubmit ? 'submitted' : 'pending',
+      tasks: [newTask],
+      status: campaignTasks.length === 1 ? 'submitted' : 'pending',
     })
   } else {
-    // type submission.tasks and update safely
-    const subTasks = (Array.isArray((submission as any).tasks) ? (submission as any).tasks : []) as SubmissionTask[]
-
-    // find index
+    const subTasks = Array.isArray((submission as any).tasks) ? (submission as any).tasks : []
     const idx = subTasks.findIndex((s) =>
-      s.service === incomingTask.service && s.type === incomingTask.type && s.url === incomingTask.url
+      s.service === newTask.service && s.type === newTask.type && s.url === newTask.url
     )
-    if (idx >= 0) {
-      subTasks[idx] = { ...subTasks[idx], done: true, verifiedAt: now }
-    } else {
-      subTasks.push({ service: incomingTask.service, type: incomingTask.type, url: incomingTask.url, done: true, verifiedAt: now })
-    }
+    if (idx >= 0) subTasks[idx] = newTask
+    else subTasks.push(newTask)
 
     submission.tasks = subTasks
-    // determine final status: only submitted if all campaign tasks are present and done in submission
-    const allDone = campaignTasks.every((ct) =>
-      submission.tasks.some((st: SubmissionTask) => st.service === ct.service && st.type === ct.type && st.url === ct.url && st.done)
+    submission.status = campaignTasks.every((ct) =>
+      submission.tasks.some((st) => st.service === ct.service && st.type === ct.type && st.url === ct.url && st.done)
     )
-    submission.status = allDone ? 'submitted' : 'pending'
+      ? 'submitted'
+      : 'pending'
+
     await submission.save()
   }
 
-  // 7) return
+  // 7) Return response
   return NextResponse.json({ success: true, status: submission.status })
 }
