@@ -1,7 +1,7 @@
+// /api/connect/twitter/callback.ts
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import SocialAccount from "@/models/SocialAccount"
-import { auth } from "@/auth"
 import fetch from "node-fetch"
 
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID
@@ -10,10 +10,6 @@ const TWITTER_REDIRECT_URI = process.env.TWITTER_REDIRECT_URI
 
 export async function GET(req: Request) {
   await dbConnect()
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
 
   const url = new URL(req.url)
   const code = url.searchParams.get("code")
@@ -23,17 +19,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing code or state" }, { status: 400 })
   }
 
-  // ✅ cek state di temp
+  // ✅ Ambil temporary record dari DB menggunakan state, bukan session
   const temp = await SocialAccount.findOne({
-    userId: session.user.id,
     provider: "twitter_temp",
     state,
   })
-  if (!temp) {
-    return NextResponse.json({ error: "Invalid state" }, { status: 400 })
+  if (!temp || !temp.userId || !temp.codeVerifier) {
+    return NextResponse.json({ error: "Invalid or expired state" }, { status: 400 })
   }
 
-  // ✅ tukar code dengan access token
+  // ✅ Tukar code dengan access token
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -69,7 +64,7 @@ export async function GET(req: Request) {
     expires_in?: number
   }
 
-  // ✅ ambil info akun Twitter
+  // ✅ Ambil info akun Twitter
   const userRes = await fetch("https://api.twitter.com/2/users/me", {
     headers: {
       Authorization: `Bearer ${tokenData.access_token}`,
@@ -88,9 +83,9 @@ export async function GET(req: Request) {
 
   const userData = (userJson as any).data
 
-  // ✅ simpan permanen ke SocialAccount
+  // ✅ Simpan permanen ke SocialAccount menggunakan userId dari temp
   await SocialAccount.updateOne(
-    { userId: session.user.id, provider: "twitter" },
+    { userId: temp.userId, provider: "twitter" },
     {
       $set: {
         accessToken: tokenData.access_token,
@@ -106,12 +101,10 @@ export async function GET(req: Request) {
     { upsert: true }
   )
 
-  // hapus temporary
-  await SocialAccount.deleteOne({ userId: session.user.id, provider: "twitter_temp" })
+  // ✅ Hapus temporary record
+  await SocialAccount.deleteOne({ _id: temp._id })
 
-  // ✅ KUNCI FIX:
-  // Jangan redirect langsung ke /dashboard (bikin lose auth)
-  // Redirect ke halaman khusus yang nanti dibaca oleh window.opener (TaskModal)
-  const successUrl = `/twitter-success?status=connected`
+  // ✅ Redirect ke halaman sukses yang bisa dibaca TaskModal via postMessage
+  const successUrl = `/twitter-success?status=connected&user=${userData.username}`
   return NextResponse.redirect(successUrl)
 }
