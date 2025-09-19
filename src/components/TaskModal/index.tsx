@@ -3,6 +3,7 @@
 import { Dialog } from '@headlessui/react'
 import { ExternalLink } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import Toast from '@/components/Toast'
 
 interface Task {
   service: string
@@ -31,6 +32,7 @@ export default function TaskModal({
   const [taskStates, setTaskStates] = useState(tasks)
   const [loading, setLoading] = useState(false)
   const [twitterConnected, setTwitterConnected] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
   // ✅ cek status twitter dari backend
   useEffect(() => {
@@ -54,6 +56,14 @@ export default function TaskModal({
         event.data?.type === 'TWITTER_CONNECTED'
       ) {
         setTwitterConnected(true)
+        setToast({ message: 'Twitter connected successfully!', type: 'success' })
+      }
+
+      if (
+        event.origin === window.location.origin &&
+        event.data?.type === 'TWITTER_FAILED'
+      ) {
+        setToast({ message: 'Twitter connection failed, please try again.', type: 'error' })
       }
     }
     window.addEventListener('message', handleMessage)
@@ -91,20 +101,28 @@ export default function TaskModal({
         const updated = [...taskStates]
         updated[idx].done = true
         setTaskStates(updated)
+        setToast({ message: 'Task verified successfully!', type: 'success' })
       } else {
-        alert(data.error || 'Verification failed')
+        setToast({ message: data.error || 'Verification failed', type: 'error' })
       }
     } catch (err) {
       console.error('verify failed', err)
+      setToast({ message: 'Verification failed due to an error.', type: 'error' })
     } finally {
       setLoading(false)
     }
   }
 
   const handleConfirm = async () => {
+    if (!taskStates.every((t) => t.done)) {
+      setToast({ message: 'Please complete all tasks first.', type: 'error' })
+      return
+    }
+
     try {
       setLoading(true)
       await onConfirm(taskStates)
+      setToast({ message: 'All tasks submitted successfully!', type: 'success' })
     } finally {
       setLoading(false)
     }
@@ -153,20 +171,22 @@ export default function TaskModal({
           </div>
 
           <button
-  className="w-full py-2 rounded font-semibold mt-4"
-  style={{ backgroundColor: '#16a34a' }}
-  onClick={() => {
-    if (!taskStates.every((t) => t.done)) {
-      alert('Please complete all tasks first.')
-      return
-    }
-    handleConfirm()
-  }}
-  disabled={loading}
->
-  Confirm & Submit
-</button>
+            className="w-full py-2 rounded font-semibold mt-4"
+            style={{ backgroundColor: '#16a34a' }}
+            onClick={handleConfirm}
+            disabled={loading}
+          >
+            Confirm & Submit
+          </button>
 
+          {/* Render Toast */}
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          )}
         </Dialog.Panel>
       </div>
     </Dialog>
