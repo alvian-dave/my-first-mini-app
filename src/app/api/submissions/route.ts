@@ -41,13 +41,22 @@ export async function POST(req: Request) {
   // ambil campaign
   const campaign = await Campaign.findById(campaignId)
   if (!campaign || campaign.status !== "active") {
-    return NextResponse.json({ error: "Campaign not found or inactive" }, { status: 404 })
+    return NextResponse.json(
+      { error: "Campaign not found or inactive" },
+      { status: 404 }
+    )
   }
 
-  // buat submission
+  // buat submission dengan tasks dari campaign
   const submission = await Submission.create({
     userId: session.user.id,
     campaignId,
+    tasks: campaign.tasks.map((t: any) => ({
+      service: t.service,
+      type: t.type,
+      url: t.url,
+      done: false,
+    })),
     status: "submitted",
     createdAt: new Date(),
   })
@@ -56,7 +65,7 @@ export async function POST(req: Request) {
   campaign.contributors = (campaign.contributors || 0) + 1
   await campaign.save()
 
-  // ambil atau buat balance hunter
+  // ambil / buat balance hunter
   let hunterBalance = await Balance.findOne({ userId: session.user.id })
   if (!hunterBalance) {
     hunterBalance = await Balance.create({ userId: session.user.id, amount: 0 })
@@ -66,10 +75,11 @@ export async function POST(req: Request) {
   hunterBalance.amount += Number(campaign.reward)
   await hunterBalance.save()
 
+  // ✅ langsung kirim balance terbaru ke frontend
   return NextResponse.json({
     success: true,
     newSubmission: submission.toObject(),
     updatedCampaign: campaign.toObject(),
-    newBalance: hunterBalance.amount, // <-- frontend bisa langsung pakai ini
+    newBalance: hunterBalance.amount,
   })
 }

@@ -6,12 +6,17 @@ import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { ExternalLink } from 'lucide-react'
-import { Dialog } from '@headlessui/react'
+import TaskModal from '@/components/TaskModal' // <-- import TaskModal Anda
+// NOTE: kita tidak mengubah bagian lain yang tidak perlu
 
 interface Task {
   service: string
   type: string
   url: string
+}
+
+interface TaskProgress extends Task {
+  done: boolean
 }
 
 interface Campaign {
@@ -20,7 +25,7 @@ interface Campaign {
   description: string
   reward: string
   status: 'active' | 'finished' | 'rejected'
-  tasks?: Task[]
+  tasks?: TaskProgress[]
   participants?: string[]
 }
 
@@ -106,16 +111,36 @@ export default function HunterDashboard() {
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // ✅ ketika confirm task
-  const handleConfirmTask = async () => {
-    if (!selectedCampaign) return
+  // --- Helper kecil: submit dengan tasks yang diberikan (dipakai oleh modal) ---
+  const submitSubmission = async (campaignId: string, tasks?: TaskProgress[]) => {
+    if (!campaignId) return
     try {
-      setLoadingFor(selectedCampaign._id, true)
-      const res = await fetch(`/api/campaigns/${selectedCampaign._id}`, { method: 'PATCH' })
+      setLoadingFor(campaignId, true)
+      const res = await fetch(`/api/submissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          tasks,
+        }),
+      })
 
       if (!res.ok) {
-        alert('Failed to submit task. Please try again.')
+        // ambil body jika ada
+        let errMsg = 'Failed to submit task. Please try again.'
+        try {
+          const errBody = await res.json()
+          if (errBody?.error) errMsg = errBody.error
+        } catch {}
+        alert(errMsg)
         return
+      }
+
+      const data = await res.json()
+
+      // langsung update balance dari API response ✅
+      if (data.newBalance !== undefined) {
+        setDbBalance(data.newBalance)
       }
 
       // refresh list
@@ -126,13 +151,18 @@ export default function HunterDashboard() {
 
       if (completedRes.ok) setCompletedCampaigns(await completedRes.json())
       if (campaignsRes.ok) setCampaigns(await campaignsRes.json())
-      fetchBalance()
       setSelectedCampaign(null)
     } catch (err) {
       console.error('Submit task failed', err)
     } finally {
-      if (selectedCampaign) setLoadingFor(selectedCampaign._id, false)
+      setLoadingFor(campaignId, false)
     }
+  }
+
+  // ✅ ketika confirm task dari tombol lama (tetap ada kompatibilitas)
+  const handleConfirmTask = async () => {
+    if (!selectedCampaign) return
+    await submitSubmission(selectedCampaign._id, selectedCampaign.tasks)
   }
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
@@ -200,7 +230,12 @@ export default function HunterDashboard() {
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
                     style={{ backgroundColor: '#16a34a' }}
-                    onClick={() => setSelectedCampaign(c)}
+                    onClick={() =>
+                      setSelectedCampaign({
+                        ...c,
+                        tasks: c.tasks?.map((t) => ({ ...t, done: false })) || [],
+                      })
+                    }
                   >
                     {isLoading(c._id) ? 'Submitting...' : 'Submit Task'}
                   </button>
@@ -218,45 +253,20 @@ export default function HunterDashboard() {
         </div>
       </div>
 
-      {/* Modal untuk task */}
-      <Dialog open={!!selectedCampaign} onClose={() => setSelectedCampaign(null)} className="relative z-50">
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <Dialog.Panel className="bg-gray-800 text-white rounded-xl p-6 w-full max-w-lg">
-            <Dialog.Title className="text-lg font-bold mb-4">{selectedCampaign?.title}</Dialog.Title>
-            <p className="mb-4 text-gray-300">{selectedCampaign?.description}</p>
-
-            {selectedCampaign?.tasks?.length ? (
-              <div className="space-y-3 mb-4">
-                {selectedCampaign.tasks.map((task, i) => (
-                  <a
-                    key={i}
-                    href={task.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block bg-gray-700 p-3 rounded hover:bg-gray-600 flex justify-between items-center"
-                  >
-                    <span>
-                      {task.service.toUpperCase()} — {task.type}
-                    </span>
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400">No tasks provided</p>
-            )}
-
-            <button
-              className="w-full py-2 rounded font-semibold mt-4"
-              style={{ backgroundColor: '#16a34a' }}
-              onClick={handleConfirmTask}
-              disabled={isLoading(selectedCampaign?._id || '')}
-            >
-              {isLoading(selectedCampaign?._id || '') ? 'Submitting...' : 'Confirm & Submit'}
-            </button>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
+      {/* Modal untuk task -> digantikan dengan TaskModal Anda */}
+      {selectedCampaign && (
+        <TaskModal
+          campaignId={selectedCampaign._id}
+          title={selectedCampaign.title}
+          description={selectedCampaign.description}
+          tasks={selectedCampaign.tasks || []}
+          onClose={() => setSelectedCampaign(null)}
+          onConfirm={async (tasks) => {
+            // gunakan submitSubmission dengan tasks dari modal
+            await submitSubmission(selectedCampaign._id, tasks as TaskProgress[])
+          }}
+        />
+      )}
 
       {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">

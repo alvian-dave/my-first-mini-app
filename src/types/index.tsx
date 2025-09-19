@@ -56,13 +56,39 @@ export interface Campaign {
 }
 
 // ==========================
+// SocialAccount
+// ==========================
+export interface SocialAccount {
+  _id?: string                // dari Mongo
+  userId: string              // ID user di WorldApp
+  provider: "twitter"         // bisa ditambahkan provider lain nanti
+  accessToken: string
+  refreshToken?: string
+  expiresAt?: string          // ISO string dari Date
+  socialId: string            // misal twitter user id
+  username?: string
+  profileUrl?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+// ==========================
 // Submission
 // ==========================
+export interface SubmissionTask {
+  service: "twitter" | "discord" | "telegram"
+  type: string
+  url: string
+  done: boolean
+  verifiedAt?: string
+}
+
 export interface Submission {
   _id?: string
   userId: string
   campaignId: string
-  status: "submitted" | "approved" | "rejected"
+  tasks: SubmissionTask[]
+  status: "pending" | "submitted"
   createdAt?: string
   updatedAt?: string
 }
