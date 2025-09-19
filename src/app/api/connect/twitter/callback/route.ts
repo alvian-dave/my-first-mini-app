@@ -8,6 +8,23 @@ const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID
 const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET
 const TWITTER_REDIRECT_URI = process.env.TWITTER_REDIRECT_URI
 
+// ✅ interface untuk type-safe response token
+interface TwitterTokenResponse {
+  token_type: string
+  expires_in: number
+  access_token: string
+  refresh_token?: string
+  scope?: string
+}
+
+interface TwitterUserData {
+  data: {
+    id: string
+    name: string
+    username: string
+  }
+}
+
 export async function GET(req: Request) {
   await dbConnect()
   const session = await auth()
@@ -24,7 +41,11 @@ export async function GET(req: Request) {
   }
 
   // Ambil temporary SocialAccount untuk verifikasi state & codeVerifier
-  const temp = await SocialAccount.findOne({ userId: session.user.id, provider: 'twitter_temp', state })
+  const temp = await SocialAccount.findOne({
+    userId: session.user.id,
+    provider: 'twitter_temp',
+    state,
+  })
   if (!temp) {
     return NextResponse.json({ error: 'Invalid state' }, { status: 400 })
   }
@@ -42,13 +63,16 @@ export async function GET(req: Request) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: 'Basic ' + Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString('base64'),
+      Authorization:
+        'Basic ' +
+        Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString('base64'),
     },
     body: body.toString(),
   })
 
-  const tokenData = await tokenRes.json()
-  if (!tokenData.access_token) {
+  const tokenData: TwitterTokenResponse = await tokenRes.json()
+
+  if (!tokenData?.access_token) {
     return NextResponse.json({ error: 'Failed to get access token' }, { status: 400 })
   }
 
@@ -58,9 +82,9 @@ export async function GET(req: Request) {
       Authorization: `Bearer ${tokenData.access_token}`,
     },
   })
-  const userData = await userRes.json()
+  const userData: TwitterUserData = await userRes.json()
 
-  if (!userData.data?.id) {
+  if (!userData?.data?.id) {
     return NextResponse.json({ error: 'Failed to fetch Twitter profile' }, { status: 400 })
   }
 
@@ -71,7 +95,9 @@ export async function GET(req: Request) {
       $set: {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
-        expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : null,
+        expiresAt: tokenData.expires_in
+          ? new Date(Date.now() + tokenData.expires_in * 1000)
+          : null,
         socialId: userData.data.id,
         username: userData.data.username,
         profileUrl: `https://twitter.com/${userData.data.username}`,
@@ -83,5 +109,6 @@ export async function GET(req: Request) {
   // Hapus temporary
   await SocialAccount.deleteOne({ userId: session.user.id, provider: 'twitter_temp' })
 
-  return NextResponse.redirect('/dashboard/hunter') // redirect ke dashboard
+  // Redirect ke dashboard hunter
+  return NextResponse.redirect('/dashboard/hunter')
 }
