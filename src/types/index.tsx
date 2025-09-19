@@ -61,13 +61,22 @@ export interface Campaign {
 export interface SocialAccount {
   _id?: string                // dari Mongo
   userId: string              // ID user di WorldApp
-  provider: "twitter"         // bisa ditambahkan provider lain nanti
-  accessToken: string
+
+  // Bisa record final (twitter) atau sementara (twitter_temp)
+  provider: "twitter" | "twitter_temp"
+
+  // Field final (kalau sudah connect)
+  accessToken?: string
   refreshToken?: string
   expiresAt?: string          // ISO string dari Date
-  socialId: string            // misal twitter user id
+  socialId?: string           // misal twitter user id
   username?: string
   profileUrl?: string
+
+  // Field sementara (PKCE, dipakai di twitter_temp)
+  state?: string
+  codeVerifier?: string
+
   createdAt?: string
   updatedAt?: string
 }

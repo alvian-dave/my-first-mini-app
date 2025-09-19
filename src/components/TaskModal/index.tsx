@@ -46,18 +46,49 @@ export default function TaskModal({
       }
     }
     checkTwitterStatus()
+
+    // ✅ listen pesan dari popup OAuth
+    const handleMessage = (event: MessageEvent) => {
+  if (event.origin === window.location.origin && event.data?.type === 'TWITTER_CONNECTED') {
+    setTwitterConnected(true)
+  }
+}
+    window.addEventListener('message', handleMessage)
+
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
   }, [])
 
   const handleVerify = async (idx: number, task: Task) => {
     try {
       setLoading(true)
 
-      // ✅ kalau belum connect twitter → redirect ke OAuth
+      // ✅ kalau belum connect twitter → buka popup OAuth
       if (task.service === 'twitter' && !twitterConnected) {
         const res = await fetch('/api/connect/twitter/start')
         const data = await res.json()
         if (data.url) {
-          window.location.href = data.url
+          const popup = window.open(
+            data.url,
+            'ConnectTwitter',
+            'width=600,height=700,scrollbars=yes'
+          )
+
+          // fallback check kalau popup langsung close
+          const timer = setInterval(() => {
+            if (popup && popup.closed) {
+              clearInterval(timer)
+              // cek lagi status twitter
+              fetch('/api/connect/twitter/status')
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d.connected) {
+                    setTwitterConnected(true)
+                  }
+                })
+            }
+          }, 1000)
         }
         return
       }
