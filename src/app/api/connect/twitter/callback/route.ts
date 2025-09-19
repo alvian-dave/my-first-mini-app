@@ -8,23 +8,6 @@ const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID
 const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET
 const TWITTER_REDIRECT_URI = process.env.TWITTER_REDIRECT_URI
 
-// ✅ interface untuk type-safe response token
-interface TwitterTokenResponse {
-  token_type: string
-  expires_in: number
-  access_token: string
-  refresh_token?: string
-  scope?: string
-}
-
-interface TwitterUserData {
-  data: {
-    id: string
-    name: string
-    username: string
-  }
-}
-
 export async function GET(req: Request) {
   await dbConnect()
   const session = await auth()
@@ -40,7 +23,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Missing code or state' }, { status: 400 })
   }
 
-  // Ambil temporary SocialAccount untuk verifikasi state & codeVerifier
+  // Ambil temporary SocialAccount
   const temp = await SocialAccount.findOne({
     userId: session.user.id,
     provider: 'twitter_temp',
@@ -70,10 +53,21 @@ export async function GET(req: Request) {
     body: body.toString(),
   })
 
-  const tokenData: TwitterTokenResponse = await tokenRes.json()
-
-  if (!tokenData?.access_token) {
+  // ✅ parsing aman
+  const tokenJson = await tokenRes.json()
+  if (
+    typeof tokenJson !== 'object' ||
+    tokenJson === null ||
+    !('access_token' in tokenJson) ||
+    typeof (tokenJson as any).access_token !== 'string'
+  ) {
     return NextResponse.json({ error: 'Failed to get access token' }, { status: 400 })
+  }
+
+  const tokenData = tokenJson as {
+    access_token: string
+    refresh_token?: string
+    expires_in?: number
   }
 
   // Ambil info akun Twitter
@@ -82,11 +76,18 @@ export async function GET(req: Request) {
       Authorization: `Bearer ${tokenData.access_token}`,
     },
   })
-  const userData: TwitterUserData = await userRes.json()
-
-  if (!userData?.data?.id) {
+  const userJson = await userRes.json()
+  if (
+    typeof userJson !== 'object' ||
+    userJson === null ||
+    !('data' in userJson) ||
+    !('id' in (userJson as any).data) ||
+    !('username' in (userJson as any).data)
+  ) {
     return NextResponse.json({ error: 'Failed to fetch Twitter profile' }, { status: 400 })
   }
+
+  const userData = (userJson as any).data
 
   // Simpan ke SocialAccount (replace jika sudah ada)
   await SocialAccount.updateOne(
@@ -98,9 +99,9 @@ export async function GET(req: Request) {
         expiresAt: tokenData.expires_in
           ? new Date(Date.now() + tokenData.expires_in * 1000)
           : null,
-        socialId: userData.data.id,
-        username: userData.data.username,
-        profileUrl: `https://twitter.com/${userData.data.username}`,
+        socialId: userData.id,
+        username: userData.username,
+        profileUrl: `https://twitter.com/${userData.username}`,
       },
     },
     { upsert: true }
