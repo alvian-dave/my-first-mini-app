@@ -32,7 +32,7 @@ export default function TaskModal({
   const [loading, setLoading] = useState(false)
   const [twitterConnected, setTwitterConnected] = useState(false)
 
-  // ✅ cek ke backend apakah hunter sudah connect twitter
+  // ✅ cek status twitter dari backend
   useEffect(() => {
     const checkTwitterStatus = async () => {
       try {
@@ -47,12 +47,15 @@ export default function TaskModal({
     }
     checkTwitterStatus()
 
-    // ✅ listen pesan dari popup OAuth
+    // ✅ listen postMessage dari /twitter-success
     const handleMessage = (event: MessageEvent) => {
-  if (event.origin === window.location.origin && event.data?.type === 'TWITTER_CONNECTED') {
-    setTwitterConnected(true)
-  }
-}
+      if (
+        event.origin === window.location.origin &&
+        event.data?.type === 'TWITTER_CONNECTED'
+      ) {
+        setTwitterConnected(true)
+      }
+    }
     window.addEventListener('message', handleMessage)
 
     return () => {
@@ -64,36 +67,19 @@ export default function TaskModal({
     try {
       setLoading(true)
 
-      // ✅ kalau belum connect twitter → buka popup OAuth
+      // ✅ kalau task butuh twitter tapi belum connect → redirect in-app
       if (task.service === 'twitter' && !twitterConnected) {
         const res = await fetch('/api/connect/twitter/start')
         const data = await res.json()
         if (data.url) {
-          const popup = window.open(
-            data.url,
-            'ConnectTwitter',
-            'width=600,height=700,scrollbars=yes'
-          )
-
-          // fallback check kalau popup langsung close
-          const timer = setInterval(() => {
-            if (popup && popup.closed) {
-              clearInterval(timer)
-              // cek lagi status twitter
-              fetch('/api/connect/twitter/status')
-                .then((r) => r.json())
-                .then((d) => {
-                  if (d.connected) {
-                    setTwitterConnected(true)
-                  }
-                })
-            }
-          }, 1000)
+          // ⛔ JANGAN window.open (di World App gagal)
+          // ✅ pakai full redirect in-app
+          window.location.href = data.url
         }
         return
       }
 
-      // ✅ panggil API verifikasi sesuai task
+      // ✅ panggil API verifikasi untuk task biasa
       const res = await fetch('/api/task/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

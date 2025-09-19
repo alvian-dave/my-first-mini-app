@@ -112,6 +112,6 @@ export async function GET(req: Request) {
   // ✅ KUNCI FIX:
   // Jangan redirect langsung ke /dashboard (bikin lose auth)
   // Redirect ke halaman khusus yang nanti dibaca oleh window.opener (TaskModal)
-  const successUrl = `${process.env.AUTH_URL}/twitter-success?status=connected`
+  const successUrl = `/twitter-success?status=connected`
   return NextResponse.redirect(successUrl)
 }
