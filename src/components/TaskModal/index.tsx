@@ -52,7 +52,7 @@ export default function TaskModal({
     // ✅ load submission tasks dari backend
     const fetchSubmission = async () => {
       try {
-        const res = await fetch(`/api/submission?campaignId=${campaignId}`)
+        const res = await fetch(`/api/submissions?campaignId=${campaignId}`)
         const data = await res.json()
         if (res.ok && data.submission) {
           setTaskStates(data.submission.tasks)
@@ -129,7 +129,7 @@ export default function TaskModal({
 
   try {
     setLoading(true)
-    const res = await fetch('/api/submission', {
+    const res = await fetch('/api/submissions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ campaignId }),
