@@ -14,6 +14,7 @@ interface CampaignTask {
   type: string
   url: string
 }
+
 interface SubmissionTask {
   service: ServiceName
   type: string
@@ -90,10 +91,16 @@ export async function POST(req: Request) {
       )
     }
 
-    // --- ambil username dari URL
+    // --- ambil username dari URL (support twitter.com & x.com)
     let usernameToCheck: string
     try {
       const u = new URL(incomingTask.url)
+      if (
+        !u.hostname.includes("twitter.com") &&
+        !u.hostname.includes("x.com")
+      ) {
+        throw new Error("Not a valid Twitter/X domain")
+      }
       usernameToCheck = u.pathname.replace(/^\/+|\/+$/g, "")
       if (!usernameToCheck) throw new Error("empty username")
     } catch {
@@ -110,7 +117,7 @@ export async function POST(req: Request) {
     )
     if (!targetId) {
       return NextResponse.json(
-        { error: "Twitter target not found" },
+        { error: "Twitter target not found", username: usernameToCheck },
         { status: 400 }
       )
     }
