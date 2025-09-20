@@ -1,3 +1,4 @@
+// /src/app/api/submission/route.ts
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import Submission from "@/models/Submission"
@@ -12,7 +13,6 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // ambil semua submission hunter
   const submissions = await Submission.find({ userId: session.user.id }).lean()
   return NextResponse.json({ submissions })
 }
@@ -29,13 +29,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "campaignId required" }, { status: 400 })
   }
 
-  // cek hunter sudah submit campaign ini?
-  const exists = await Submission.findOne({
+  // cek submission hunter
+  const submission = await Submission.findOne({
     userId: session.user.id,
     campaignId,
-  }).lean()
-  if (exists) {
-    return NextResponse.json({ error: "Already submitted" }, { status: 400 })
+  })
+  if (!submission) {
+    return NextResponse.json(
+      { error: "No submission found. Please verify tasks first." },
+      { status: 400 }
+    )
+  }
+
+  // kalau belum semua task done → error
+  if (submission.status !== "submitted") {
+    return NextResponse.json(
+      { error: "Not all tasks verified yet" },
+      { status: 400 }
+    )
+  }
+
+  // reward cuma dikasih sekali → pake flag "rewarded"
+  if ((submission as any).rewarded) {
+    return NextResponse.json({ error: "Already rewarded" }, { status: 400 })
   }
 
   // ambil campaign
@@ -47,39 +63,26 @@ export async function POST(req: Request) {
     )
   }
 
-  // buat submission dengan tasks dari campaign
-  const submission = await Submission.create({
-    userId: session.user.id,
-    campaignId,
-    tasks: campaign.tasks.map((t: any) => ({
-      service: t.service,
-      type: t.type,
-      url: t.url,
-      done: false,
-    })),
-    status: "submitted",
-    createdAt: new Date(),
-  })
-
-  // increment contributors campaign
+  // increment contributors
   campaign.contributors = (campaign.contributors || 0) + 1
   await campaign.save()
 
-  // ambil / buat balance hunter
+  // update balance hunter
   let hunterBalance = await Balance.findOne({ userId: session.user.id })
   if (!hunterBalance) {
     hunterBalance = await Balance.create({ userId: session.user.id, amount: 0 })
   }
-
-  // tambah reward ke balance hunter
   hunterBalance.amount += Number(campaign.reward)
   await hunterBalance.save()
 
-  // ✅ langsung kirim balance terbaru ke frontend
+  // tandai sudah reward
+  ;(submission as any).rewarded = true
+  await submission.save()
+
   return NextResponse.json({
     success: true,
-    newSubmission: submission.toObject(),
-    updatedCampaign: campaign.toObject(),
+    submission: submission.toObject(),
+    campaign: campaign.toObject(),
     newBalance: hunterBalance.amount,
   })
 }

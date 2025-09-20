@@ -98,6 +98,7 @@ export interface Submission {
   campaignId: string
   tasks: SubmissionTask[]
   status: "pending" | "submitted"
+  rewarded?: boolean           // ✅ sinkron dengan schema
   createdAt?: string
   updatedAt?: string
 }

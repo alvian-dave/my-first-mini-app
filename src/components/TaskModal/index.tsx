@@ -34,7 +34,7 @@ export default function TaskModal({
   const [twitterConnected, setTwitterConnected] = useState(false)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
-  // ✅ cek status twitter dari backend
+  // ✅ cek status twitter
   useEffect(() => {
     const checkTwitterStatus = async () => {
       try {
@@ -48,6 +48,20 @@ export default function TaskModal({
       }
     }
     checkTwitterStatus()
+
+    // ✅ load submission tasks dari backend
+    const fetchSubmission = async () => {
+      try {
+        const res = await fetch(`/api/submission?campaignId=${campaignId}`)
+        const data = await res.json()
+        if (res.ok && data.submission) {
+          setTaskStates(data.submission.tasks)
+        }
+      } catch (err) {
+        console.error('Failed to load submission', err)
+      }
+    }
+    fetchSubmission()
 
     // ✅ listen postMessage dari /twitter-success
     const handleMessage = (event: MessageEvent) => {
@@ -71,25 +85,21 @@ export default function TaskModal({
     return () => {
       window.removeEventListener('message', handleMessage)
     }
-  }, [])
+  }, [campaignId])
 
   const handleVerify = async (idx: number, task: Task) => {
     try {
       setLoading(true)
 
-      // ✅ kalau task butuh twitter tapi belum connect → redirect in-app
       if (task.service === 'twitter' && !twitterConnected) {
         const res = await fetch('/api/connect/twitter/start')
         const data = await res.json()
         if (data.url) {
-          // ⛔ JANGAN window.open (di World App gagal)
-          // ✅ pakai full redirect in-app
           window.location.href = data.url
         }
         return
       }
 
-      // ✅ panggil API verifikasi untuk task biasa
       const res = await fetch('/api/task/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,10 +107,8 @@ export default function TaskModal({
       })
       const data = await res.json()
 
-      if (data.success) {
-        const updated = [...taskStates]
-        updated[idx].done = true
-        setTaskStates(updated)
+      if (data.success && data.submission) {
+        setTaskStates(data.submission.tasks)
         setToast({ message: 'Task verified successfully!', type: 'success' })
       } else {
         setToast({ message: data.error || 'Verification failed', type: 'error' })
@@ -114,19 +122,39 @@ export default function TaskModal({
   }
 
   const handleConfirm = async () => {
-    if (!taskStates.every((t) => t.done)) {
-      setToast({ message: 'Please complete all tasks first.', type: 'error' })
-      return
-    }
-
-    try {
-      setLoading(true)
-      await onConfirm(taskStates)
-      setToast({ message: 'All tasks submitted successfully!', type: 'success' })
-    } finally {
-      setLoading(false)
-    }
+  if (!taskStates.every((t) => t.done)) {
+    setToast({ message: 'Please complete all tasks first.', type: 'error' })
+    return
   }
+
+  try {
+    setLoading(true)
+    const res = await fetch('/api/submission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaignId }),
+    })
+    const data = await res.json()
+
+    if (res.ok && data.success) {
+      setTaskStates(data.newSubmission.tasks)
+      setToast({ message: 'All tasks submitted successfully!', type: 'success' })
+      onConfirm(taskStates) // refresh parent
+      onClose()             // tutup modal
+    } else if (data.error === 'Already submitted') {
+      onConfirm(taskStates) // refresh parent
+      onClose()             // tutup modal
+      return
+    } else {
+      setToast({ message: data.error || 'Submission failed.', type: 'error' })
+    }
+  } catch (err) {
+    console.error('submit failed', err)
+    setToast({ message: 'Submission failed due to an error.', type: 'error' })
+  } finally {
+    setLoading(false)
+  }
+}
 
   return (
     <Dialog open={true} onClose={onClose} className="relative z-50">
@@ -179,7 +207,7 @@ export default function TaskModal({
             Confirm & Submit
           </button>
 
-          {/* Render Toast */}
+          {/* ✅ Render Toast */}
           {toast && (
             <Toast
               message={toast.message}
