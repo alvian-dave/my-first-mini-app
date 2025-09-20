@@ -1,4 +1,3 @@
-// /src/app/api/task/verify/route.ts
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { auth } from "@/auth"
@@ -92,30 +91,30 @@ export async function POST(req: Request) {
     }
 
     // --- ambil username dari URL (support twitter.com & x.com)
-let usernameToCheck: string
-try {
-  const u = new URL(incomingTask.url)
-  if (
-    !u.hostname.includes("twitter.com") &&
-    !u.hostname.includes("x.com")
-  ) {
-    throw new Error("Not a valid Twitter/X domain")
-  }
+    let usernameToCheck: string
+    try {
+      const u = new URL(incomingTask.url)
+      if (
+        !u.hostname.includes("twitter.com") &&
+        !u.hostname.includes("x.com")
+      ) {
+        throw new Error("Not a valid Twitter/X domain")
+      }
 
-  // normalize username
-  usernameToCheck = u.pathname
-    .replace(/^\/+/, "") // hapus slash depan
-    .split(/[/?]/)[0] // ambil hanya segmen pertama sebelum ? atau /
-    .replace(/^@/, "") // hapus @ kalau ada
-     .toLowerCase()
+      // normalize username
+      usernameToCheck = u.pathname
+        .replace(/^\/+/, "")
+        .split(/[/?]/)[0]
+        .replace(/^@/, "")
+        .toLowerCase()
 
-  if (!usernameToCheck) throw new Error("empty username")
-} catch (err) {
-  return NextResponse.json(
-    { error: "Invalid Twitter URL in task", details: String(err) },
-    { status: 400 }
-  )
-}
+      if (!usernameToCheck) throw new Error("empty username")
+    } catch (err) {
+      return NextResponse.json(
+        { error: "Invalid Twitter URL in task", details: String(err) },
+        { status: 400 }
+      )
+    }
 
     // --- resolve targetId
     const targetId = await resolveTwitterUserId(
@@ -149,53 +148,56 @@ try {
 
   // 5) update Submission
   const now = new Date()
-  let submission = await Submission.findOne({
+  const submission = await Submission.findOne({
     userId: session.user.id,
     campaignId,
   })
 
   if (!submission) {
-    submission = await Submission.create({
-      userId: session.user.id,
-      campaignId,
-      tasks: [{ ...incomingTask, done: true, verifiedAt: now }],
-      status: campaignTasks.length === 1 ? "submitted" : "pending",
-    })
-  } else {
-    const subTasks = (Array.isArray((submission as any).tasks)
-      ? (submission as any).tasks
-      : []) as SubmissionTask[]
-
-    const idx = subTasks.findIndex(
-      (s) =>
-        s.service === incomingTask.service &&
-        s.type === incomingTask.type &&
-        s.url === incomingTask.url
+    return NextResponse.json(
+      { error: "Submission not found. Join the campaign first." },
+      { status: 404 }
     )
-
-    if (idx >= 0) {
-      subTasks[idx] = { ...subTasks[idx], done: true, verifiedAt: now }
-    } else {
-      subTasks.push({ ...incomingTask, done: true, verifiedAt: now })
-    }
-
-    submission.tasks = subTasks
-
-    // pastikan semua task campaign sudah done
-    submission.status = campaignTasks.every((ct) =>
-      submission.tasks.some(
-        (st: SubmissionTask) =>
-          st.service === ct.service &&
-          st.type === ct.type &&
-          st.url === ct.url &&
-          st.done
-      )
-    )
-      ? "submitted"
-      : "pending"
-
-    await submission.save()
   }
 
-  return NextResponse.json({ success: true, status: submission.status })
+  const subTasks = (Array.isArray((submission as any).tasks)
+    ? (submission as any).tasks
+    : []) as SubmissionTask[]
+
+  const idx = subTasks.findIndex(
+    (s) =>
+      s.service === incomingTask.service &&
+      s.type === incomingTask.type &&
+      s.url === incomingTask.url
+  )
+
+  if (idx >= 0) {
+    subTasks[idx] = { ...subTasks[idx], done: true, verifiedAt: now }
+  } else {
+    // fallback: tambahkan task (jika belum ada di submission)
+    subTasks.push({ ...incomingTask, done: true, verifiedAt: now })
+  }
+
+  submission.tasks = subTasks
+
+  // pastikan semua task campaign sudah done
+  submission.status = campaignTasks.every((ct) =>
+    submission.tasks.some(
+      (st: SubmissionTask) =>
+        st.service === ct.service &&
+        st.type === ct.type &&
+        st.url === ct.url &&
+        st.done
+    )
+  )
+    ? "submitted"
+    : "pending"
+
+  await submission.save()
+
+  return NextResponse.json({
+    success: true,
+    status: submission.status,
+    submission: submission.toObject(),
+  })
 }
