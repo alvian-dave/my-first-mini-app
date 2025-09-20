@@ -14,47 +14,11 @@ function botHeaders() {
 }
 
 // ─────────────────────────────
-// Token refresh (tetap ada, kalau pakai OAuth2 v2 hunter login)
-// ─────────────────────────────
-export async function refreshTwitterToken(account: any): Promise<string> {
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: account.refreshToken,
-    client_id: process.env.TWITTER_CLIENT_ID!,
-  })
-
-  const res = await fetch("https://api.twitter.com/2/oauth2/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  })
-
-  const json = await res.json()
-  if (!("access_token" in json)) {
-    throw new Error("Failed to refresh Twitter token")
-  }
-
-  account.accessToken = json.access_token
-  if (json.refresh_token) {
-    account.refreshToken = json.refresh_token
-  }
-  account.expiresAt = json.expires_in
-    ? new Date(Date.now() + json.expires_in * 1000)
-    : null
-
-  await account.save()
-  return account.accessToken
-}
-
-// ─────────────────────────────
-// Resolve userId dari username
+// Resolve userId dari username (Bot only)
 // ─────────────────────────────
 export async function resolveTwitterUserId(
-  username: string,
-  token: string,
-  social?: any
+  username: string
 ): Promise<string | null> {
-  // Normalisasi username
   const clean = username
     .trim()
     .replace(/^@/, "")
@@ -63,52 +27,27 @@ export async function resolveTwitterUserId(
     .split(/[/?]/)[0]
     .toLowerCase()
 
-  // Fungsi pakai API v2
-  async function doResolve(tokenToUse: string) {
+  try {
     const res = await fetch(
       `https://api.twitter.com/2/users/by/username/${clean}`,
-      { headers: { Authorization: `Bearer ${tokenToUse}` } }
+      { headers: botHeaders() }
     )
+
     if (!res.ok) {
-      console.error("resolveTwitterUserId v2 failed:", clean, res.status)
+      console.error("resolveTwitterUserId failed:", clean, res.status)
       return null
     }
+
     const json = await res.json().catch(() => null)
     return json?.data?.id ?? null
+  } catch (e) {
+    console.error("resolveTwitterUserId error:", e)
+    return null
   }
-
-  // Coba pakai token hunter dulu
-  let userId = await doResolve(token)
-
-  // Kalau 401 → refresh
-  if (!userId && social) {
-    try {
-      const newToken = await refreshTwitterToken(social)
-      userId = await doResolve(newToken)
-    } catch (e) {
-      console.error("refreshTwitterToken failed:", e)
-    }
-  }
-
-  // Kalau masih gagal → fallback ke bot scraper
-  if (!userId) {
-    try {
-      const res = await fetch(
-        `https://api.twitter.com/2/users/by/username/${clean}`,
-        { headers: botHeaders() }
-      )
-      const json = await res.json().catch(() => null)
-      userId = json?.data?.id ?? null
-    } catch (e) {
-      console.error("bot resolveTwitterUserId failed:", e)
-    }
-  }
-
-  return userId
 }
 
 // ─────────────────────────────
-// Check apakah hunter follow target (pakai bot scraper!)
+// Check apakah hunter follow target (Bot only)
 // ─────────────────────────────
 export async function checkTwitterFollow(
   social: any,
@@ -130,6 +69,60 @@ export async function checkTwitterFollow(
     return json?.relationship?.source?.following === true
   } catch (e) {
     console.error("checkTwitterFollow error:", e)
+    return false
+  }
+}
+
+// ─────────────────────────────
+// Check apakah hunter like tweet (Bot only)
+// ─────────────────────────────
+export async function checkTwitterLike(
+  userId: string,
+  tweetId: string
+): Promise<boolean> {
+  try {
+    const url = `https://api.twitter.com/2/tweets/${tweetId}/liking_users`
+
+    const res = await fetch(url, { headers: botHeaders() })
+
+    if (!res.ok) {
+      console.error("checkTwitterLike failed:", res.status, await res.text())
+      return false
+    }
+
+    const json = await res.json().catch(() => null)
+    if (!json?.data) return false
+
+    return json.data.some((u: any) => u.id === userId)
+  } catch (e) {
+    console.error("checkTwitterLike error:", e)
+    return false
+  }
+}
+
+// ─────────────────────────────
+// Check apakah hunter retweet (Bot only)
+// ─────────────────────────────
+export async function checkTwitterRetweet(
+  userId: string,
+  tweetId: string
+): Promise<boolean> {
+  try {
+    const url = `https://api.twitter.com/2/tweets/${tweetId}/retweeted_by`
+
+    const res = await fetch(url, { headers: botHeaders() })
+
+    if (!res.ok) {
+      console.error("checkTwitterRetweet failed:", res.status, await res.text())
+      return false
+    }
+
+    const json = await res.json().catch(() => null)
+    if (!json?.data) return false
+
+    return json.data.some((u: any) => u.id === userId)
+  } catch (e) {
+    console.error("checkTwitterRetweet error:", e)
     return false
   }
 }

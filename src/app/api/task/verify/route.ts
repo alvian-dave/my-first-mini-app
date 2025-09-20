@@ -5,7 +5,7 @@ import { auth } from "@/auth"
 import { Campaign } from "@/models/Campaign"
 import SocialAccount from "@/models/SocialAccount"
 import Submission from "@/models/Submission"
-import { resolveTwitterUserId, checkTwitterFollow } from "@/lib/twitter"
+import { botResolveUserId, checkTwitterFollow } from "@/lib/twitter"
 
 type ServiceName = "twitter" | "discord" | "telegram"
 
@@ -56,7 +56,6 @@ export async function POST(req: Request) {
     )
   }
 
-  // normalize
   const service = task.service as ServiceName
   const incomingTask: CampaignTask = {
     service,
@@ -103,7 +102,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // --- ambil username dari URL (support twitter.com & x.com)
+    // --- ambil username dari URL
     let usernameToCheck: string
     try {
       const u = new URL(incomingTask.url)
@@ -132,13 +131,8 @@ export async function POST(req: Request) {
       )
     }
 
-    // --- resolve targetId (FIX: pass social agar bisa refresh token)
-    const targetId = await resolveTwitterUserId(
-      usernameToCheck,
-      social.accessToken,
-      social
-    )
-
+    // --- resolve targetId pakai bot
+    const targetId = await botResolveUserId(usernameToCheck)
     if (!targetId) {
       return NextResponse.json(
         {
@@ -150,23 +144,15 @@ export async function POST(req: Request) {
       )
     }
 
-    // --- check follow
-    try {
-      const isFollowing = await checkTwitterFollow(social, targetId)
-      if (!isFollowing) {
-        return NextResponse.json(
-          {
-            error: "Twitter task not completed (not following)",
-            code: "NOT_FOLLOWING",
-          },
-          { status: 400 }
-        )
-      }
-    } catch (err) {
-      console.error("Twitter verification error:", err)
+    // --- check follow pakai bot
+    const isFollowing = await checkTwitterFollow(social, targetId)
+    if (!isFollowing) {
       return NextResponse.json(
-        { error: "Failed to verify Twitter follow", code: "VERIFY_FAILED" },
-        { status: 500 }
+        {
+          error: "Twitter task not completed (not following)",
+          code: "NOT_FOLLOWING",
+        },
+        { status: 400 }
       )
     }
   }
@@ -225,7 +211,6 @@ export async function POST(req: Request) {
 
     submission.tasks = subTasks
 
-    // pastikan semua task campaign sudah done
     submission.status = campaignTasks.every((ct) =>
       submission.tasks.some(
         (st: SubmissionTask) =>
