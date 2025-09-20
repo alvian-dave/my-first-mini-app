@@ -132,14 +132,20 @@ export async function POST(req: Request) {
       )
     }
 
-    // --- resolve targetId
+    // --- resolve targetId (FIX: pass social agar bisa refresh token)
     const targetId = await resolveTwitterUserId(
       usernameToCheck,
-      social.accessToken
+      social.accessToken,
+      social
     )
+
     if (!targetId) {
       return NextResponse.json(
-        { error: "Twitter target not found", code: "TARGET_NOT_FOUND", username: usernameToCheck },
+        {
+          error: "Twitter target not found",
+          code: "TARGET_NOT_FOUND",
+          username: usernameToCheck,
+        },
         { status: 400 }
       )
     }
@@ -149,7 +155,10 @@ export async function POST(req: Request) {
       const isFollowing = await checkTwitterFollow(social, targetId)
       if (!isFollowing) {
         return NextResponse.json(
-          { error: "Twitter task not completed (not following)", code: "NOT_FOLLOWING" },
+          {
+            error: "Twitter task not completed (not following)",
+            code: "NOT_FOLLOWING",
+          },
           { status: 400 }
         )
       }
