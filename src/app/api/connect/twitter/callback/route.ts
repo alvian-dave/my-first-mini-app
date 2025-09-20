@@ -1,12 +1,28 @@
-// /api/connect/twitter/callback.ts
+// /src/app/api/connect/twitter/callback/route.ts
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import SocialAccount from "@/models/SocialAccount"
-import fetch from "node-fetch"
 
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID
 const TWITTER_REDIRECT_URI = process.env.TWITTER_REDIRECT_URI
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+const APP_URL = process.env.AUTH_URL || "http://localhost:3000"
+
+interface TwitterTokenResponse {
+  access_token: string
+  refresh_token?: string
+  expires_in?: number
+  token_type?: string
+  scope?: string
+}
+
+interface TwitterUserResponse {
+  data?: {
+    id: string
+    username: string
+    name?: string
+  }
+  errors?: any
+}
 
 export async function GET(req: Request) {
   await dbConnect()
@@ -16,7 +32,10 @@ export async function GET(req: Request) {
   const state = url.searchParams.get("state")
 
   if (!code || !state) {
-    return NextResponse.json({ error: "Missing code or state" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Missing code or state" },
+      { status: 400 }
+    )
   }
 
   // ✅ Ambil temporary record dari DB menggunakan state
@@ -25,10 +44,13 @@ export async function GET(req: Request) {
     state,
   })
   if (!temp || !temp.userId || !temp.codeVerifier) {
-    return NextResponse.json({ error: "Invalid or expired state" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid or expired state" },
+      { status: 400 }
+    )
   }
 
-  // ✅ Tukar code dengan access token (PKCE flow → tanpa client_secret)
+  // ✅ Tukar code dengan access token (PKCE → tanpa client_secret)
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -45,50 +67,48 @@ export async function GET(req: Request) {
     body: body.toString(),
   })
 
-  const tokenJson = await tokenRes.json()
-  if (
-    typeof tokenJson !== "object" ||
-    tokenJson === null ||
-    !("access_token" in tokenJson) ||
-    typeof (tokenJson as any).access_token !== "string"
-  ) {
-    return NextResponse.json({ error: "Failed to get access token", details: tokenJson }, { status: 400 })
-  }
+  const tokenJson = (await tokenRes.json().catch(() => null)) as
+    | TwitterTokenResponse
+    | null
 
-  const tokenData = tokenJson as {
-    access_token: string
-    refresh_token?: string
-    expires_in?: number
+  if (
+    !tokenRes.ok ||
+    !tokenJson ||
+    typeof tokenJson.access_token !== "string"
+  ) {
+    return NextResponse.json(
+      { error: "Failed to get access token", details: tokenJson },
+      { status: 400 }
+    )
   }
 
   // ✅ Ambil info akun Twitter
   const userRes = await fetch("https://api.twitter.com/2/users/me", {
-    headers: {
-      Authorization: `Bearer ${tokenData.access_token}`,
-    },
+    headers: { Authorization: `Bearer ${tokenJson.access_token}` },
   })
-  const userJson = await userRes.json()
-  if (
-    typeof userJson !== "object" ||
-    userJson === null ||
-    !("data" in userJson) ||
-    !("id" in (userJson as any).data) ||
-    !("username" in (userJson as any).data)
-  ) {
-    return NextResponse.json({ error: "Failed to fetch Twitter profile", details: userJson }, { status: 400 })
+
+  const userJson = (await userRes.json().catch(() => null)) as
+    | TwitterUserResponse
+    | null
+
+  if (!userRes.ok || !userJson?.data?.id || !userJson.data.username) {
+    return NextResponse.json(
+      { error: "Failed to fetch Twitter profile", details: userJson },
+      { status: 400 }
+    )
   }
 
-  const userData = (userJson as any).data
+  const userData = userJson.data
 
   // ✅ Simpan permanen ke SocialAccount menggunakan userId dari temp
   await SocialAccount.updateOne(
     { userId: temp.userId, provider: "twitter" },
     {
       $set: {
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token,
-        expiresAt: tokenData.expires_in
-          ? new Date(Date.now() + Number(tokenData.expires_in) * 1000)
+        accessToken: tokenJson.access_token,
+        refreshToken: tokenJson.refresh_token,
+        expiresAt: tokenJson.expires_in
+          ? new Date(Date.now() + Number(tokenJson.expires_in) * 1000)
           : null,
         socialId: userData.id,
         username: userData.username,
@@ -102,7 +122,7 @@ export async function GET(req: Request) {
   // ✅ Hapus temporary record
   await SocialAccount.deleteOne({ _id: temp._id })
 
-  // ✅ Redirect ke FE (TaskModal bisa pakai postMessage)
+  // ✅ Redirect ke FE (TaskModal bisa listen pakai postMessage)
   const successUrl = new URL(
     `/twitter-success?status=connected&user=${userData.username}`,
     APP_URL
