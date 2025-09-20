@@ -1,6 +1,21 @@
 // /src/lib/twitter.ts
 import SocialAccount from "@/models/SocialAccount"
 
+const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
+const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
+const BOT_BEARER = process.env.TWITTER_BOT_BEARER!
+
+function botHeaders() {
+  return {
+    Authorization: `Bearer ${BOT_BEARER}`,
+    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
+    "x-csrf-token": BOT_CSRF,
+  }
+}
+
+// ─────────────────────────────
+// Token refresh (tetap ada, kalau pakai OAuth2 v2 hunter login)
+// ─────────────────────────────
 export async function refreshTwitterToken(account: any): Promise<string> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
@@ -31,81 +46,90 @@ export async function refreshTwitterToken(account: any): Promise<string> {
   return account.accessToken
 }
 
+// ─────────────────────────────
+// Resolve userId dari username
+// ─────────────────────────────
 export async function resolveTwitterUserId(
   username: string,
   token: string,
   social?: any
 ): Promise<string | null> {
-  // 🔹 Normalisasi username
+  // Normalisasi username
   const clean = username
     .trim()
-    .replace(/^@/, "") // buang @
-    .replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\//, "") // buang prefix url
-    .replace(/\/+$/, "") // buang trailing slash
-    .split(/[/?]/)[0] // ambil hanya bagian sebelum / atau ?
+    .replace(/^@/, "")
+    .replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\//, "")
+    .replace(/\/+$/, "")
+    .split(/[/?]/)[0]
     .toLowerCase()
 
+  // Fungsi pakai API v2
   async function doResolve(tokenToUse: string) {
     const res = await fetch(
       `https://api.twitter.com/2/users/by/username/${clean}`,
       { headers: { Authorization: `Bearer ${tokenToUse}` } }
     )
-
     if (!res.ok) {
-      console.error(
-        "resolveTwitterUserId failed:",
-        clean,
-        res.status,
-        await res.text()
-      )
-      return { ok: false, status: res.status, data: null }
-    }
-
-    const json = await res.json().catch(() => null)
-    return { ok: true, status: res.status, data: json?.data ?? null }
-  }
-
-  // 🔹 Coba pertama
-  let result = await doResolve(token)
-
-  // 🔹 Kalau token expired → refresh
-  if (result.status === 401 && social) {
-    try {
-      const newToken = await refreshTwitterToken(social)
-      result = await doResolve(newToken)
-    } catch (e) {
-      console.error("refreshTwitterToken failed:", e)
+      console.error("resolveTwitterUserId v2 failed:", clean, res.status)
       return null
     }
+    const json = await res.json().catch(() => null)
+    return json?.data?.id ?? null
   }
 
-  if (!result.ok || !result.data) return null
-  return result.data.id
+  // Coba pakai token hunter dulu
+  let userId = await doResolve(token)
+
+  // Kalau 401 → refresh
+  if (!userId && social) {
+    try {
+      const newToken = await refreshTwitterToken(social)
+      userId = await doResolve(newToken)
+    } catch (e) {
+      console.error("refreshTwitterToken failed:", e)
+    }
+  }
+
+  // Kalau masih gagal → fallback ke bot scraper
+  if (!userId) {
+    try {
+      const res = await fetch(
+        `https://api.twitter.com/2/users/by/username/${clean}`,
+        { headers: botHeaders() }
+      )
+      const json = await res.json().catch(() => null)
+      userId = json?.data?.id ?? null
+    } catch (e) {
+      console.error("bot resolveTwitterUserId failed:", e)
+    }
+  }
+
+  return userId
 }
 
+// ─────────────────────────────
+// Check apakah hunter follow target (pakai bot scraper!)
+// ─────────────────────────────
 export async function checkTwitterFollow(
   social: any,
   targetId: string
 ): Promise<boolean> {
-  let token = social.accessToken
+  try {
+    const sourceId = social.socialId // id hunter dari DB
 
-  async function doCheck(tokenToUse: string) {
-    return fetch(
-      `https://api.twitter.com/2/users/${social.socialId}/following/${targetId}`,
-      { headers: { Authorization: `Bearer ${tokenToUse}` } }
-    )
+    const url = `https://api.twitter.com/1.1/friendships/show.json?source_id=${sourceId}&target_id=${targetId}`
+
+    const res = await fetch(url, { headers: botHeaders() })
+
+    if (!res.ok) {
+      console.error("checkTwitterFollow failed:", res.status, await res.text())
+      return false
+    }
+
+    const json = await res.json().catch(() => null)
+    return json?.relationship?.source?.following === true
+  } catch (e) {
+    console.error("checkTwitterFollow error:", e)
+    return false
   }
-
-  let res = await doCheck(token)
-  if (res.status === 401) {
-    // token expired, coba refresh
-    token = await refreshTwitterToken(social)
-    res = await doCheck(token)
-  }
-
-  if (res.status === 200) return true
-  if (res.status === 404) return false
-
-  const err = await res.text().catch(() => "")
-  throw new Error(`Twitter API follow check error: ${res.status} ${err}`)
 }
