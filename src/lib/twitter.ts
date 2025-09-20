@@ -31,15 +31,19 @@ export async function refreshTwitterToken(account: any): Promise<string> {
   return account.accessToken
 }
 
-export async function resolveTwitterUserId(
-  username: string,
-  token: string
-): Promise<string | null> {
-  const res = await fetch(
-    `https://api.twitter.com/2/users/by/username/${username}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
-  if (!res.ok) return null
+export async function resolveTwitterUserId(username: string, token: string): Promise<string | null> {
+  // Normalisasi username: buang @ dan slash di akhir
+  const clean = username.replace(/^@/, "").replace(/\/+$/, "")
+
+  const res = await fetch(`https://api.twitter.com/2/users/by/username/${clean}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) {
+    console.error("resolveTwitterUserId failed:", res.status, await res.text())
+    return null
+  }
+
   const json = await res.json().catch(() => null)
   return json?.data?.id ?? null
 }
