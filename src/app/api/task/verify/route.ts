@@ -29,13 +29,19 @@ export async function POST(req: Request) {
   // 1) auth
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json(
+      { error: "Unauthorized", code: "UNAUTHORIZED" },
+      { status: 401 }
+    )
   }
 
   // 2) parse body
   const body = await req.json().catch(() => null)
   if (!body) {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid JSON body", code: "INVALID_BODY" },
+      { status: 400 }
+    )
   }
 
   const { campaignId, task } = body as {
@@ -45,7 +51,7 @@ export async function POST(req: Request) {
 
   if (!campaignId || !task?.service || !task?.type || !task?.url) {
     return NextResponse.json(
-      { error: "Missing campaignId or task fields" },
+      { error: "Missing campaignId or task fields", code: "MISSING_FIELDS" },
       { status: 400 }
     )
   }
@@ -61,7 +67,10 @@ export async function POST(req: Request) {
   // 3) load campaign
   const campaignDoc = await Campaign.findById(campaignId)
   if (!campaignDoc) {
-    return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
+    return NextResponse.json(
+      { error: "Campaign not found", code: "CAMPAIGN_NOT_FOUND" },
+      { status: 404 }
+    )
   }
 
   const campaignTasks = (Array.isArray((campaignDoc as any).tasks)
@@ -75,7 +84,10 @@ export async function POST(req: Request) {
       t.url === incomingTask.url
   )
   if (!taskInCampaign) {
-    return NextResponse.json({ error: "Task not in campaign" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Task not in campaign", code: "TASK_NOT_IN_CAMPAIGN" },
+      { status: 400 }
+    )
   }
 
   // 4) Service-specific verification
@@ -111,7 +123,11 @@ export async function POST(req: Request) {
       if (!usernameToCheck) throw new Error("empty username")
     } catch (err) {
       return NextResponse.json(
-        { error: "Invalid Twitter URL in task", details: String(err) },
+        {
+          error: "Invalid Twitter URL in task",
+          code: "INVALID_TWITTER_URL",
+          details: String(err),
+        },
         { status: 400 }
       )
     }
@@ -123,7 +139,7 @@ export async function POST(req: Request) {
     )
     if (!targetId) {
       return NextResponse.json(
-        { error: "Twitter target not found", username: usernameToCheck },
+        { error: "Twitter target not found", code: "TARGET_NOT_FOUND", username: usernameToCheck },
         { status: 400 }
       )
     }
@@ -133,14 +149,14 @@ export async function POST(req: Request) {
       const isFollowing = await checkTwitterFollow(social, targetId)
       if (!isFollowing) {
         return NextResponse.json(
-          { error: "Twitter task not completed (not following)" },
+          { error: "Twitter task not completed (not following)", code: "NOT_FOLLOWING" },
           { status: 400 }
         )
       }
     } catch (err) {
       console.error("Twitter verification error:", err)
       return NextResponse.json(
-        { error: "Failed to verify Twitter follow" },
+        { error: "Failed to verify Twitter follow", code: "VERIFY_FAILED" },
         { status: 500 }
       )
     }
@@ -216,5 +232,9 @@ export async function POST(req: Request) {
     await submission.save()
   }
 
-  return NextResponse.json({ success: true, status: submission.status })
+  return NextResponse.json({
+    success: true,
+    status: submission.status,
+    submission,
+  })
 }
