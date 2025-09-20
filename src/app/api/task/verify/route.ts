@@ -1,3 +1,4 @@
+// /src/app/api/task/verify/route.ts
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { auth } from "@/auth"
@@ -101,7 +102,6 @@ export async function POST(req: Request) {
         throw new Error("Not a valid Twitter/X domain")
       }
 
-      // normalize username
       usernameToCheck = u.pathname
         .replace(/^\/+/, "")
         .split(/[/?]/)[0]
@@ -148,56 +148,73 @@ export async function POST(req: Request) {
 
   // 5) update Submission
   const now = new Date()
-  const submission = await Submission.findOne({
+  let submission = await Submission.findOne({
     userId: session.user.id,
     campaignId,
   })
 
   if (!submission) {
-    return NextResponse.json(
-      { error: "Submission not found. Join the campaign first." },
-      { status: 404 }
-    )
-  }
-
-  const subTasks = (Array.isArray((submission as any).tasks)
-    ? (submission as any).tasks
-    : []) as SubmissionTask[]
-
-  const idx = subTasks.findIndex(
-    (s) =>
-      s.service === incomingTask.service &&
-      s.type === incomingTask.type &&
-      s.url === incomingTask.url
-  )
-
-  if (idx >= 0) {
-    subTasks[idx] = { ...subTasks[idx], done: true, verifiedAt: now }
+    submission = await Submission.create({
+      userId: session.user.id,
+      campaignId,
+      tasks: [
+        {
+          service: incomingTask.service,
+          type: incomingTask.type,
+          url: incomingTask.url,
+          done: true,
+          verifiedAt: now,
+        },
+      ],
+      status: campaignTasks.length === 1 ? "submitted" : "pending",
+    })
   } else {
-    // fallback: tambahkan task (jika belum ada di submission)
-    subTasks.push({ ...incomingTask, done: true, verifiedAt: now })
+    const subTasks = (Array.isArray((submission as any).tasks)
+      ? (submission as any).tasks
+      : []) as SubmissionTask[]
+
+    const idx = subTasks.findIndex(
+      (s) =>
+        s.service === incomingTask.service &&
+        s.type === incomingTask.type &&
+        s.url === incomingTask.url
+    )
+
+    if (idx >= 0) {
+      subTasks[idx] = {
+        service: incomingTask.service,
+        type: incomingTask.type,
+        url: incomingTask.url,
+        done: true,
+        verifiedAt: now,
+      }
+    } else {
+      subTasks.push({
+        service: incomingTask.service,
+        type: incomingTask.type,
+        url: incomingTask.url,
+        done: true,
+        verifiedAt: now,
+      })
+    }
+
+    submission.tasks = subTasks
+
+    // pastikan semua task campaign sudah done
+    submission.status = campaignTasks.every((ct) =>
+      submission.tasks.some(
+        (st: SubmissionTask) =>
+          st.service === ct.service &&
+          st.type === ct.type &&
+          st.url === ct.url &&
+          st.done
+      )
+    )
+      ? "submitted"
+      : "pending"
+
+    await submission.save()
   }
 
-  submission.tasks = subTasks
-
-  // pastikan semua task campaign sudah done
-  submission.status = campaignTasks.every((ct) =>
-    submission.tasks.some(
-      (st: SubmissionTask) =>
-        st.service === ct.service &&
-        st.type === ct.type &&
-        st.url === ct.url &&
-        st.done
-    )
-  )
-    ? "submitted"
-    : "pending"
-
-  await submission.save()
-
-  return NextResponse.json({
-    success: true,
-    status: submission.status,
-    submission: submission.toObject(),
-  })
+  return NextResponse.json({ success: true, status: submission.status })
 }
