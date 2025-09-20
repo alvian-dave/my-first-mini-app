@@ -11,6 +11,7 @@ interface Task {
   service: string
   type: string
   url: string
+  done?: boolean
 }
 
 interface TaskProgress extends Task {
@@ -19,7 +20,7 @@ interface TaskProgress extends Task {
 
 interface Submission {
   status: string
-  tasks: TaskProgress[]
+  tasks: Task[]
 }
 
 interface Campaign {
@@ -28,7 +29,7 @@ interface Campaign {
   description: string
   reward: string
   status: 'active' | 'finished' | 'rejected'
-  tasks?: TaskProgress[]
+  tasks?: Task[]
   participants?: string[]
 }
 
@@ -114,7 +115,7 @@ export default function HunterDashboard() {
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // --- submit task (dipakai oleh TaskModal) ---
+  // --- submit task (dipakai jika parent mau post sendiri). kept for compatibility but not used by TaskModal onConfirm ---
   const submitSubmission = async (campaignId: string, tasks?: TaskProgress[]) => {
     if (!campaignId) return
     try {
@@ -153,7 +154,7 @@ export default function HunterDashboard() {
       if (completedRes.ok) setCompletedCampaigns(await completedRes.json())
       if (campaignsRes.ok) setCampaigns(await campaignsRes.json())
 
-      // ✅ close modal & pindah ke completed
+      // close modal & pindah ke completed
       setSelectedCampaign(null)
       setActiveTab('completed')
     } catch (err) {
@@ -247,8 +248,47 @@ export default function HunterDashboard() {
           description={selectedCampaign.description}
           tasks={selectedCampaign.tasks || []}
           onClose={() => setSelectedCampaign(null)}
-          onConfirm={async (submission) => {
-            await submitSubmission(selectedCampaign._id, submission.tasks)
+          onConfirm={async (submission: Submission) => {
+            // IMPORTANT: TaskModal already did POST /api/submissions and returns newSubmission (or submission)
+            // Parent should not POST again. Instead refresh lists & balance and close modal.
+            try {
+              // refresh balance and lists (run in parallel)
+              const [completedRes, campaignsRes] = await Promise.all([
+                fetch('/api/campaigns/completed', { cache: 'no-store' }),
+                fetch('/api/campaigns', { cache: 'no-store' }),
+                // also refresh balance
+                fetch(`/api/balance/${session?.user?.id}`, { cache: 'no-store' }),
+              ])
+
+              if (completedRes.ok) {
+                setCompletedCampaigns(await completedRes.json())
+              }
+              if (campaignsRes.ok) {
+                setCampaigns(await campaignsRes.json())
+              }
+
+              // update balance if returned
+              if (session?.user?.id && completedRes.ok) {
+                // try to parse balance fetch result (the third Promise may be the balance fetch)
+                try {
+                  const balanceRes = await fetch(`/api/balance/${session.user.id}`, { cache: 'no-store' })
+                  if (balanceRes.ok) {
+                    const bal = await balanceRes.json()
+                    if (bal?.success) setDbBalance(bal.balance.amount ?? dbBalance)
+                  }
+                } catch (e) {
+                  // ignore balance parse error
+                }
+              }
+
+              // close modal and switch to completed tab
+              setSelectedCampaign(null)
+              setActiveTab('completed')
+            } catch (err) {
+              console.error('Failed to refresh after submission', err)
+              // still close the modal to avoid stuck UI
+              setSelectedCampaign(null)
+            }
           }}
         />
       )}
