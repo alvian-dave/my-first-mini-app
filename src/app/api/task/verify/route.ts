@@ -107,6 +107,7 @@ try {
     .replace(/^\/+/, "") // hapus slash depan
     .split(/[/?]/)[0] // ambil hanya segmen pertama sebelum ? atau /
     .replace(/^@/, "") // hapus @ kalau ada
+     .toLowerCase()
 
   if (!usernameToCheck) throw new Error("empty username")
 } catch (err) {
