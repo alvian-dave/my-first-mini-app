@@ -3,8 +3,9 @@ import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import SocialAccount from "@/models/SocialAccount"
 
-const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID
-const TWITTER_REDIRECT_URI = process.env.TWITTER_REDIRECT_URI
+const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID!
+const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET!
+const TWITTER_REDIRECT_URI = process.env.TWITTER_REDIRECT_URI!
 const APP_URL = process.env.AUTH_URL || "http://localhost:3000"
 
 interface TwitterTokenResponse {
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
     )
   }
 
-  // ✅ Ambil temporary record dari DB menggunakan state
+  // ✅ Cari record sementara (state + code_verifier) yang dibuat di /start
   const temp = await SocialAccount.findOne({
     provider: "twitter_temp",
     state,
@@ -50,19 +51,23 @@ export async function GET(req: Request) {
     )
   }
 
-  // ✅ Tukar code dengan access token (PKCE → tanpa client_secret)
+  // ✅ Tukar code → access_token pakai client_secret (Confidential Client)
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    client_id: TWITTER_CLIENT_ID!,
-    redirect_uri: TWITTER_REDIRECT_URI!,
-    code_verifier: temp.codeVerifier,
+    redirect_uri: TWITTER_REDIRECT_URI,
+    code_verifier: temp.codeVerifier, // PKCE masih dipakai walau confidential
   })
+
+  const basicAuth = Buffer.from(
+    `${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`
+  ).toString("base64")
 
   const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${basicAuth}`, // << wajib untuk confidential client
     },
     body: body.toString(),
   })
@@ -71,18 +76,14 @@ export async function GET(req: Request) {
     | TwitterTokenResponse
     | null
 
-  if (
-    !tokenRes.ok ||
-    !tokenJson ||
-    typeof tokenJson.access_token !== "string"
-  ) {
+  if (!tokenRes.ok || !tokenJson?.access_token) {
     return NextResponse.json(
       { error: "Failed to get access token", details: tokenJson },
       { status: 400 }
     )
   }
 
-  // ✅ Ambil info akun Twitter
+  // ✅ Ambil info akun Twitter user
   const userRes = await fetch("https://api.twitter.com/2/users/me", {
     headers: { Authorization: `Bearer ${tokenJson.access_token}` },
   })
@@ -100,7 +101,7 @@ export async function GET(req: Request) {
 
   const userData = userJson.data
 
-  // ✅ Simpan permanen ke SocialAccount menggunakan userId dari temp
+  // ✅ Simpan permanen ke SocialAccount
   await SocialAccount.updateOne(
     { userId: temp.userId, provider: "twitter" },
     {
@@ -108,7 +109,7 @@ export async function GET(req: Request) {
         accessToken: tokenJson.access_token,
         refreshToken: tokenJson.refresh_token,
         expiresAt: tokenJson.expires_in
-          ? new Date(Date.now() + Number(tokenJson.expires_in) * 1000)
+          ? new Date(Date.now() + tokenJson.expires_in * 1000)
           : null,
         socialId: userData.id,
         username: userData.username,
@@ -119,10 +120,10 @@ export async function GET(req: Request) {
     { upsert: true }
   )
 
-  // ✅ Hapus temporary record
+  // ✅ Hapus record temporary
   await SocialAccount.deleteOne({ _id: temp._id })
 
-  // ✅ Redirect ke FE (TaskModal bisa listen pakai postMessage)
+  // ✅ Redirect balik ke FE
   const successUrl = new URL(
     `/twitter-success?status=connected&user=${userData.username}`,
     APP_URL
