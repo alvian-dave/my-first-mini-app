@@ -5,8 +5,8 @@ import SocialAccount from "@/models/SocialAccount"
 import fetch from "node-fetch"
 
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID
-const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET
 const TWITTER_REDIRECT_URI = process.env.TWITTER_REDIRECT_URI
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
 export async function GET(req: Request) {
   await dbConnect()
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing code or state" }, { status: 400 })
   }
 
-  // ✅ Ambil temporary record dari DB menggunakan state, bukan session
+  // ✅ Ambil temporary record dari DB menggunakan state
   const temp = await SocialAccount.findOne({
     provider: "twitter_temp",
     state,
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Invalid or expired state" }, { status: 400 })
   }
 
-  // ✅ Tukar code dengan access token
+  // ✅ Tukar code dengan access token (PKCE flow → tanpa client_secret)
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -41,9 +41,6 @@ export async function GET(req: Request) {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      Authorization:
-        "Basic " +
-        Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString("base64"),
     },
     body: body.toString(),
   })
@@ -55,7 +52,7 @@ export async function GET(req: Request) {
     !("access_token" in tokenJson) ||
     typeof (tokenJson as any).access_token !== "string"
   ) {
-    return NextResponse.json({ error: "Failed to get access token" }, { status: 400 })
+    return NextResponse.json({ error: "Failed to get access token", details: tokenJson }, { status: 400 })
   }
 
   const tokenData = tokenJson as {
@@ -78,7 +75,7 @@ export async function GET(req: Request) {
     !("id" in (userJson as any).data) ||
     !("username" in (userJson as any).data)
   ) {
-    return NextResponse.json({ error: "Failed to fetch Twitter profile" }, { status: 400 })
+    return NextResponse.json({ error: "Failed to fetch Twitter profile", details: userJson }, { status: 400 })
   }
 
   const userData = (userJson as any).data
@@ -91,11 +88,12 @@ export async function GET(req: Request) {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
         expiresAt: tokenData.expires_in
-          ? new Date(Date.now() + tokenData.expires_in * 1000)
+          ? new Date(Date.now() + Number(tokenData.expires_in) * 1000)
           : null,
         socialId: userData.id,
         username: userData.username,
         profileUrl: `https://twitter.com/${userData.username}`,
+        updatedAt: new Date(),
       },
     },
     { upsert: true }
@@ -104,7 +102,10 @@ export async function GET(req: Request) {
   // ✅ Hapus temporary record
   await SocialAccount.deleteOne({ _id: temp._id })
 
-  // ✅ Redirect ke halaman sukses yang bisa dibaca TaskModal via postMessage
-  const successUrl = `/twitter-success?status=connected&user=${userData.username}`
+  // ✅ Redirect ke FE (TaskModal bisa pakai postMessage)
+  const successUrl = new URL(
+    `/twitter-success?status=connected&user=${userData.username}`,
+    APP_URL
+  )
   return NextResponse.redirect(successUrl)
 }

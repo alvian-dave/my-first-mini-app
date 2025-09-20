@@ -1,21 +1,18 @@
 // /src/app/api/task/verify/route.ts
-import { NextResponse } from 'next/server'
-import dbConnect from '@/lib/mongodb'
-import { auth } from '@/auth'
-import { Campaign } from '@/models/Campaign'
-import SocialAccount from '@/models/SocialAccount'
-import Submission from '@/models/Submission'
+import { NextResponse } from "next/server"
+import dbConnect from "@/lib/mongodb"
+import { auth } from "@/auth"
+import { Campaign } from "@/models/Campaign"
+import SocialAccount from "@/models/SocialAccount"
+import Submission from "@/models/Submission"
 
-// NOTE: use global fetch available in Next.js runtime; node-fetch import not required here.
-
-type ServiceName = 'twitter' | 'discord' | 'telegram'
+type ServiceName = "twitter" | "discord" | "telegram"
 
 interface CampaignTask {
   service: ServiceName
   type: string
   url: string
 }
-
 interface SubmissionTask {
   service: ServiceName
   type: string
@@ -24,14 +21,34 @@ interface SubmissionTask {
   verifiedAt?: Date
 }
 
-/** Minimal shape for Twitter following API */
-interface TwitterUser {
-  id: string
-  username: string
-}
-interface TwitterFollowingResponse {
-  data?: TwitterUser[]
-  meta?: any
+// 🔄 helper: refresh twitter token
+async function refreshTwitterToken(account: any) {
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: account.refreshToken,
+    client_id: process.env.TWITTER_CLIENT_ID!,
+  })
+
+  const res = await fetch("https://api.twitter.com/2/oauth2/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  })
+  const json = await res.json()
+  if (!("access_token" in json)) {
+    throw new Error("Failed to refresh Twitter token")
+  }
+
+  account.accessToken = json.access_token
+  if (json.refresh_token) {
+    account.refreshToken = json.refresh_token
+  }
+  account.expiresAt = json.expires_in
+    ? new Date(Date.now() + json.expires_in * 1000)
+    : null
+  await account.save()
+
+  return account.accessToken
 }
 
 export async function POST(req: Request) {
@@ -40,12 +57,12 @@ export async function POST(req: Request) {
   // 1) auth
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   // 2) parse body
   const body = await req.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
 
   const { campaignId, task } = body as {
     campaignId?: string
@@ -53,136 +70,123 @@ export async function POST(req: Request) {
   }
 
   if (!campaignId || !task?.service || !task?.type || !task?.url) {
-    return NextResponse.json({ error: 'Missing campaignId or task fields' }, { status: 400 })
+    return NextResponse.json({ error: "Missing campaignId or task fields" }, { status: 400 })
   }
 
-  // normalize types
+  // normalize
   const service = task.service as ServiceName
-  const incomingTask: CampaignTask = {
-    service,
-    type: task.type,
-    url: task.url,
-  }
+  const incomingTask: CampaignTask = { service, type: task.type, url: task.url }
 
-  // 3) load campaign (no .lean() so TS sees Document; we'll cast tasks)
+  // 3) load campaign
   const campaignDoc = await Campaign.findById(campaignId)
-  if (!campaignDoc) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+  if (!campaignDoc) return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
 
-  // ensure campaign.tasks is an array and typed
   const campaignTasks = (Array.isArray((campaignDoc as any).tasks) ? (campaignDoc as any).tasks : []) as CampaignTask[]
-  if (!Array.isArray(campaignTasks)) {
-    return NextResponse.json({ error: 'Campaign tasks invalid' }, { status: 500 })
-  }
-
-  // 4) ensure this task is part of campaign
-  const taskInCampaign = campaignTasks.find((t: CampaignTask) =>
-    t.service === incomingTask.service && t.type === incomingTask.type && t.url === incomingTask.url
+  const taskInCampaign = campaignTasks.find(
+    (t) =>
+      t.service === incomingTask.service &&
+      t.type === incomingTask.type &&
+      t.url === incomingTask.url
   )
   if (!taskInCampaign) {
-    return NextResponse.json({ error: 'Task not in campaign' }, { status: 400 })
+    return NextResponse.json({ error: "Task not in campaign" }, { status: 400 })
   }
 
-  // 5) Service-specific verification (Twitter implemented)
-  if (incomingTask.service === 'twitter') {
-    // ensure user connected to twitter
-    const social = await SocialAccount.findOne({ userId: session.user.id, provider: 'twitter' })
+  // 4) Service-specific verification
+  if (incomingTask.service === "twitter") {
+    const social = await SocialAccount.findOne({ userId: session.user.id, provider: "twitter" })
     if (!social) {
-      return NextResponse.json({ error: 'Twitter not connected', code: 'TWITTER_NOT_CONNECTED' }, { status: 400 })
+      return NextResponse.json({ error: "Twitter not connected", code: "TWITTER_NOT_CONNECTED" }, { status: 400 })
     }
 
-    // extract username from provided url (promoter should supply profile url)
+    // --- ambil username dari URL
     let usernameToCheck: string
     try {
       const u = new URL(incomingTask.url)
-      // handle urls like /username or /username/ etc.
-      usernameToCheck = u.pathname.replace(/^\/+|\/+$/g, '')
-      if (!usernameToCheck) throw new Error('empty username')
-    } catch (err) {
-      return NextResponse.json({ error: 'Invalid Twitter URL in task' }, { status: 400 })
+      usernameToCheck = u.pathname.replace(/^\/+|\/+$/g, "")
+      if (!usernameToCheck) throw new Error("empty username")
+    } catch {
+      return NextResponse.json({ error: "Invalid Twitter URL in task" }, { status: 400 })
     }
 
-    // call Twitter API to fetch following list (note: may require pagination for large lists)
-    try {
-      const followUrl = `https://api.twitter.com/2/users/${social.socialId}/following?max_results=1000`
-      const twitterRes = await fetch(followUrl, {
-        headers: { Authorization: `Bearer ${social.accessToken}` },
-      })
+    // --- cari target_id (promoter) by username
+    const userRes = await fetch(`https://api.twitter.com/2/users/by/username/${usernameToCheck}`, {
+      headers: { Authorization: `Bearer ${social.accessToken}` },
+    })
+    if (!userRes.ok) {
+      return NextResponse.json({ error: "Failed to resolve target username" }, { status: 500 })
+    }
+    const userJson = await userRes.json()
+    const targetId = userJson?.data?.id
+    if (!targetId) {
+      return NextResponse.json({ error: "Twitter target not found" }, { status: 400 })
+    }
 
-      // guard on response
-      if (!twitterRes.ok) {
-        // optionally forward twitter error message for debugging, but keep safe
-        const text = await twitterRes.text().catch(() => '')
-        console.error('Twitter API error (following):', twitterRes.status, text)
-        return NextResponse.json({ error: 'Failed to fetch Twitter following' }, { status: 500 })
-      }
+    // --- cek apakah hunter follow target
+    let accessToken = social.accessToken
+    async function checkFollow(token: string) {
+      const res = await fetch(
+        `https://api.twitter.com/2/users/${social.socialId}/following/${targetId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      return res
+    }
 
-      // parse and guard shape
-      const raw = await twitterRes.text().catch(() => '')
-      let twitterData: TwitterFollowingResponse
+    let followRes = await checkFollow(accessToken)
+    if (followRes.status === 401) {
+      // coba refresh sekali
       try {
-        twitterData = raw ? (JSON.parse(raw) as TwitterFollowingResponse) : {}
+        accessToken = await refreshTwitterToken(social)
+        followRes = await checkFollow(accessToken)
       } catch (err) {
-        console.error('Twitter JSON parse error', err, raw)
-        return NextResponse.json({ error: 'Invalid response from Twitter' }, { status: 500 })
+        return NextResponse.json({ error: "Twitter token expired, reconnect needed" }, { status: 401 })
       }
+    }
 
-      const followers = Array.isArray(twitterData.data) ? twitterData.data : []
-      const isFollowing = followers.some((u) => {
-        if (!u || typeof u.username !== 'string') return false
-        return u.username.toLowerCase() === usernameToCheck.toLowerCase()
-      })
-
-      if (!isFollowing) {
-        return NextResponse.json({ error: 'Twitter task not completed (not following target)' }, { status: 400 })
-      }
-    } catch (err) {
-      console.error('Twitter verification exception', err)
-      return NextResponse.json({ error: 'Twitter verification error' }, { status: 500 })
+    if (followRes.status === 200) {
+      // ✅ verified
+    } else if (followRes.status === 404) {
+      return NextResponse.json({ error: "Twitter task not completed (not following)" }, { status: 400 })
+    } else {
+      const err = await followRes.text().catch(() => "")
+      console.error("Twitter API follow check error:", followRes.status, err)
+      return NextResponse.json({ error: "Failed to verify Twitter follow" }, { status: 500 })
     }
   }
 
-  // 6) Update or create Submission
+  // 5) update Submission
   const now = new Date()
   let submission = await Submission.findOne({ userId: session.user.id, campaignId })
 
   if (!submission) {
-    const initialTask: SubmissionTask = {
-      service: incomingTask.service,
-      type: incomingTask.type,
-      url: incomingTask.url,
-      done: true,
-      verifiedAt: now,
-    }
-    const shouldAutoSubmit = campaignTasks.length === 1 // if promoter only supplied 1 task
     submission = await Submission.create({
       userId: session.user.id,
       campaignId,
-      tasks: [initialTask],
-      status: shouldAutoSubmit ? 'submitted' : 'pending',
+      tasks: [
+        { ...incomingTask, done: true, verifiedAt: now },
+      ],
+      status: campaignTasks.length === 1 ? "submitted" : "pending",
     })
   } else {
-    // type submission.tasks and update safely
     const subTasks = (Array.isArray((submission as any).tasks) ? (submission as any).tasks : []) as SubmissionTask[]
-
-    // find index
-    const idx = subTasks.findIndex((s) =>
-      s.service === incomingTask.service && s.type === incomingTask.type && s.url === incomingTask.url
+    const idx = subTasks.findIndex(
+      (s) => s.service === incomingTask.service && s.type === incomingTask.type && s.url === incomingTask.url
     )
     if (idx >= 0) {
       subTasks[idx] = { ...subTasks[idx], done: true, verifiedAt: now }
     } else {
-      subTasks.push({ service: incomingTask.service, type: incomingTask.type, url: incomingTask.url, done: true, verifiedAt: now })
+      subTasks.push({ ...incomingTask, done: true, verifiedAt: now })
     }
-
     submission.tasks = subTasks
-    // determine final status: only submitted if all campaign tasks are present and done in submission
-    const allDone = campaignTasks.every((ct) =>
-      submission.tasks.some((st: SubmissionTask) => st.service === ct.service && st.type === ct.type && st.url === ct.url && st.done)
+    submission.status = campaignTasks.every((ct) =>
+      submission.tasks.some(
+        (st) => st.service === ct.service && st.type === ct.type && st.url === ct.url && st.done
+      )
     )
-    submission.status = allDone ? 'submitted' : 'pending'
+      ? "submitted"
+      : "pending"
     await submission.save()
   }
 
-  // 7) return
   return NextResponse.json({ success: true, status: submission.status })
 }
