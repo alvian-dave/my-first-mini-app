@@ -92,23 +92,29 @@ export async function POST(req: Request) {
     }
 
     // --- ambil username dari URL (support twitter.com & x.com)
-    let usernameToCheck: string
-    try {
-      const u = new URL(incomingTask.url)
-      if (
-        !u.hostname.includes("twitter.com") &&
-        !u.hostname.includes("x.com")
-      ) {
-        throw new Error("Not a valid Twitter/X domain")
-      }
-      usernameToCheck = u.pathname.replace(/^\/+|\/+$/g, "")
-      if (!usernameToCheck) throw new Error("empty username")
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid Twitter URL in task" },
-        { status: 400 }
-      )
-    }
+let usernameToCheck: string
+try {
+  const u = new URL(incomingTask.url)
+  if (
+    !u.hostname.includes("twitter.com") &&
+    !u.hostname.includes("x.com")
+  ) {
+    throw new Error("Not a valid Twitter/X domain")
+  }
+
+  // normalize username
+  usernameToCheck = u.pathname
+    .replace(/^\/+/, "") // hapus slash depan
+    .split(/[/?]/)[0] // ambil hanya segmen pertama sebelum ? atau /
+    .replace(/^@/, "") // hapus @ kalau ada
+
+  if (!usernameToCheck) throw new Error("empty username")
+} catch (err) {
+  return NextResponse.json(
+    { error: "Invalid Twitter URL in task", details: String(err) },
+    { status: 400 }
+  )
+}
 
     // --- resolve targetId
     const targetId = await resolveTwitterUserId(
