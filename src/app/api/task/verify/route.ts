@@ -5,7 +5,7 @@ import { auth } from "@/auth"
 import { Campaign } from "@/models/Campaign"
 import SocialAccount from "@/models/SocialAccount"
 import Submission from "@/models/Submission"
-import { botResolveUserId, checkTwitterFollow } from "@/lib/twitter"
+import { resolveTwitterUserId, checkTwitterFollow } from "@/lib/twitter"
 
 type ServiceName = "twitter" | "discord" | "telegram"
 
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
     }
 
     // --- resolve targetId pakai bot
-    const targetId = await botResolveUserId(usernameToCheck)
+    const targetId = await resolveTwitterUserId(usernameToCheck)
     if (!targetId) {
       return NextResponse.json(
         {
