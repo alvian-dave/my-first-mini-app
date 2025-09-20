@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
 import Balance from "@/models/Balance"
+import Submission from "@/models/Submission"
 import { Notification } from "@/models/Notification"
 import { Types } from "mongoose"
 import { auth } from "@/auth"
@@ -39,7 +40,7 @@ export async function PUT(
       )
     }
 
-    // ✅ Notification for promoter (English)
+    // ✅ Notification for promoter
     await Notification.create({
       userId: session.user.id,
       role: "promoter",
@@ -54,9 +55,9 @@ export async function PUT(
   }
 }
 
-// ✅ PATCH: hunter submit task
+// ✅ PATCH: hunter submit task → create/update submission (NO REWARD YET)
 export async function PATCH(
-  _req: Request,
+  req: Request,
   { params }: { params: ParamsPromise }
 ) {
   const session = await auth()
@@ -70,46 +71,68 @@ export async function PATCH(
   }
 
   try {
-    const campaign = await Campaign.findOneAndUpdate(
-      { _id: id, participants: { $ne: session.user.id } },
-      { $addToSet: { participants: session.user.id }, $inc: { contributors: 1 } },
-      { new: true }
-    )
-
+    const campaign = await Campaign.findById(id)
     if (!campaign) {
-      return NextResponse.json({ error: "Not found / already submitted" }, { status: 400 })
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
     }
 
-    const rewardNum = parseFloat(campaign.reward as unknown as string) || 0
+    // cek apakah sudah ada submission hunter
+    let submission = await Submission.findOne({
+      userId: session.user.id,
+      campaignId: id,
+    })
 
-    // Update balance hunter
-    await Balance.findOneAndUpdate(
-      { userId: session.user.id },
-      { $inc: { amount: rewardNum }, $setOnInsert: { role: "hunter" } },
-      { new: true, upsert: true }
-    )
+    if (!submission) {
+      // buat submission baru, copy tasks dari campaign
+      submission = await Submission.create({
+        userId: session.user.id,
+        campaignId: id,
+        tasks: campaign.tasks.map((t: any) => ({
+          service: t.service,
+          type: t.type,
+          url: t.url || "",
+          status: "pending",
+        })),
+        status: "in_progress",
+      })
 
-    // ✅ Notification for hunter (English)
+      // increment contributors
+      campaign.contributors = (campaign.contributors || 0) + 1
+      if (!campaign.participants.includes(session.user.id)) {
+        campaign.participants.push(session.user.id)
+      }
+      await campaign.save()
+    } else {
+      // update status kalau sudah pernah submit
+      submission.status = "in_progress"
+      await submission.save()
+    }
+
+    // ✅ Notification untuk hunter
     await Notification.create({
       userId: session.user.id,
       role: "hunter",
       type: "task_submitted",
-      message: `You successfully submitted a task for the campaign "${campaign.title}".`,
+      message: `You started a submission for the campaign "${campaign.title}".`,
     })
 
-    // ✅ Notification for promoter (English)
+    // ✅ Notification untuk promoter
     await Notification.create({
       userId: campaign.createdBy,
       role: "promoter",
       type: "task_submitted",
-      message: `Hunter "${session.user.username || session.user.id}" submitted a task for your campaign "${campaign.title}".`,
+      message: `Hunter "${session.user.username || session.user.id}" started a submission for your campaign "${campaign.title}".`,
     })
 
-    return NextResponse.json(campaign)
+    return NextResponse.json({
+      success: true,
+      campaign: campaign.toObject(),
+      submission: submission.toObject(),
+    })
   } catch (err) {
     console.error(err)
     return NextResponse.json(
-      { error: "Failed to update contributors / balance" },
+      { error: "Failed to create/update submission" },
       { status: 500 }
     )
   }
@@ -146,7 +169,7 @@ export async function DELETE(
 
     await Campaign.findByIdAndDelete(id)
 
-    // ✅ Notification for promoter (English)
+    // ✅ Notification for promoter
     await Notification.create({
       userId: session.user.id,
       role: "promoter",
