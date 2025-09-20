@@ -36,7 +36,13 @@ export async function resolveTwitterUserId(
   token: string,
   social?: any
 ): Promise<string | null> {
-  const clean = username.replace(/^@/, "").replace(/\/+$/, "")
+  // 🔹 Normalisasi username
+  const clean = username
+    .trim()
+    .replace(/^@/, "") // buang @
+    .replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\//, "") // buang prefix url
+    .replace(/\/+$/, "") // buang trailing slash
+    .split(/[/?]/)[0] // ambil hanya bagian sebelum / atau ?
 
   async function doResolve(tokenToUse: string) {
     const res = await fetch(
@@ -47,6 +53,7 @@ export async function resolveTwitterUserId(
     if (!res.ok) {
       console.error(
         "resolveTwitterUserId failed:",
+        clean,
         res.status,
         await res.text()
       )
@@ -57,10 +64,10 @@ export async function resolveTwitterUserId(
     return { ok: true, status: res.status, data: json?.data ?? null }
   }
 
-  // coba pertama
+  // 🔹 Coba pertama
   let result = await doResolve(token)
 
-  // kalau 401 → refresh token
+  // 🔹 Kalau token expired → refresh
   if (result.status === 401 && social) {
     try {
       const newToken = await refreshTwitterToken(social)
@@ -74,7 +81,6 @@ export async function resolveTwitterUserId(
   if (!result.ok || !result.data) return null
   return result.data.id
 }
-
 
 export async function checkTwitterFollow(
   social: any,
