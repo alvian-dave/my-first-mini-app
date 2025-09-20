@@ -43,6 +43,7 @@ export async function resolveTwitterUserId(
     .replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\//, "") // buang prefix url
     .replace(/\/+$/, "") // buang trailing slash
     .split(/[/?]/)[0] // ambil hanya bagian sebelum / atau ?
+    .toLowerCase()
 
   async function doResolve(tokenToUse: string) {
     const res = await fetch(
