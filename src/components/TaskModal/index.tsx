@@ -12,27 +12,18 @@ interface Task {
   done?: boolean
 }
 
+interface Submission {
+  status: string
+  tasks: Task[]
+}
+
 interface TaskModalProps {
   campaignId: string
   title: string
   description: string
   tasks: Task[]
   onClose: () => void
-  onConfirm: (tasks: Task[]) => Promise<void>
-}
-
-// ✅ Mapping error code → user-friendly message
-const ERROR_MESSAGES: Record<string, string> = {
-  UNAUTHORIZED: 'You must login first.',
-  INVALID_BODY: 'Invalid request sent to server.',
-  MISSING_FIELDS: 'Some required fields are missing.',
-  CAMPAIGN_NOT_FOUND: 'Campaign not found.',
-  TASK_NOT_IN_CAMPAIGN: 'This task does not belong to the campaign.',
-  TWITTER_NOT_CONNECTED: 'Please connect your Twitter account first.',
-  INVALID_TWITTER_URL: 'The Twitter URL is invalid.',
-  TARGET_NOT_FOUND: 'The target Twitter account was not found.',
-  NOT_FOLLOWING: 'You are not following the required Twitter account.',
-  VERIFY_FAILED: 'Verification failed, please try again.',
+  onConfirm: (submission: Submission) => void
 }
 
 export default function TaskModal({
@@ -48,7 +39,7 @@ export default function TaskModal({
   const [twitterConnected, setTwitterConnected] = useState(false)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
-  // ✅ cek status twitter + load submission
+  // ✅ cek status twitter & submission
   useEffect(() => {
     const checkTwitterStatus = async () => {
       try {
@@ -61,7 +52,6 @@ export default function TaskModal({
         console.error('Failed to check twitter status', err)
       }
     }
-    checkTwitterStatus()
 
     const fetchSubmission = async () => {
       try {
@@ -74,15 +64,24 @@ export default function TaskModal({
         console.error('Failed to load submission', err)
       }
     }
+
+    checkTwitterStatus()
     fetchSubmission()
 
+    // ✅ listen postMessage dari /twitter-success
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return
-      if (event.data?.type === 'TWITTER_CONNECTED') {
+      if (
+        event.origin === window.location.origin &&
+        event.data?.type === 'TWITTER_CONNECTED'
+      ) {
         setTwitterConnected(true)
         setToast({ message: 'Twitter connected successfully!', type: 'success' })
       }
-      if (event.data?.type === 'TWITTER_FAILED') {
+
+      if (
+        event.origin === window.location.origin &&
+        event.data?.type === 'TWITTER_FAILED'
+      ) {
         setToast({ message: 'Twitter connection failed, please try again.', type: 'error' })
       }
     }
@@ -113,15 +112,11 @@ export default function TaskModal({
       })
       const data = await res.json()
 
-      if (res.ok && data.success && data.submission) {
+      if (data.success && data.submission) {
         setTaskStates(data.submission.tasks)
         setToast({ message: 'Task verified successfully!', type: 'success' })
       } else {
-        const msg =
-          (data.code && ERROR_MESSAGES[data.code]) ||
-          data.error ||
-          'Verification failed'
-        setToast({ message: msg, type: 'error' })
+        setToast({ message: data.error || 'Verification failed', type: 'error' })
       }
     } catch (err) {
       console.error('verify failed', err)
@@ -146,20 +141,23 @@ export default function TaskModal({
       })
       const data = await res.json()
 
-      if (res.ok && data.success) {
+      if (res.ok && data.success && data.newSubmission) {
         setTaskStates(data.newSubmission.tasks)
+
+        // ✅ sync ke parent biar pindah tab
+        onConfirm(data.newSubmission)
+
+        // ✅ close modal
+        onClose()
+
         setToast({ message: 'All tasks submitted successfully!', type: 'success' })
-        onConfirm(taskStates)
+      } else if (data.error === 'Already submitted' && data.submission) {
+        // tetap sync biar parent update
+        onConfirm(data.submission)
         onClose()
-      } else if (data.error === 'Already submitted') {
-        onConfirm(taskStates)
-        onClose()
+        setToast({ message: 'Already submitted before.', type: 'error' })
       } else {
-        const msg =
-          (data.code && ERROR_MESSAGES[data.code]) ||
-          data.error ||
-          'Submission failed.'
-        setToast({ message: msg, type: 'error' })
+        setToast({ message: data.error || 'Submission failed.', type: 'error' })
       }
     } catch (err) {
       console.error('submit failed', err)

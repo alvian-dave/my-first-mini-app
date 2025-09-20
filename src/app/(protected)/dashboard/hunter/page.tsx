@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
-import { ExternalLink } from 'lucide-react'
-import TaskModal from '@/components/TaskModal' // <-- import TaskModal Anda
-// NOTE: kita tidak mengubah bagian lain yang tidak perlu
+import TaskModal from '@/components/TaskModal'
 
 interface Task {
   service: string
@@ -39,8 +37,6 @@ export default function HunterDashboard() {
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'rejected'>('active')
   const [showChat, setShowChat] = useState(false)
   const [loadingIds, setLoadingIds] = useState<string[]>([])
-
-  // ✅ state untuk popup
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
 
   // Redirect if not logged in
@@ -96,6 +92,7 @@ export default function HunterDashboard() {
     fetchBalance()
   }, [session])
 
+  // filter campaigns sesuai tab
   const filtered = (() => {
     if (activeTab === 'active') {
       const completedIds = new Set(completedCampaigns.map((c) => c._id))
@@ -106,12 +103,13 @@ export default function HunterDashboard() {
     return []
   })().sort((a, b) => (a._id > b._id ? -1 : 1))
 
+  // helper loading
   const setLoadingFor = (id: string, loading: boolean) => {
     setLoadingIds((prev) => (loading ? [...prev, id] : prev.filter((x) => x !== id)))
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // --- Helper kecil: submit dengan tasks yang diberikan (dipakai oleh modal) ---
+  // --- submit task (dipakai oleh TaskModal) ---
   const submitSubmission = async (campaignId: string, tasks?: TaskProgress[]) => {
     if (!campaignId) return
     try {
@@ -126,7 +124,6 @@ export default function HunterDashboard() {
       })
 
       if (!res.ok) {
-        // ambil body jika ada
         let errMsg = 'Failed to submit task. Please try again.'
         try {
           const errBody = await res.json()
@@ -138,12 +135,11 @@ export default function HunterDashboard() {
 
       const data = await res.json()
 
-      // langsung update balance dari API response ✅
       if (data.newBalance !== undefined) {
         setDbBalance(data.newBalance)
       }
 
-      // refresh list
+      // refresh campaigns & completed
       const [completedRes, campaignsRes] = await Promise.all([
         fetch('/api/campaigns/completed', { cache: 'no-store' }),
         fetch('/api/campaigns', { cache: 'no-store' }),
@@ -151,18 +147,15 @@ export default function HunterDashboard() {
 
       if (completedRes.ok) setCompletedCampaigns(await completedRes.json())
       if (campaignsRes.ok) setCampaigns(await campaignsRes.json())
+
+      // ✅ close modal & pindah ke completed
       setSelectedCampaign(null)
+      setActiveTab('completed')
     } catch (err) {
       console.error('Submit task failed', err)
     } finally {
       setLoadingFor(campaignId, false)
     }
-  }
-
-  // ✅ ketika confirm task dari tombol lama (tetap ada kompatibilitas)
-  const handleConfirmTask = async () => {
-    if (!selectedCampaign) return
-    await submitSubmission(selectedCampaign._id, selectedCampaign.tasks)
   }
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
@@ -173,13 +166,6 @@ export default function HunterDashboard() {
       <Topbar />
 
       <div className="w-full px-6 py-8">
-        <div
-          className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
-          style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
-        >
-          "Every task you complete brings you closer to greatness..."
-        </div>
-
         {/* Tabs */}
         <div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3">
           {['active', 'completed', 'rejected'].map((tab) => (
@@ -230,12 +216,7 @@ export default function HunterDashboard() {
                   <button
                     className="mt-3 w-full py-2 rounded font-semibold text-white"
                     style={{ backgroundColor: '#16a34a' }}
-                    onClick={() =>
-                      setSelectedCampaign({
-                        ...c,
-                        tasks: c.tasks?.map((t) => ({ ...t, done: false })) || [],
-                      })
-                    }
+                    onClick={() => setSelectedCampaign(c)}
                   >
                     {isLoading(c._id) ? 'Submitting...' : 'Submit Task'}
                   </button>
@@ -253,7 +234,7 @@ export default function HunterDashboard() {
         </div>
       </div>
 
-      {/* Modal untuk task -> digantikan dengan TaskModal Anda */}
+      {/* Modal Task */}
       {selectedCampaign && (
         <TaskModal
           campaignId={selectedCampaign._id}
@@ -262,7 +243,6 @@ export default function HunterDashboard() {
           tasks={selectedCampaign.tasks || []}
           onClose={() => setSelectedCampaign(null)}
           onConfirm={async (tasks) => {
-            // gunakan submitSubmission dengan tasks dari modal
             await submitSubmission(selectedCampaign._id, tasks as TaskProgress[])
           }}
         />
