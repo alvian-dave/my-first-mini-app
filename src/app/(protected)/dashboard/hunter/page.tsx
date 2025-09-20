@@ -242,8 +242,8 @@ export default function HunterDashboard() {
           description={selectedCampaign.description}
           tasks={selectedCampaign.tasks || []}
           onClose={() => setSelectedCampaign(null)}
-          onConfirm={async (tasks) => {
-            await submitSubmission(selectedCampaign._id, tasks as TaskProgress[])
+          onConfirm={async (submission) => {
+            await submitSubmission(selectedCampaign._id, submission.tasks)
           }}
         />
       )}
