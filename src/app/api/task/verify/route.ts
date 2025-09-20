@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     )
   }
 
+  // normalize
   const service = task.service as ServiceName
   const incomingTask: CampaignTask = {
     service,
@@ -91,27 +92,36 @@ export async function POST(req: Request) {
     }
 
     // --- ambil username dari URL (support twitter.com & x.com)
-    let usernameToCheck: string
-    try {
-      const u = new URL(incomingTask.url)
-      if (!u.hostname.includes("twitter.com") && !u.hostname.includes("x.com")) {
-        throw new Error("Not a valid Twitter/X domain")
-      }
-      usernameToCheck = u.pathname
-        .replace(/^\/+/, "")
-        .split(/[/?]/)[0]
-        .replace(/^@/, "")
-        .toLowerCase()
-      if (!usernameToCheck) throw new Error("empty username")
-    } catch (err) {
-      return NextResponse.json(
-        { error: "Invalid Twitter URL in task", details: String(err) },
-        { status: 400 }
-      )
-    }
+let usernameToCheck: string
+try {
+  const u = new URL(incomingTask.url)
+  if (
+    !u.hostname.includes("twitter.com") &&
+    !u.hostname.includes("x.com")
+  ) {
+    throw new Error("Not a valid Twitter/X domain")
+  }
+
+  // normalize username
+  usernameToCheck = u.pathname
+    .replace(/^\/+/, "") // hapus slash depan
+    .split(/[/?]/)[0] // ambil hanya segmen pertama sebelum ? atau /
+    .replace(/^@/, "") // hapus @ kalau ada
+     .toLowerCase()
+
+  if (!usernameToCheck) throw new Error("empty username")
+} catch (err) {
+  return NextResponse.json(
+    { error: "Invalid Twitter URL in task", details: String(err) },
+    { status: 400 }
+  )
+}
 
     // --- resolve targetId
-    const targetId = await resolveTwitterUserId(usernameToCheck, social.accessToken)
+    const targetId = await resolveTwitterUserId(
+      usernameToCheck,
+      social.accessToken
+    )
     if (!targetId) {
       return NextResponse.json(
         { error: "Twitter target not found", username: usernameToCheck },
@@ -145,31 +155,16 @@ export async function POST(req: Request) {
   })
 
   if (!submission) {
-    // 🔹 buat semua task dari campaign
-    const tasks = campaignTasks.map((t) => ({
-      service: t.service,
-      type: t.type,
-      url: t.url,
-      done:
-        t.service === incomingTask.service &&
-        t.type === incomingTask.type &&
-        t.url === incomingTask.url,
-      verifiedAt:
-        t.service === incomingTask.service &&
-        t.type === incomingTask.type &&
-        t.url === incomingTask.url
-          ? now
-          : undefined,
-    }))
-
     submission = await Submission.create({
       userId: session.user.id,
       campaignId,
-      tasks,
-      status: tasks.every((t) => t.done) ? "submitted" : "pending",
+      tasks: [{ ...incomingTask, done: true, verifiedAt: now }],
+      status: campaignTasks.length === 1 ? "submitted" : "pending",
     })
   } else {
-    const subTasks = Array.isArray(submission.tasks) ? submission.tasks : []
+    const subTasks = (Array.isArray((submission as any).tasks)
+      ? (submission as any).tasks
+      : []) as SubmissionTask[]
 
     const idx = subTasks.findIndex(
       (s) =>
@@ -185,6 +180,8 @@ export async function POST(req: Request) {
     }
 
     submission.tasks = subTasks
+
+    // pastikan semua task campaign sudah done
     submission.status = campaignTasks.every((ct) =>
       submission.tasks.some(
         (st: SubmissionTask) =>
