@@ -4,6 +4,13 @@ import SocialAccount from "@/models/SocialAccount"
 const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
 const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
 const BOT_BEARER = process.env.TWITTER_BOT_BEARER!
+const DEV_BEARER = process.env.DEV_BEARER_TOKEN!
+
+function devHeaders() {
+  return {
+    Authorization: `Bearer ${DEV_BEARER}`,
+  }
+}
 
 function botHeaders() {
   return {
@@ -28,17 +35,16 @@ export async function resolveTwitterUserId(
     .toLowerCase()
 
   try {
-    const res = await fetch(
-      `https://api.twitter.com/2/users/by/username/${clean}`,
-      { headers: botHeaders() }
-    )
+    const res = await fetch(`https://api.twitter.com/2/users/by/username/${clean}`, {
+      headers: devHeaders(),
+    })
 
     if (!res.ok) {
-      console.error("resolveTwitterUserId failed:", clean, res.status)
+      console.error("resolveTwitterUserId failed:", clean, res.status, await res.text())
       return null
     }
 
-    const json = await res.json().catch(() => null)
+    const json = await res.json()
     return json?.data?.id ?? null
   } catch (e) {
     console.error("resolveTwitterUserId error:", e)
