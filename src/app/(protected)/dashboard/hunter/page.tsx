@@ -17,6 +17,11 @@ interface TaskProgress extends Task {
   done: boolean
 }
 
+interface Submission {
+  status: string
+  tasks: TaskProgress[]
+}
+
 interface Campaign {
   _id: string
   title: string
