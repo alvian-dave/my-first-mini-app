@@ -31,22 +31,50 @@ export async function refreshTwitterToken(account: any): Promise<string> {
   return account.accessToken
 }
 
-export async function resolveTwitterUserId(username: string, token: string): Promise<string | null> {
-  // Normalisasi username: buang @ dan slash di akhir
+export async function resolveTwitterUserId(
+  username: string,
+  token: string,
+  social?: any
+): Promise<string | null> {
   const clean = username.replace(/^@/, "").replace(/\/+$/, "")
 
-  const res = await fetch(`https://api.twitter.com/2/users/by/username/${clean}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  async function doResolve(tokenToUse: string) {
+    const res = await fetch(
+      `https://api.twitter.com/2/users/by/username/${clean}`,
+      { headers: { Authorization: `Bearer ${tokenToUse}` } }
+    )
 
-  if (!res.ok) {
-    console.error("resolveTwitterUserId failed:", res.status, await res.text())
-    return null
+    if (!res.ok) {
+      console.error(
+        "resolveTwitterUserId failed:",
+        res.status,
+        await res.text()
+      )
+      return { ok: false, status: res.status, data: null }
+    }
+
+    const json = await res.json().catch(() => null)
+    return { ok: true, status: res.status, data: json?.data ?? null }
   }
 
-  const json = await res.json().catch(() => null)
-  return json?.data?.id ?? null
+  // coba pertama
+  let result = await doResolve(token)
+
+  // kalau 401 → refresh token
+  if (result.status === 401 && social) {
+    try {
+      const newToken = await refreshTwitterToken(social)
+      result = await doResolve(newToken)
+    } catch (e) {
+      console.error("refreshTwitterToken failed:", e)
+      return null
+    }
+  }
+
+  if (!result.ok || !result.data) return null
+  return result.data.id
 }
+
 
 export async function checkTwitterFollow(
   social: any,
