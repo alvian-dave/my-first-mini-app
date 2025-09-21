@@ -14,10 +14,6 @@ interface Task {
   done?: boolean
 }
 
-interface TaskProgress extends Task {
-  done: boolean
-}
-
 interface Submission {
   status: string
   tasks: Task[]
@@ -51,35 +47,25 @@ export default function HunterDashboard() {
   }, [status, router])
 
   // Load campaigns
-  useEffect(() => {
-    const loadCampaigns = async () => {
-      try {
-        const res = await fetch('/api/campaigns', { cache: 'no-store' })
-        if (res.ok) {
-          setCampaigns(await res.json())
-        }
-      } catch (err) {
-        console.error('Failed to load campaigns', err)
-      }
+  const fetchCampaigns = async () => {
+    try {
+      const res = await fetch('/api/campaigns', { cache: 'no-store' })
+      if (res.ok) setCampaigns(await res.json())
+    } catch (err) {
+      console.error('Failed to load campaigns', err)
     }
-    loadCampaigns()
-  }, [])
+  }
 
   // Load completed
-  useEffect(() => {
-    const loadCompleted = async () => {
-      if (!session?.user?.id) return
-      try {
-        const res = await fetch('/api/campaigns/completed', { cache: 'no-store' })
-        if (res.ok) {
-          setCompletedCampaigns(await res.json())
-        }
-      } catch (err) {
-        console.error('Failed to load completed campaigns', err)
-      }
+  const fetchCompleted = async () => {
+    if (!session?.user?.id) return
+    try {
+      const res = await fetch('/api/campaigns/completed', { cache: 'no-store' })
+      if (res.ok) setCompletedCampaigns(await res.json())
+    } catch (err) {
+      console.error('Failed to load completed campaigns', err)
     }
-    loadCompleted()
-  }, [session])
+  }
 
   // Load balance
   const fetchBalance = async () => {
@@ -94,7 +80,10 @@ export default function HunterDashboard() {
     }
   }
 
+  // initial load
   useEffect(() => {
+    fetchCampaigns()
+    fetchCompleted()
     fetchBalance()
   }, [session])
 
@@ -114,54 +103,6 @@ export default function HunterDashboard() {
     setLoadingIds((prev) => (loading ? [...prev, id] : prev.filter((x) => x !== id)))
   }
   const isLoading = (id: string) => loadingIds.includes(id)
-
-  // --- submit task (legacy) ---
-  const submitSubmission = async (campaignId: string, tasks?: TaskProgress[]) => {
-    if (!campaignId) return
-    try {
-      setLoadingFor(campaignId, true)
-      const res = await fetch(`/api/submissions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          tasks,
-        }),
-      })
-
-      if (!res.ok) {
-        let errMsg = 'Failed to submit task. Please try again.'
-        try {
-          const errBody = await res.json()
-          if (errBody?.error) errMsg = errBody.error
-        } catch {}
-        alert(errMsg)
-        return
-      }
-
-      const data = await res.json()
-
-      if (data.newBalance !== undefined) {
-        setDbBalance(data.newBalance)
-      }
-
-      // refresh campaigns & completed
-      const [completedRes, campaignsRes] = await Promise.all([
-        fetch('/api/campaigns/completed', { cache: 'no-store' }),
-        fetch('/api/campaigns', { cache: 'no-store' }),
-      ])
-
-      if (completedRes.ok) setCompletedCampaigns(await completedRes.json())
-      if (campaignsRes.ok) setCampaigns(await campaignsRes.json())
-
-      setSelectedCampaign(null)
-      setActiveTab('completed')
-    } catch (err) {
-      console.error('Submit task failed', err)
-    } finally {
-      setLoadingFor(campaignId, false)
-    }
-  }
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
@@ -217,7 +158,7 @@ export default function HunterDashboard() {
                   Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
                 </p>
 
-                {/* 🔥 update bagian Active */}
+                {/* Active Campaigns */}
                 {activeTab === 'active' ? (
                   <div className="mt-3">
                     <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
@@ -238,7 +179,7 @@ export default function HunterDashboard() {
                       style={{ backgroundColor: '#16a34a' }}
                       onClick={() => setSelectedCampaign(c)}
                     >
-                      {isLoading(c._id) ? 'Submitting...' : 'Submit Task'}
+                      {isLoading(c._id) ? 'Loading...' : 'Open Task'}
                     </button>
                   </div>
                 ) : activeTab === 'completed' ? (
@@ -283,23 +224,8 @@ export default function HunterDashboard() {
           onClose={() => setSelectedCampaign(null)}
           onConfirm={async (submission: Submission) => {
             try {
-              const [completedRes, campaignsRes, balanceRes] = await Promise.all([
-                fetch('/api/campaigns/completed', { cache: 'no-store' }),
-                fetch('/api/campaigns', { cache: 'no-store' }),
-                fetch(`/api/balance/${session?.user?.id}`, { cache: 'no-store' }),
-              ])
-
-              if (completedRes.ok) {
-                setCompletedCampaigns(await completedRes.json())
-              }
-              if (campaignsRes.ok) {
-                setCampaigns(await campaignsRes.json())
-              }
-              if (balanceRes.ok) {
-                const bal = await balanceRes.json()
-                if (bal?.success) setDbBalance(bal.balance.amount ?? dbBalance)
-              }
-
+              // refresh semua
+              await Promise.all([fetchCompleted(), fetchCampaigns(), fetchBalance()])
               setSelectedCampaign(null)
               setActiveTab('completed')
             } catch (err) {

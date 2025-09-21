@@ -126,45 +126,30 @@ export default function TaskModal({
     }
   }
 
+  // ✅ FIX: hanya refresh UI + toast, tidak POST lagi
   const handleConfirm = async () => {
     if (!taskStates.every((t) => t.done)) {
       setToast({ message: 'Please complete all tasks first.', type: 'error' })
       return
     }
 
-    try {
-      setLoading(true)
-      const res = await fetch('/api/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId }),
-      })
-      const data = await res.json()
-
-      if (res.ok && data.success && data.newSubmission) {
-        setTaskStates(data.newSubmission.tasks)
-
-        // ✅ sync ke parent biar pindah tab
-        onConfirm(data.newSubmission)
-
-        // ✅ close modal
-        onClose()
-
-        setToast({ message: 'All tasks submitted successfully!', type: 'success' })
-      } else if (data.error === 'Already submitted' && data.submission) {
-        // tetap sync biar parent update
-        onConfirm(data.submission)
-        onClose()
-        setToast({ message: 'Already submitted before.', type: 'error' })
-      } else {
-        setToast({ message: data.error || 'Submission failed.', type: 'error' })
-      }
-    } catch (err) {
-      console.error('submit failed', err)
-      setToast({ message: 'Submission failed due to an error.', type: 'error' })
-    } finally {
-      setLoading(false)
+    // Simulasikan submission sukses
+    const fakeSubmission: Submission = {
+      status: 'submitted',
+      tasks: taskStates,
     }
+
+    // ✅ Sync ke parent agar campaign pindah tab Completed
+    onConfirm(fakeSubmission)
+
+    // ✅ Close modal
+    onClose()
+
+    // ✅ Show toast
+    setToast({
+      message: 'You have already submitted successfully. Reward has been sent to your account.',
+      type: 'success',
+    })
   }
 
   return (
