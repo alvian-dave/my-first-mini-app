@@ -80,7 +80,7 @@ export async function POST(req: Request) {
   await hunterBalance.save()
 
   // update submission → mark completed + rewarded
-  submission.status = "completed"
+  submission.status = "submitted"
   ;(submission as any).rewarded = true
   await submission.save()
 
