@@ -117,17 +117,18 @@ export async function POST(req: Request) {
     }
 
     // --- cek cache targetId
-    let targetId = taskInCampaign.targetId
+    let targetId: string | undefined = taskInCampaign.targetId
     if (!targetId) {
-      targetId = await resolveTwitterUserId(usernameToCheck)
+      const resolvedId = await resolveTwitterUserId(usernameToCheck)
+      targetId = resolvedId ?? undefined
       if (!targetId) {
         return NextResponse.json(
           { error: "Twitter target not found", username: usernameToCheck },
-          { status: 400 }
+          { status: 404 }
         )
       }
 
-      // ✅ simpan ke campaign biar next request langsung pakai cache
+      // ✅ simpan ke campaign (cache targetId)
       taskInCampaign.targetId = targetId
       await campaignDoc.save()
     }
