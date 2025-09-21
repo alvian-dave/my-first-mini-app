@@ -37,6 +37,7 @@ export interface Task {
   service: "twitter" | "discord" | "telegram" | "" // "" default jika belum dipilih
   type: string // misalnya "follow" | "retweet" | "join_channel"
   url: string  // link target (profile, group, post, dll)
+  targetId?: string
 }
 
 // ==========================

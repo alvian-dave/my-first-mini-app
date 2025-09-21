@@ -22,6 +22,7 @@ const TaskSchema = new Schema(
       required: true,
     },
     url: { type: String, required: true },
+    targetId: { type: String, required: false },
   },
   { _id: false }
 )

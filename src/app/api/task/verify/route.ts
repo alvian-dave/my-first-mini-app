@@ -13,6 +13,7 @@ interface CampaignTask {
   service: ServiceName
   type: string
   url: string
+  targetId?: string
 }
 
 interface SubmissionTask {
@@ -29,19 +30,13 @@ export async function POST(req: Request) {
   // 1) auth
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Unauthorized", code: "UNAUTHORIZED" },
-      { status: 401 }
-    )
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   // 2) parse body
   const body = await req.json().catch(() => null)
   if (!body) {
-    return NextResponse.json(
-      { error: "Invalid JSON body", code: "INVALID_BODY" },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
   const { campaignId, task } = body as {
@@ -51,7 +46,7 @@ export async function POST(req: Request) {
 
   if (!campaignId || !task?.service || !task?.type || !task?.url) {
     return NextResponse.json(
-      { error: "Missing campaignId or task fields", code: "MISSING_FIELDS" },
+      { error: "Missing campaignId or task fields" },
       { status: 400 }
     )
   }
@@ -66,10 +61,7 @@ export async function POST(req: Request) {
   // 3) load campaign
   const campaignDoc = await Campaign.findById(campaignId)
   if (!campaignDoc) {
-    return NextResponse.json(
-      { error: "Campaign not found", code: "CAMPAIGN_NOT_FOUND" },
-      { status: 404 }
-    )
+    return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
   }
 
   const campaignTasks = (Array.isArray((campaignDoc as any).tasks)
@@ -83,10 +75,7 @@ export async function POST(req: Request) {
       t.url === incomingTask.url
   )
   if (!taskInCampaign) {
-    return NextResponse.json(
-      { error: "Task not in campaign", code: "TASK_NOT_IN_CAMPAIGN" },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: "Task not in campaign" }, { status: 400 })
   }
 
   // 4) Service-specific verification
@@ -97,7 +86,7 @@ export async function POST(req: Request) {
     })
     if (!social) {
       return NextResponse.json(
-        { error: "Twitter not connected", code: "TWITTER_NOT_CONNECTED" },
+        { error: "Twitter not connected" },
         { status: 400 }
       )
     }
@@ -122,36 +111,32 @@ export async function POST(req: Request) {
       if (!usernameToCheck) throw new Error("empty username")
     } catch (err) {
       return NextResponse.json(
-        {
-          error: "Invalid Twitter URL in task",
-          code: "INVALID_TWITTER_URL",
-          details: String(err),
-        },
+        { error: "Invalid Twitter URL in task", details: String(err) },
         { status: 400 }
       )
     }
 
-    // --- resolve targetId pakai bot
-    const targetId = await resolveTwitterUserId(usernameToCheck)
+    // --- cek cache targetId
+    let targetId = taskInCampaign.targetId
     if (!targetId) {
-      return NextResponse.json(
-        {
-          error: "Twitter target not found",
-          code: "TARGET_NOT_FOUND",
-          username: usernameToCheck,
-        },
-        { status: 400 }
-      )
+      targetId = await resolveTwitterUserId(usernameToCheck)
+      if (!targetId) {
+        return NextResponse.json(
+          { error: "Twitter target not found", username: usernameToCheck },
+          { status: 400 }
+        )
+      }
+
+      // ✅ simpan ke campaign biar next request langsung pakai cache
+      taskInCampaign.targetId = targetId
+      await campaignDoc.save()
     }
 
     // --- check follow pakai bot
     const isFollowing = await checkTwitterFollow(social, targetId)
     if (!isFollowing) {
       return NextResponse.json(
-        {
-          error: "Twitter task not completed (not following)",
-          code: "NOT_FOLLOWING",
-        },
+        { error: "Twitter task not completed (not following)" },
         { status: 400 }
       )
     }
