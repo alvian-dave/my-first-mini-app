@@ -27,6 +27,7 @@ interface Campaign {
   status: 'active' | 'finished' | 'rejected'
   tasks?: Task[]
   participants?: string[]
+  contributors?: number
 }
 
 export default function HunterDashboard() {
@@ -46,28 +47,32 @@ export default function HunterDashboard() {
     if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
 
-  // Load campaigns
+  // fetch helpers
   const fetchCampaigns = async () => {
     try {
       const res = await fetch('/api/campaigns', { cache: 'no-store' })
-      if (res.ok) setCampaigns(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setCampaigns(data)
+      }
     } catch (err) {
       console.error('Failed to load campaigns', err)
     }
   }
 
-  // Load completed
   const fetchCompleted = async () => {
     if (!session?.user?.id) return
     try {
       const res = await fetch('/api/campaigns/completed', { cache: 'no-store' })
-      if (res.ok) setCompletedCampaigns(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setCompletedCampaigns(data)
+      }
     } catch (err) {
       console.error('Failed to load completed campaigns', err)
     }
   }
 
-  // Load balance
   const fetchBalance = async () => {
     if (!session?.user?.id) return
     try {
@@ -85,7 +90,14 @@ export default function HunterDashboard() {
     fetchCampaigns()
     fetchCompleted()
     fetchBalance()
-  }, [session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id])
+
+  // helper loading
+  const setLoadingFor = (id: string, loading: boolean) => {
+    setLoadingIds((prev) => (loading ? [...prev, id] : prev.filter((x) => x !== id)))
+  }
+  const isLoading = (id: string) => loadingIds.includes(id)
 
   // filter campaigns sesuai tab
   const filtered = (() => {
@@ -97,12 +109,6 @@ export default function HunterDashboard() {
     if (activeTab === 'rejected') return campaigns.filter((c) => c.status === 'rejected')
     return []
   })().sort((a, b) => (a._id > b._id ? -1 : 1))
-
-  // helper loading
-  const setLoadingFor = (id: string, loading: boolean) => {
-    setLoadingIds((prev) => (loading ? [...prev, id] : prev.filter((x) => x !== id)))
-  }
-  const isLoading = (id: string) => loadingIds.includes(id)
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
@@ -179,7 +185,7 @@ export default function HunterDashboard() {
                       style={{ backgroundColor: '#16a34a' }}
                       onClick={() => setSelectedCampaign(c)}
                     >
-                      {isLoading(c._id) ? 'Loading...' : 'Open Task'}
+                      {isLoading(c._id) ? 'Loading...' : 'Submit Task'}
                     </button>
                   </div>
                 ) : activeTab === 'completed' ? (
@@ -224,8 +230,10 @@ export default function HunterDashboard() {
           onClose={() => setSelectedCampaign(null)}
           onConfirm={async (submission: Submission) => {
             try {
-              // refresh semua
+              // refresh data (completed, campaigns, balance)
               await Promise.all([fetchCompleted(), fetchCampaigns(), fetchBalance()])
+
+              // close modal & switch to completed tab
               setSelectedCampaign(null)
               setActiveTab('completed')
             } catch (err) {
