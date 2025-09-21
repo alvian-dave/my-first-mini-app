@@ -4,6 +4,7 @@ import dbConnect from "@/lib/mongodb"
 import Submission from "@/models/Submission"
 import { Campaign } from "@/models/Campaign"
 import Balance from "@/models/Balance"
+import { Notification } from "@/models/Notification"  // ✅ import Notification
 import { auth } from "@/auth"
 
 export async function GET() {
@@ -55,24 +56,24 @@ export async function POST(req: Request) {
   }
 
   // ambil campaign
-const campaign = await Campaign.findOneAndUpdate(
-  { _id: campaignId, status: "active" },
-  {
-    $addToSet: { participants: session.user.id }, // tambahkan participant unik
-  },
-  { new: true }
-)
-
-if (!campaign) {
-  return NextResponse.json(
-    { error: "Campaign not found or inactive" },
-    { status: 404 }
+  const campaign = await Campaign.findOneAndUpdate(
+    { _id: campaignId, status: "active" },
+    {
+      $addToSet: { participants: session.user.id }, // tambahkan participant unik
+    },
+    { new: true }
   )
-}
 
-// hitung ulang contributors dari jumlah participants
-campaign.contributors = campaign.participants.length
-await campaign.save()
+  if (!campaign) {
+    return NextResponse.json(
+      { error: "Campaign not found or inactive" },
+      { status: 404 }
+    )
+  }
+
+  // hitung ulang contributors dari jumlah participants
+  campaign.contributors = campaign.participants.length
+  await campaign.save()
 
   // update balance hunter
   let hunterBalance = await Balance.findOne({ userId: session.user.id })
@@ -86,6 +87,22 @@ await campaign.save()
   submission.status = "submitted"
   ;(submission as any).rewarded = true
   await submission.save()
+
+  // ✅ Notifikasi untuk Hunter
+  await Notification.create({
+    userId: session.user.id,
+    role: "hunter",
+    type: "submission_completed",
+    message: `You have successfully completed the campaign "${campaign.title}" and earned ${campaign.reward} tokens.`,
+  })
+
+  // ✅ Notifikasi untuk Promoter
+  await Notification.create({
+    userId: campaign.createdBy,
+    role: "promoter",
+    type: "submission_completed",
+    message: `Hunter "${session.user.username || session.user.id}" has successfully completed your campaign "${campaign.title}".`,
+  })
 
   return NextResponse.json({
     success: true,
