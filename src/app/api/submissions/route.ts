@@ -55,21 +55,24 @@ export async function POST(req: Request) {
   }
 
   // ambil campaign
-  const campaign = await Campaign.findOneAndUpdate(
-    { _id: campaignId, status: "active" },
-    {
-      $inc: { contributors: 1 },
-      $addToSet: { participants: session.user.id }, // ✅ tambahkan participant unik
-    },
-    { new: true }
-  )
+const campaign = await Campaign.findOneAndUpdate(
+  { _id: campaignId, status: "active" },
+  {
+    $addToSet: { participants: session.user.id }, // tambahkan participant unik
+  },
+  { new: true }
+)
 
-  if (!campaign) {
-    return NextResponse.json(
-      { error: "Campaign not found or inactive" },
-      { status: 404 }
-    )
-  }
+if (!campaign) {
+  return NextResponse.json(
+    { error: "Campaign not found or inactive" },
+    { status: 404 }
+  )
+}
+
+// hitung ulang contributors dari jumlah participants
+campaign.contributors = campaign.participants.length
+await campaign.save()
 
   // update balance hunter
   let hunterBalance = await Balance.findOne({ userId: session.user.id })
