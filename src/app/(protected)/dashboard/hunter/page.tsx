@@ -115,7 +115,7 @@ export default function HunterDashboard() {
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // --- submit task (dipakai jika parent mau post sendiri). kept for compatibility but not used by TaskModal onConfirm ---
+  // --- submit task (legacy) ---
   const submitSubmission = async (campaignId: string, tasks?: TaskProgress[]) => {
     if (!campaignId) return
     try {
@@ -154,7 +154,6 @@ export default function HunterDashboard() {
       if (completedRes.ok) setCompletedCampaigns(await completedRes.json())
       if (campaignsRes.ok) setCampaigns(await campaignsRes.json())
 
-      // close modal & pindah ke completed
       setSelectedCampaign(null)
       setActiveTab('completed')
     } catch (err) {
@@ -218,21 +217,55 @@ export default function HunterDashboard() {
                   Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
                 </p>
 
+                {/* 🔥 update bagian Active */}
                 {activeTab === 'active' ? (
-                  <button
-                    className="mt-3 w-full py-2 rounded font-semibold text-white"
-                    style={{ backgroundColor: '#16a34a' }}
-                    onClick={() => setSelectedCampaign(c)}
-                  >
-                    {isLoading(c._id) ? 'Submitting...' : 'Submit Task'}
-                  </button>
+                  <div className="mt-3">
+                    <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
+                    {c.tasks && c.tasks.length > 0 && (
+                      <ul className="text-sm text-gray-300 space-y-1">
+                        {c.tasks.map((t, i) => (
+                          <li key={i} className="flex items-center gap-2">
+                            <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
+                              {t.service}
+                            </span>
+                            <span className="text-gray-200">{t.type}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <button
+                      className="mt-3 w-full py-2 rounded font-semibold text-white"
+                      style={{ backgroundColor: '#16a34a' }}
+                      onClick={() => setSelectedCampaign(c)}
+                    >
+                      {isLoading(c._id) ? 'Submitting...' : 'Submit Task'}
+                    </button>
+                  </div>
                 ) : activeTab === 'completed' ? (
-                  <p className="text-green-400 mt-2 font-medium">
-                    Task Submitted — Status:{' '}
-                    <span className={c.status === 'finished' ? 'text-blue-400' : 'text-green-400'}>
-                      {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
-                    </span>
-                  </p>
+                  <div className="mt-3">
+                    <p className="text-green-400 font-medium mb-2">
+                      Task Submitted — Status:{' '}
+                      <span
+                        className={
+                          c.status === 'finished' ? 'text-blue-400' : 'text-green-400'
+                        }
+                      >
+                        {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                      </span>
+                    </p>
+                    {c.tasks && c.tasks.length > 0 && (
+                      <ul className="text-sm text-gray-300 space-y-1">
+                        {c.tasks.map((t, i) => (
+                          <li key={i} className="flex items-center gap-2">
+                            <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-green-400">
+                              {t.service}
+                            </span>
+                            <span className="text-gray-200">{t.type}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 ) : null}
               </div>
             ))
@@ -249,14 +282,10 @@ export default function HunterDashboard() {
           tasks={selectedCampaign.tasks || []}
           onClose={() => setSelectedCampaign(null)}
           onConfirm={async (submission: Submission) => {
-            // IMPORTANT: TaskModal already did POST /api/submissions and returns newSubmission (or submission)
-            // Parent should not POST again. Instead refresh lists & balance and close modal.
             try {
-              // refresh balance and lists (run in parallel)
-              const [completedRes, campaignsRes] = await Promise.all([
+              const [completedRes, campaignsRes, balanceRes] = await Promise.all([
                 fetch('/api/campaigns/completed', { cache: 'no-store' }),
                 fetch('/api/campaigns', { cache: 'no-store' }),
-                // also refresh balance
                 fetch(`/api/balance/${session?.user?.id}`, { cache: 'no-store' }),
               ])
 
@@ -266,27 +295,15 @@ export default function HunterDashboard() {
               if (campaignsRes.ok) {
                 setCampaigns(await campaignsRes.json())
               }
-
-              // update balance if returned
-              if (session?.user?.id && completedRes.ok) {
-                // try to parse balance fetch result (the third Promise may be the balance fetch)
-                try {
-                  const balanceRes = await fetch(`/api/balance/${session.user.id}`, { cache: 'no-store' })
-                  if (balanceRes.ok) {
-                    const bal = await balanceRes.json()
-                    if (bal?.success) setDbBalance(bal.balance.amount ?? dbBalance)
-                  }
-                } catch (e) {
-                  // ignore balance parse error
-                }
+              if (balanceRes.ok) {
+                const bal = await balanceRes.json()
+                if (bal?.success) setDbBalance(bal.balance.amount ?? dbBalance)
               }
 
-              // close modal and switch to completed tab
               setSelectedCampaign(null)
               setActiveTab('completed')
             } catch (err) {
               console.error('Failed to refresh after submission', err)
-              // still close the modal to avoid stuck UI
               setSelectedCampaign(null)
             }
           }}
