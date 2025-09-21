@@ -45,9 +45,7 @@ export default function TaskModal({
       try {
         const res = await fetch('/api/connect/twitter/status')
         const data = await res.json()
-        if (data.connected) {
-          setTwitterConnected(true)
-        }
+        if (data.connected) setTwitterConnected(true)
       } catch (err) {
         console.error('Failed to check twitter status', err)
       }
@@ -57,9 +55,7 @@ export default function TaskModal({
       try {
         const res = await fetch(`/api/submissions?campaignId=${campaignId}`)
         const data = await res.json()
-        if (res.ok && data.submission) {
-          setTaskStates(data.submission.tasks)
-        }
+        if (res.ok && data.submission) setTaskStates(data.submission.tasks)
       } catch (err) {
         console.error('Failed to load submission', err)
       }
@@ -68,40 +64,28 @@ export default function TaskModal({
     checkTwitterStatus()
     fetchSubmission()
 
-    // ✅ listen postMessage dari /twitter-success
     const handleMessage = (event: MessageEvent) => {
-      if (
-        event.origin === window.location.origin &&
-        event.data?.type === 'TWITTER_CONNECTED'
-      ) {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type === 'TWITTER_CONNECTED') {
         setTwitterConnected(true)
         setToast({ message: 'Twitter connected successfully!', type: 'success' })
       }
-
-      if (
-        event.origin === window.location.origin &&
-        event.data?.type === 'TWITTER_FAILED'
-      ) {
+      if (event.data?.type === 'TWITTER_FAILED') {
         setToast({ message: 'Twitter connection failed, please try again.', type: 'error' })
       }
     }
-    window.addEventListener('message', handleMessage)
 
-    return () => {
-      window.removeEventListener('message', handleMessage)
-    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
   }, [campaignId])
 
   const handleVerify = async (idx: number, task: Task) => {
     try {
       setLoading(true)
-
       if (task.service === 'twitter' && !twitterConnected) {
         const res = await fetch('/api/connect/twitter/start')
         const data = await res.json()
-        if (data.url) {
-          window.location.href = data.url
-        }
+        if (data.url) window.location.href = data.url
         return
       }
 
@@ -111,7 +95,6 @@ export default function TaskModal({
         body: JSON.stringify({ campaignId, task }),
       })
       const data = await res.json()
-
       if (data.success && data.submission) {
         setTaskStates(data.submission.tasks)
         setToast({ message: 'Task verified successfully!', type: 'success' })
@@ -141,22 +124,18 @@ export default function TaskModal({
       })
       const data = await res.json()
 
-      if (res.ok && data.success && data.newSubmission) {
-        // ✅ first submit success
-        setTaskStates(data.newSubmission.tasks)
-        onConfirm(data.newSubmission)
+      if (res.ok && data.success) {
+        // ✅ Treat first submit or already rewarded as success
+        const submission = data.submission
+        setTaskStates(submission.tasks)
+        onConfirm(submission)
         onClose()
-        setToast({ message: 'All tasks submitted successfully!', type: 'success' })
-
-      } else if (data.error === 'Already submitted' && data.submission) {
-        // ✅ treat as success
-        setTaskStates(data.submission.tasks)
-        onConfirm(data.submission)
-        onClose()
-        setToast({ message: 'You already submitted this campaign.', type: 'success' })
-
+        if (data.alreadyRewarded) {
+          setToast({ message: 'You have already received the reward for this campaign.', type: 'success' })
+        } else {
+          setToast({ message: 'All tasks submitted successfully!', type: 'success' })
+        }
       } else {
-        // ❌ real failure
         setToast({ message: data.error || 'Submission failed.', type: 'error' })
       }
     } catch (err) {
@@ -176,19 +155,14 @@ export default function TaskModal({
 
           <div className="space-y-3 mb-4">
             {taskStates.map((task, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between bg-gray-700 p-3 rounded"
-              >
+              <div key={i} className="flex items-center justify-between bg-gray-700 p-3 rounded">
                 <a
                   href={task.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center gap-2"
                 >
-                  <span>
-                    {task.service.toUpperCase()} — {task.type}
-                  </span>
+                  <span>{task.service.toUpperCase()} — {task.type}</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
 
@@ -200,9 +174,7 @@ export default function TaskModal({
                     disabled={loading}
                     className="ml-3 px-3 py-1 text-sm rounded bg-green-600 hover:bg-green-700"
                   >
-                    {task.service === 'twitter' && !twitterConnected
-                      ? 'Connect Twitter'
-                      : 'Verify'}
+                    {task.service === 'twitter' && !twitterConnected ? 'Connect Twitter' : 'Verify'}
                   </button>
                 )}
               </div>
@@ -219,13 +191,7 @@ export default function TaskModal({
           </button>
 
           {/* ✅ Toast */}
-          {toast && (
-            <Toast
-              message={toast.message}
-              type={toast.type}
-              onClose={() => setToast(null)}
-            />
-          )}
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </Dialog.Panel>
       </div>
     </Dialog>

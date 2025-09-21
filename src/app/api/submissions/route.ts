@@ -4,7 +4,7 @@ import dbConnect from "@/lib/mongodb"
 import Submission from "@/models/Submission"
 import { Campaign } from "@/models/Campaign"
 import Balance from "@/models/Balance"
-import { Notification } from "@/models/Notification"  // ✅ import Notification
+import { Notification } from "@/models/Notification"
 import { auth } from "@/auth"
 
 export async function GET() {
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "campaignId required" }, { status: 400 })
   }
 
-  // cek submission hunter
+  // ambil submission hunter
   const submission = await Submission.findOne({
     userId: session.user.id,
     campaignId,
@@ -50,11 +50,6 @@ export async function POST(req: Request) {
     )
   }
 
-  // reward cuma dikasih sekali
-  if ((submission as any).rewarded) {
-    return NextResponse.json({ error: "Already rewarded" }, { status: 400 })
-  }
-
   // ambil campaign
   const campaign = await Campaign.findOneAndUpdate(
     { _id: campaignId, status: "active" },
@@ -71,43 +66,45 @@ export async function POST(req: Request) {
     )
   }
 
-  // hitung ulang contributors dari jumlah participants
+  // hitung ulang contributors
   campaign.contributors = campaign.participants.length
   await campaign.save()
 
-  // update balance hunter
+  let rewarded = false
+  // update balance hunter → cuma sekali
   let hunterBalance = await Balance.findOne({ userId: session.user.id })
   if (!hunterBalance) {
     hunterBalance = await Balance.create({ userId: session.user.id, amount: 0 })
   }
-  hunterBalance.amount += Number(campaign.reward)
-  await hunterBalance.save()
+  if (!(submission as any).rewarded) {
+    hunterBalance.amount += Number(campaign.reward)
+    await hunterBalance.save()
+    rewarded = true
+    ;(submission as any).rewarded = true
+    await submission.save()
 
-  // update submission → mark completed + rewarded
-  submission.status = "submitted"
-  ;(submission as any).rewarded = true
-  await submission.save()
+    // ✅ Notifikasi untuk Hunter
+    await Notification.create({
+      userId: session.user.id,
+      role: "hunter",
+      type: "submission_completed",
+      message: `You have successfully completed the campaign "${campaign.title}" and earned ${campaign.reward} tokens.`,
+    })
 
-  // ✅ Notifikasi untuk Hunter
-  await Notification.create({
-    userId: session.user.id,
-    role: "hunter",
-    type: "submission_completed",
-    message: `You have successfully completed the campaign "${campaign.title}" and earned ${campaign.reward} tokens.`,
-  })
-
-  // ✅ Notifikasi untuk Promoter
-  await Notification.create({
-    userId: campaign.createdBy,
-    role: "promoter",
-    type: "submission_completed",
-    message: `Hunter "${session.user.username || session.user.id}" has successfully completed your campaign "${campaign.title}".`,
-  })
+    // ✅ Notifikasi untuk Promoter
+    await Notification.create({
+      userId: campaign.createdBy,
+      role: "promoter",
+      type: "submission_completed",
+      message: `Hunter "${session.user.username || session.user.id}" has successfully completed your campaign "${campaign.title}".`,
+    })
+  }
 
   return NextResponse.json({
     success: true,
     submission: submission.toObject(),
     campaign: campaign.toObject(),
     newBalance: hunterBalance.amount,
+    alreadyRewarded: !rewarded, // frontend bisa pakai ini untuk toast message
   })
 }
