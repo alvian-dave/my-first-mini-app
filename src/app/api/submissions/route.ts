@@ -49,23 +49,27 @@ export async function POST(req: Request) {
     )
   }
 
-  // reward cuma dikasih sekali → pake flag "rewarded"
+  // reward cuma dikasih sekali
   if ((submission as any).rewarded) {
     return NextResponse.json({ error: "Already rewarded" }, { status: 400 })
   }
 
   // ambil campaign
-  const campaign = await Campaign.findById(campaignId)
-  if (!campaign || campaign.status !== "active") {
+  const campaign = await Campaign.findOneAndUpdate(
+    { _id: campaignId, status: "active" },
+    {
+      $inc: { contributors: 1 },
+      $addToSet: { participants: session.user.id }, // ✅ tambahkan participant unik
+    },
+    { new: true }
+  )
+
+  if (!campaign) {
     return NextResponse.json(
       { error: "Campaign not found or inactive" },
       { status: 404 }
     )
   }
-
-  // increment contributors
-  campaign.contributors = (campaign.contributors || 0) + 1
-  await campaign.save()
 
   // update balance hunter
   let hunterBalance = await Balance.findOne({ userId: session.user.id })
@@ -75,7 +79,8 @@ export async function POST(req: Request) {
   hunterBalance.amount += Number(campaign.reward)
   await hunterBalance.save()
 
-  // tandai sudah reward
+  // update submission → mark completed + rewarded
+  submission.status = "completed"
   ;(submission as any).rewarded = true
   await submission.save()
 

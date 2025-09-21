@@ -61,7 +61,8 @@ export async function PATCH(
   { params }: { params: ParamsPromise }
 ) {
   const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session?.user?.id)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
   await dbConnect()
@@ -95,13 +96,6 @@ export async function PATCH(
         })),
         status: "in_progress",
       })
-
-      // increment contributors
-      campaign.contributors = (campaign.contributors || 0) + 1
-      if (!campaign.participants.includes(session.user.id)) {
-        campaign.participants.push(session.user.id)
-      }
-      await campaign.save()
     } else {
       // update status kalau sudah pernah submit
       submission.status = "in_progress"
