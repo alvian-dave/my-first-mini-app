@@ -142,21 +142,21 @@ export default function TaskModal({
       const data = await res.json()
 
       if (res.ok && data.success && data.newSubmission) {
+        // ✅ first submit success
         setTaskStates(data.newSubmission.tasks)
-
-        // ✅ sync ke parent biar pindah tab
         onConfirm(data.newSubmission)
-
-        // ✅ close modal
         onClose()
-
         setToast({ message: 'All tasks submitted successfully!', type: 'success' })
+
       } else if (data.error === 'Already submitted' && data.submission) {
-        // tetap sync biar parent update
+        // ✅ treat as success
+        setTaskStates(data.submission.tasks)
         onConfirm(data.submission)
         onClose()
-        setToast({ message: 'Already submitted before.', type: 'error' })
+        setToast({ message: 'You already submitted this campaign.', type: 'success' })
+
       } else {
+        // ❌ real failure
         setToast({ message: data.error || 'Submission failed.', type: 'error' })
       }
     } catch (err) {
@@ -218,7 +218,7 @@ export default function TaskModal({
             Confirm & Submit
           </button>
 
-          {/* ✅ Render Toast */}
+          {/* ✅ Toast */}
           {toast && (
             <Toast
               message={toast.message}
