@@ -26,23 +26,15 @@ export const Topbar = () => {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
 
+  const [refreshing, setRefreshing] = useState(false)
+  const [canRefresh, setCanRefresh] = useState(true)
+
   const username =
     session?.user?.username ||
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
 
   // --- Fetch functions ---
-  const fetchRole = async () => {
-    if (!session?.user?.id) return
-    try {
-      const res = await fetch('/api/roles/get')
-      const data = await res.json()
-      if (data.success && data.activeRole) setRole(data.activeRole)
-    } catch (err) {
-      console.error('Failed to fetch activeRole:', err)
-    }
-  }
-
   const fetchBalance = async () => {
     if (!session?.user?.id) return
     try {
@@ -69,13 +61,32 @@ export const Topbar = () => {
     }
   }
 
-  const refreshDashboard = async () => {
-    await Promise.all([fetchRole(), fetchBalance(), fetchNotifications()])
+  const handleRefresh = async () => {
+    if (!canRefresh) return
+    setRefreshing(true)
+    setCanRefresh(false)
+    await Promise.all([fetchBalance(), fetchNotifications()])
+    setRefreshing(false)
+
+    setTimeout(() => setCanRefresh(true), 10000) // enable after 10s
   }
 
   // --- Initial fetch ---
   useEffect(() => {
-    refreshDashboard()
+    const fetchRole = async () => {
+      if (!session?.user?.id) return
+      try {
+        const res = await fetch('/api/roles/get')
+        const data = await res.json()
+        if (data.success && data.activeRole) setRole(data.activeRole)
+      } catch (err) {
+        console.error('Failed to fetch role:', err)
+      }
+    }
+
+    fetchRole()
+    fetchBalance()
+    fetchNotifications()
   }, [session])
 
   // --- Notification mark as read ---
@@ -164,29 +175,47 @@ export const Topbar = () => {
                 className="absolute right-0 mt-3 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
                 onMouseLeave={() => setIsMenuOpen(false)}
               >
-                <div className="px-4 py-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
-                    <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
-                  </div>
-                  {/* Refresh button */}
-                  <button
-                    onClick={refreshDashboard}
-                    className="p-1 rounded hover:bg-gray-200 transition"
-                    title="Refresh Dashboard"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-gray-700">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z" />
-                    </svg>
-                  </button>
+                <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
+                  <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
                 </div>
 
                 <ul className="divide-y divide-gray-200 text-sm">
+                  {/* --- Refresh button --- */}
+                  <li className="px-4 py-2">
+                    <button
+                      onClick={handleRefresh}
+                      disabled={!canRefresh}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 transition ${
+                        !canRefresh ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {refreshing && <span className="animate-spin">⏳</span>}
+                      Refresh
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z"
+                        />
+                      </svg>
+                    </button>
+                  </li>
+
+                  {/* --- Main balance --- */}
                   <li className="flex justify-between items-center px-4 py-2">
                     <span>Main balance</span>
                     <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
                   </li>
 
+                  {/* --- Profile --- */}
                   <li>
                     <button
                       onClick={handleGoToProfile}
@@ -196,9 +225,8 @@ export const Topbar = () => {
                     </button>
                   </li>
 
-                  {role === '' ? (
-                    <li className="px-4 py-2 text-gray-400 animate-pulse">Loading...</li>
-                  ) : role === 'promoter' ? (
+                  {/* --- Topup --- */}
+                  {role === 'promoter' && (
                     <li>
                       <button
                         onClick={handleGoToTopup}
@@ -207,8 +235,9 @@ export const Topbar = () => {
                         Top-up
                       </button>
                     </li>
-                  ) : null}
+                  )}
 
+                  {/* --- Notification --- */}
                   <li>
                     <button
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 transition flex justify-between items-center"
@@ -247,7 +276,9 @@ export const Topbar = () => {
                     <button
                       onClick={handleLogout}
                       disabled={isLoggingOut}
-                      className={`w-full text-left font-medium text-red-600 hover:text-red-700 transition ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full text-left font-medium text-red-600 hover:text-red-700 transition ${
+                        isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
                       {isLoggingOut ? 'Logging out…' : 'Logout'}
                     </button>
