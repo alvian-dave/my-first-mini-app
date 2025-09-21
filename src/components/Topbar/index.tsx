@@ -31,22 +31,18 @@ export const Topbar = () => {
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
 
-  // Fetch activeRole
-  useEffect(() => {
-    const fetchRole = async () => {
-      if (!session?.user?.id) return
-      try {
-        const res = await fetch('/api/roles/get')
-        const data = await res.json()
-        if (data.success && data.activeRole) setRole(data.activeRole)
-      } catch (err) {
-        console.error('Failed to fetch activeRole:', err)
-      }
+  // --- Fetch functions ---
+  const fetchRole = async () => {
+    if (!session?.user?.id) return
+    try {
+      const res = await fetch('/api/roles/get')
+      const data = await res.json()
+      if (data.success && data.activeRole) setRole(data.activeRole)
+    } catch (err) {
+      console.error('Failed to fetch activeRole:', err)
     }
-    fetchRole()
-  }, [session])
+  }
 
-  // Fetch main balance
   const fetchBalance = async () => {
     if (!session?.user?.id) return
     try {
@@ -58,19 +54,6 @@ export const Topbar = () => {
     }
   }
 
-  useEffect(() => {
-    fetchBalance()
-  }, [session])
-
-  // Poll balance every 5s
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchBalance()
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [session])
-
-  // --- Notification functions ---
   const fetchNotifications = async () => {
     if (!session?.user?.id || !role) return
     try {
@@ -86,20 +69,17 @@ export const Topbar = () => {
     }
   }
 
-  useEffect(() => {
-    fetchNotifications()
-  }, [session, role])
+  const refreshDashboard = async () => {
+    await Promise.all([fetchRole(), fetchBalance(), fetchNotifications()])
+  }
 
+  // --- Initial fetch ---
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchNotifications()
-    }, 10000) // polling setiap 10 detik
-    return () => clearInterval(interval)
-  }, [session, role])
+    refreshDashboard()
+  }, [session])
 
-  // Optimistic update untuk markAsRead
+  // --- Notification mark as read ---
   const markAsRead = async (id: string) => {
-    // Optimistic update lokal
     setNotifications((prev) =>
       prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
     )
@@ -115,12 +95,11 @@ export const Topbar = () => {
       if (!data.success) throw new Error('Failed to update notification')
     } catch (err) {
       console.error('Failed to mark notification as read:', err)
-      // Rollback kalau gagal
       fetchNotifications()
     }
   }
 
-  // Logout
+  // --- Logout ---
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
@@ -185,9 +164,21 @@ export const Topbar = () => {
                 className="absolute right-0 mt-3 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
                 onMouseLeave={() => setIsMenuOpen(false)}
               >
-                <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
-                  <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
+                <div className="px-4 py-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
+                    <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
+                  </div>
+                  {/* Refresh button */}
+                  <button
+                    onClick={refreshDashboard}
+                    className="p-1 rounded hover:bg-gray-200 transition"
+                    title="Refresh Dashboard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-gray-700">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z" />
+                    </svg>
+                  </button>
                 </div>
 
                 <ul className="divide-y divide-gray-200 text-sm">
@@ -205,21 +196,19 @@ export const Topbar = () => {
                     </button>
                   </li>
 
-{/* tampilkan skeleton kecil dulu supaya layout tidak lompat */}
-{role === '' ? (
-  <li className="px-4 py-2 text-gray-400 animate-pulse">Loading...</li>
-) : role === 'promoter' ? (
-  <li>
-    <button
-      onClick={handleGoToTopup}
-      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-    >
-      Top-up
-    </button>
-  </li>
-) : null}
+                  {role === '' ? (
+                    <li className="px-4 py-2 text-gray-400 animate-pulse">Loading...</li>
+                  ) : role === 'promoter' ? (
+                    <li>
+                      <button
+                        onClick={handleGoToTopup}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                      >
+                        Top-up
+                      </button>
+                    </li>
+                  ) : null}
 
-                  {/* Notification button */}
                   <li>
                     <button
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 transition flex justify-between items-center"
@@ -258,9 +247,7 @@ export const Topbar = () => {
                     <button
                       onClick={handleLogout}
                       disabled={isLoggingOut}
-                      className={`w-full text-left font-medium text-red-600 hover:text-red-700 transition ${
-                        isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
+                      className={`w-full text-left font-medium text-red-600 hover:text-red-700 transition ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {isLoggingOut ? 'Logging out…' : 'Logout'}
                     </button>
@@ -299,7 +286,6 @@ export const Topbar = () => {
       {showNotificationsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
-            {/* Header sticky */}
             <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
               <h2 className="text-lg font-semibold">Notifications</h2>
               <button
@@ -310,7 +296,6 @@ export const Topbar = () => {
               </button>
             </div>
 
-            {/* Scrollable content */}
             <div className="overflow-y-auto flex-1">
               {notifications.length > 0 ? (
                 notifications.map((n) => (
@@ -318,21 +303,15 @@ export const Topbar = () => {
                     key={n._id}
                     onClick={() => markAsRead(n._id)}
                     className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
-                      n.isRead
-                        ? 'bg-white text-gray-800'
-                        : 'bg-gray-100 font-medium text-gray-900'
+                      n.isRead ? 'bg-white text-gray-800' : 'bg-gray-100 font-medium text-gray-900'
                     } hover:bg-gray-200 transition`}
                   >
                     <p className="text-sm">{n.message}</p>
-                    <p className="text-xs text-gray-600">
-                      {new Date(n.createdAt).toLocaleString()}
-                    </p>
+                    <p className="text-xs text-gray-600">{new Date(n.createdAt).toLocaleString()}</p>
                   </div>
                 ))
               ) : (
-                <p className="px-4 py-2 text-sm text-gray-500 text-center">
-                  No notifications yet
-                </p>
+                <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
               )}
             </div>
           </div>
