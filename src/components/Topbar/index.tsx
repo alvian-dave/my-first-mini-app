@@ -26,6 +26,7 @@ export const Topbar = () => {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
 
+  // --- Refresh state ---
   const [refreshing, setRefreshing] = useState(false)
   const [canRefresh, setCanRefresh] = useState(true)
 
@@ -46,10 +47,12 @@ export const Topbar = () => {
     }
   }
 
-  const fetchNotifications = async () => {
-    if (!session?.user?.id || !role) return
+  const fetchNotifications = async (userRole?: string) => {
+    if (!session?.user?.id) return
+    const r = userRole || role
+    if (!r) return
     try {
-      const res = await fetch(`/api/notifications/${session.user.id}?role=${role}`)
+      const res = await fetch(`/api/notifications/${session.user.id}?role=${r}`)
       const data = await res.json()
       if (data.success && data.notifications) {
         setNotifications(data.notifications)
@@ -67,26 +70,32 @@ export const Topbar = () => {
     setCanRefresh(false)
     await Promise.all([fetchBalance(), fetchNotifications()])
     setRefreshing(false)
-
     setTimeout(() => setCanRefresh(true), 10000) // enable after 10s
   }
 
   // --- Initial fetch ---
   useEffect(() => {
-    const fetchRole = async () => {
-      if (!session?.user?.id) return
+    if (!session?.user?.id) return
+
+    const init = async () => {
       try {
+        // --- fetch role ---
         const res = await fetch('/api/roles/get')
         const data = await res.json()
-        if (data.success && data.activeRole) setRole(data.activeRole)
+        const activeRole = data.success && data.activeRole ? data.activeRole : ''
+        setRole(activeRole)
+
+        // --- fetch balance ---
+        await fetchBalance()
+
+        // --- fetch notifications langsung pakai role terbaru ---
+        if (activeRole) await fetchNotifications(activeRole)
       } catch (err) {
-        console.error('Failed to fetch role:', err)
+        console.error('Failed initial fetch:', err)
       }
     }
 
-    fetchRole()
-    fetchBalance()
-    fetchNotifications()
+    init()
   }, [session])
 
   // --- Notification mark as read ---
@@ -153,7 +162,6 @@ export const Topbar = () => {
               aria-label="User menu"
               className="p-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
             >
-              {/* menu icon */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
