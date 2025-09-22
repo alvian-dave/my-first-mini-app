@@ -21,7 +21,7 @@ interface TaskModalProps {
   campaignId: string
   title: string
   description: string
-  tasks: Task[]   // 👈 tasks dari campaign
+  tasks: Task[]
   onClose: () => void
   onConfirm: (submission: Submission) => void
 }
@@ -34,7 +34,9 @@ export default function TaskModal({
   onClose,
   onConfirm,
 }: TaskModalProps) {
-  const [taskStates, setTaskStates] = useState<Task[]>(tasks)
+  // ⛔ awalnya langsung pake props.tasks
+  // ✅ sekarang default [] supaya tunggu fetch submission dulu
+  const [taskStates, setTaskStates] = useState<Task[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [verifying, setVerifying] = useState<number | null>(null)
   const [twitterConnected, setTwitterConnected] = useState(false)
@@ -57,24 +59,13 @@ export default function TaskModal({
         const res = await fetch(`/api/submissions?campaignId=${campaignId}`)
         const data = await res.json()
         if (res.ok && data.submission) {
-          // ✅ merge submission.tasks dengan campaign.tasks
-          const merged = tasks.map((t) => {
-            const found = data.submission.tasks.find(
-              (st: Task) =>
-                st.service === t.service &&
-                st.type === t.type &&
-                st.url === t.url
-            )
-            return found || { ...t, done: false }
-          })
-          setTaskStates(merged)
+          setTaskStates(data.submission.tasks) // ✅ load dari DB
         } else {
-          // kalau belum ada submission, fallback ke campaign tasks
-          setTaskStates(tasks.map((t) => ({ ...t, done: false })))
+          setTaskStates(tasks) // fallback ke campaign.tasks kalau belum ada submission
         }
       } catch (err) {
         console.error('Failed to load submission', err)
-        setTaskStates(tasks.map((t) => ({ ...t, done: false })))
+        setTaskStates(tasks) // fallback kalau error
       }
     }
 
