@@ -23,7 +23,7 @@ const TaskSchema = new Schema(
     },
     url: { type: String, required: true },
     targetId: { type: String, required: false },
-    tweetId?: { type: String, required: false },
+    tweetId: { type: String, required: false },
   },
   { _id: false }
 )
