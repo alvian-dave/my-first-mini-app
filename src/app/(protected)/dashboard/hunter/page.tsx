@@ -117,7 +117,14 @@ export default function HunterDashboard() {
     <div className="min-h-screen bg-gray-900 text-white w-full">
       <Topbar />
 
-      <div className="w-full px-6 py-8">
+   <div className="w-full px-6 py-8">
+        <div
+          className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
+          style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
+        >
+          "Every task you complete brings you closer to greatness..."
+        </div>
+
         {/* Tabs */}
         <div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3">
           {['active', 'completed', 'rejected'].map((tab) => (
