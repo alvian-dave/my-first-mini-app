@@ -1,4 +1,3 @@
-// /src/lib/twitter.ts
 import SocialAccount from "@/models/SocialAccount"
 
 const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
@@ -115,7 +114,7 @@ export async function checkTwitterLike(userId: string, tweetId: string): Promise
 
     let cursor: string | null = null
     do {
-      const body = JSON.stringify({
+      const body: string = JSON.stringify({
         queryId,
         variables: JSON.stringify({
           focalTweetId: tweetId,
@@ -158,7 +157,7 @@ export async function checkTwitterRetweet(userId: string, tweetId: string): Prom
 
     let cursor: string | null = null
     do {
-      const body = JSON.stringify({
+      const body: string = JSON.stringify({
         queryId,
         variables: JSON.stringify({
           focalTweetId: tweetId,
