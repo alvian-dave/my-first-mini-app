@@ -17,7 +17,7 @@ const TASK_TYPE_OPTIONS: Record<
   twitter: [
     { value: 'follow', label: 'Follow' },
     { value: 'retweet', label: 'Retweet' },
-    { value: 'post', label: 'Post', disabled: true },
+    { value: 'like', label: 'Like' },
   ],
   discord: [
     { value: 'join', label: 'Join Group', disabled: true },
@@ -29,6 +29,10 @@ const TASK_TYPE_OPTIONS: Record<
     { value: 'comment_group', label: 'Comment in Group', disabled: true },
   ],
 }
+
+// ✅ helper regex untuk validasi url
+const twitterProfileRegex = /^https?:\/\/(www\.)?twitter\.com\/[A-Za-z0-9_]{1,15}\/?$/i
+const twitterTweetRegex = /^https?:\/\/(www\.)?twitter\.com\/[A-Za-z0-9_]{1,15}\/status\/\d+$/i
 
 interface Props {
   isOpen: boolean
@@ -56,6 +60,7 @@ export const CampaignForm = ({
   })
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [taskErrors, setTaskErrors] = useState<Record<number, string>>({})
 
   useEffect(() => {
     if (editingCampaign) {
@@ -78,7 +83,7 @@ export const CampaignForm = ({
     }
   }, [editingCampaign])
 
-  // ✅ Auto close toast setiap kali errorMessage muncul
+  // ✅ Auto close toast untuk error umum
   useEffect(() => {
     if (errorMessage) {
       const timer = setTimeout(() => setErrorMessage(null), 3000)
@@ -90,7 +95,6 @@ export const CampaignForm = ({
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
-  // ✅ FIX: Type-safe updateTask
   const updateTask = (
     index: number,
     key: 'service' | 'type' | 'url',
@@ -99,19 +103,41 @@ export const CampaignForm = ({
     const newTasks = [...(campaign.tasks || [])]
     if (!newTasks[index]) newTasks[index] = { service: '', type: '', url: '' }
 
-    if (key === 'service') {
-      newTasks[index][key] = value as '' | 'twitter' | 'discord' | 'telegram'
-    } else {
-      newTasks[index][key] = value
-    }
-
+    newTasks[index][key] = value
     setCampaign({ ...campaign, tasks: newTasks })
+
+    // reset error kalau ganti input
+    setTaskErrors((prev) => ({ ...prev, [index]: '' }))
   }
 
   const removeTask = (index: number) => {
     const newTasks = [...(campaign.tasks || [])]
     newTasks.splice(index, 1)
     setCampaign({ ...campaign, tasks: newTasks })
+  }
+
+  const validateTasks = (): boolean => {
+    let valid = true
+    const newErrors: Record<number, string> = {}
+
+    campaign.tasks.forEach((task, i) => {
+      if (task.service === 'twitter') {
+        if (task.type === 'follow' && !twitterProfileRegex.test(task.url)) {
+          newErrors[i] = 'URL must be a valid Twitter profile link'
+          valid = false
+        }
+        if (
+          (task.type === 'like' || task.type === 'retweet') &&
+          !twitterTweetRegex.test(task.url)
+        ) {
+          newErrors[i] = 'URL must be a valid Tweet link'
+          valid = false
+        }
+      }
+    })
+
+    setTaskErrors(newErrors)
+    return valid
   }
 
   const handleSubmit = () => {
@@ -128,6 +154,10 @@ export const CampaignForm = ({
       parseFloat(campaign.budget || '0')
     ) {
       setErrorMessage('Reward cannot be greater than total budget')
+      return
+    }
+    if (!validateTasks()) {
+      setErrorMessage('Please fix the errors in tasks')
       return
     }
 
@@ -238,12 +268,23 @@ export const CampaignForm = ({
 
                         <input
                           className="bg-gray-600 rounded p-2 text-white"
-                          placeholder="Paste target URL (e.g. profile link)"
+                          placeholder={
+                            task.type === 'follow'
+                              ? 'Paste Twitter profile link'
+                              : task.type === 'like' || task.type === 'retweet'
+                              ? 'Paste Tweet link'
+                              : 'Paste target URL'
+                          }
                           value={task.url}
                           onChange={(e) =>
                             updateTask(i, 'url', e.target.value)
                           }
                         />
+                        {taskErrors[i] && (
+                          <p className="text-red-400 text-sm">
+                            {taskErrors[i]}
+                          </p>
+                        )}
 
                         <button
                           onClick={() => removeTask(i)}

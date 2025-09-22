@@ -38,6 +38,7 @@ export interface Task {
   type: string // misalnya "follow" | "retweet" | "join_channel"
   url: string  // link target (profile, group, post, dll)
   targetId?: string
+  tweetId?: string
 }
 
 // ==========================
