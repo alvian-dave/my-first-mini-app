@@ -34,11 +34,9 @@ export default function TaskModal({
   onClose,
   onConfirm,
 }: TaskModalProps) {
-  // ⛔ awalnya langsung pake props.tasks
-  // ✅ sekarang default [] supaya tunggu fetch submission dulu
-  const [taskStates, setTaskStates] = useState<Task[]>([])
-  const [submitting, setSubmitting] = useState(false)
-  const [verifying, setVerifying] = useState<number | null>(null)
+  const [taskStates, setTaskStates] = useState(tasks)
+  const [submitting, setSubmitting] = useState(false) // loading utk confirm & submit
+  const [verifying, setVerifying] = useState<number | null>(null) // index task yg lagi verify
   const [twitterConnected, setTwitterConnected] = useState(false)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
@@ -58,14 +56,9 @@ export default function TaskModal({
       try {
         const res = await fetch(`/api/submissions?campaignId=${campaignId}`)
         const data = await res.json()
-        if (res.ok && data.submission) {
-          setTaskStates(data.submission.tasks) // ✅ load dari DB
-        } else {
-          setTaskStates(tasks) // fallback ke campaign.tasks kalau belum ada submission
-        }
+        if (res.ok && data.submission) setTaskStates(data.submission.tasks)
       } catch (err) {
         console.error('Failed to load submission', err)
-        setTaskStates(tasks) // fallback kalau error
       }
     }
 
@@ -85,7 +78,7 @@ export default function TaskModal({
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [campaignId, tasks])
+  }, [campaignId])
 
   const handleVerify = async (idx: number, task: Task) => {
     try {
@@ -104,17 +97,7 @@ export default function TaskModal({
       })
       const data = await res.json()
       if (data.success && data.submission) {
-        // ✅ update langsung pakai submission.tasks
-        const merged = tasks.map((t) => {
-          const found = data.submission.tasks.find(
-            (st: Task) =>
-              st.service === t.service &&
-              st.type === t.type &&
-              st.url === t.url
-          )
-          return found || { ...t, done: false }
-        })
-        setTaskStates(merged)
+        setTaskStates(data.submission.tasks)
         setToast({ message: 'Task verified successfully!', type: 'success' })
       } else {
         setToast({ message: data.error || 'Verification failed', type: 'error' })
@@ -144,17 +127,7 @@ export default function TaskModal({
 
       if (res.ok && data.success) {
         const submission = data.submission
-        const merged = tasks.map((t) => {
-          const found = submission.tasks.find(
-            (st: Task) =>
-              st.service === t.service &&
-              st.type === t.type &&
-              st.url === t.url
-          )
-          return found || { ...t, done: false }
-        })
-        setTaskStates(merged)
-
+        setTaskStates(submission.tasks)
         onConfirm(submission)
         onClose()
         if (data.alreadyRewarded) {

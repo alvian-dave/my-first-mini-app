@@ -1,4 +1,4 @@
-// /src/app/api/submission/route.ts
+// /src/app/api/submissions/route.ts
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import Submission from "@/models/Submission"
@@ -7,13 +7,62 @@ import Balance from "@/models/Balance"
 import { Notification } from "@/models/Notification"
 import { auth } from "@/auth"
 
-export async function GET() {
+export async function GET(req: Request) {
   await dbConnect()
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const { searchParams } = new URL(req.url)
+  const campaignId = searchParams.get("campaignId")
+
+  if (campaignId) {
+    // ✅ ambil campaign + submission untuk merge
+    const campaign = await Campaign.findById(campaignId).lean()
+    if (!campaign) {
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
+    }
+
+    const submission = await Submission.findOne({
+      userId: session.user.id,
+      campaignId,
+    }).lean()
+
+    // list tasks dari campaign
+    const campaignTasks = Array.isArray((campaign as any).tasks)
+      ? (campaign as any).tasks
+      : []
+
+    let mergedTasks = campaignTasks
+
+    if (submission) {
+      const submissionTasks = Array.isArray((submission as any).tasks)
+        ? (submission as any).tasks
+        : []
+
+      // ✅ merge: ambil task campaign, tambahkan status dari submission kalau ada
+      mergedTasks = campaignTasks.map((ct) => {
+        const matched = submissionTasks.find(
+          (st) => st.service === ct.service && st.type === ct.type && st.url === ct.url
+        )
+        return matched
+          ? { ...ct, done: matched.done, verifiedAt: matched.verifiedAt }
+          : { ...ct, done: false }
+      })
+    } else {
+      // kalau belum ada submission, semua task default done = false
+      mergedTasks = campaignTasks.map((ct) => ({ ...ct, done: false }))
+    }
+
+    return NextResponse.json({
+      submission: submission
+        ? { ...submission, tasks: mergedTasks }
+        : { userId: session.user.id, campaignId, tasks: mergedTasks, status: "pending" },
+    })
+  }
+
+  // default → list semua submission hunter
   const submissions = await Submission.find({ userId: session.user.id }).lean()
   return NextResponse.json({ submissions })
 }
@@ -72,38 +121,38 @@ export async function POST(req: Request) {
 
   let rewarded = false
   // update balance hunter → cuma sekali
-let hunterBalance = await Balance.findOne({ userId: session.user.id })
-if (!hunterBalance) {
-  // ✅ tambahkan role: "hunter" sesuai schema
-  hunterBalance = await Balance.create({
-    userId: session.user.id,
-    role: "hunter",
-    amount: 0,
-  })
-}
-if (!(submission as any).rewarded) {
-  hunterBalance.amount += Number(campaign.reward)
-  await hunterBalance.save()
-  rewarded = true
-  ;(submission as any).rewarded = true
-  await submission.save()
+  let hunterBalance = await Balance.findOne({ userId: session.user.id })
+  if (!hunterBalance) {
+    // ✅ tambahkan role: "hunter" sesuai schema
+    hunterBalance = await Balance.create({
+      userId: session.user.id,
+      role: "hunter",
+      amount: 0,
+    })
+  }
+  if (!(submission as any).rewarded) {
+    hunterBalance.amount += Number(campaign.reward)
+    await hunterBalance.save()
+    rewarded = true
+    ;(submission as any).rewarded = true
+    await submission.save()
 
-  // ✅ Notifikasi untuk Hunter
-  await Notification.create({
-    userId: session.user.id,
-    role: "hunter",
-    type: "submission_completed",
-    message: `You have successfully completed the campaign "${campaign.title}" and earned ${campaign.reward} tokens.`,
-  })
+    // ✅ Notifikasi untuk Hunter
+    await Notification.create({
+      userId: session.user.id,
+      role: "hunter",
+      type: "submission_completed",
+      message: `You have successfully completed the campaign "${campaign.title}" and earned ${campaign.reward} tokens.`,
+    })
 
-  // ✅ Notifikasi untuk Promoter
-  await Notification.create({
-    userId: campaign.createdBy,
-    role: "promoter",
-    type: "submission_completed",
-    message: `Hunter "${session.user.username || session.user.id}" has successfully completed your campaign "${campaign.title}".`,
-  })
-}
+    // ✅ Notifikasi untuk Promoter
+    await Notification.create({
+      userId: campaign.createdBy,
+      role: "promoter",
+      type: "submission_completed",
+      message: `Hunter "${session.user.username || session.user.id}" has successfully completed your campaign "${campaign.title}".`,
+    })
+  }
 
   return NextResponse.json({
     success: true,
