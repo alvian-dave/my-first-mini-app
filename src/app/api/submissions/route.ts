@@ -7,6 +7,9 @@ import Balance from "@/models/Balance"
 import { Notification } from "@/models/Notification"
 import { auth } from "@/auth"
 
+// ✅ definisi Task biar gak implicit any
+type Task = { service: string; type: string; url: string; done?: boolean; verifiedAt?: Date }
+
 export async function GET(req: Request) {
   await dbConnect()
   const session = await auth()
@@ -30,21 +33,24 @@ export async function GET(req: Request) {
     }).lean()
 
     // list tasks dari campaign
-    const campaignTasks = Array.isArray((campaign as any).tasks)
+    const campaignTasks: Task[] = Array.isArray((campaign as any).tasks)
       ? (campaign as any).tasks
       : []
 
-    let mergedTasks = campaignTasks
+    let mergedTasks: Task[] = campaignTasks
 
     if (submission) {
-      const submissionTasks = Array.isArray((submission as any).tasks)
+      const submissionTasks: Task[] = Array.isArray((submission as any).tasks)
         ? (submission as any).tasks
         : []
 
       // ✅ merge: ambil task campaign, tambahkan status dari submission kalau ada
-      mergedTasks = campaignTasks.map((ct) => {
+      mergedTasks = campaignTasks.map((ct: Task) => {
         const matched = submissionTasks.find(
-          (st) => st.service === ct.service && st.type === ct.type && st.url === ct.url
+          (st: Task) =>
+            st.service === ct.service &&
+            st.type === ct.type &&
+            st.url === ct.url
         )
         return matched
           ? { ...ct, done: matched.done, verifiedAt: matched.verifiedAt }
@@ -52,7 +58,7 @@ export async function GET(req: Request) {
       })
     } else {
       // kalau belum ada submission, semua task default done = false
-      mergedTasks = campaignTasks.map((ct) => ({ ...ct, done: false }))
+      mergedTasks = campaignTasks.map((ct: Task) => ({ ...ct, done: false }))
     }
 
     return NextResponse.json({
