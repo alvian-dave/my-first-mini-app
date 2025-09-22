@@ -5,7 +5,12 @@ import { auth } from "@/auth"
 import { Campaign } from "@/models/Campaign"
 import SocialAccount from "@/models/SocialAccount"
 import Submission from "@/models/Submission"
-import { resolveTwitterUserId, checkTwitterFollow } from "@/lib/twitter"
+import {
+  resolveTwitterUserId,
+  checkTwitterFollow,
+  checkTwitterLike,
+  checkTwitterRetweet,
+} from "@/lib/twitter"
 
 type ServiceName = "twitter" | "discord" | "telegram"
 
@@ -13,7 +18,8 @@ interface CampaignTask {
   service: ServiceName
   type: string
   url: string
-  targetId?: string // userId (follow) atau tweetId (like/retweet)
+  targetId?: string
+  tweetId?: string
 }
 
 interface SubmissionTask {
@@ -24,10 +30,15 @@ interface SubmissionTask {
   verifiedAt?: Date
 }
 
-// helper untuk ambil tweetId dari url
-function extractTweetId(url: string): string | null {
-  const match = url.match(/status\/(\d+)/)
-  return match ? match[1] : null
+// ─────────────────────────────
+// Helper: parse tweetId dari URL
+// ─────────────────────────────
+function parseTweetId(url: string): string {
+  const u = new URL(url)
+  const parts = u.pathname.split("/")
+  const tweetId = parts.find((p) => /^\d+$/.test(p))
+  if (!tweetId) throw new Error("No tweetId in URL")
+  return tweetId
 }
 
 export async function POST(req: Request) {
@@ -98,7 +109,7 @@ export async function POST(req: Request) {
     }
 
     if (incomingTask.type === "follow") {
-      // --- FOLLOW: resolve username -> userId (sekali aja)
+      // --- ambil username dari URL
       let usernameToCheck: string
       try {
         const u = new URL(incomingTask.url)
@@ -135,7 +146,7 @@ export async function POST(req: Request) {
           )
         }
 
-        // ✅ simpan ke campaign (cache userId)
+        // ✅ simpan ke campaign (cache targetId)
         taskInCampaign.targetId = targetId
         await campaignDoc.save()
       }
@@ -148,25 +159,50 @@ export async function POST(req: Request) {
           { status: 400 }
         )
       }
-    } else if (incomingTask.type === "like" || incomingTask.type === "retweet") {
-      // --- LIKE / RETWEET: cukup ambil tweetId dari url, no API
-      let tweetId: string | undefined = taskInCampaign.targetId
-      if (!tweetId) {
-        tweetId = extractTweetId(incomingTask.url) ?? undefined
-        if (!tweetId) {
+    }
+
+    if (incomingTask.type === "like") {
+      try {
+        if (!taskInCampaign.tweetId) {
+          taskInCampaign.tweetId = parseTweetId(incomingTask.url)
+          await campaignDoc.save()
+        }
+
+        const ok = await checkTwitterLike(social.socialId, taskInCampaign.tweetId)
+        if (!ok) {
           return NextResponse.json(
-            { error: "Invalid Tweet URL, cannot extract tweetId" },
+            { error: "Twitter task not completed (not liked)" },
             { status: 400 }
           )
         }
-
-        // ✅ simpan ke campaign (cache tweetId)
-        taskInCampaign.targetId = tweetId
-        await campaignDoc.save()
+      } catch (err) {
+        return NextResponse.json(
+          { error: "Invalid Twitter Like task URL", details: String(err) },
+          { status: 400 }
+        )
       }
+    }
 
-      // ⚠️ TODO: tambahkan check like/retweet di sini kalau sudah ada fungsi bot
-      // Untuk sekarang kita anggap sukses
+    if (incomingTask.type === "retweet") {
+      try {
+        if (!taskInCampaign.tweetId) {
+          taskInCampaign.tweetId = parseTweetId(incomingTask.url)
+          await campaignDoc.save()
+        }
+
+        const ok = await checkTwitterRetweet(social.socialId, taskInCampaign.tweetId)
+        if (!ok) {
+          return NextResponse.json(
+            { error: "Twitter task not completed (not retweeted)" },
+            { status: 400 }
+          )
+        }
+      } catch (err) {
+        return NextResponse.json(
+          { error: "Invalid Twitter Retweet task URL", details: String(err) },
+          { status: 400 }
+        )
+      }
     }
   }
 
