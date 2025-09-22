@@ -168,7 +168,10 @@ export async function POST(req: Request) {
           await campaignDoc.save()
         }
 
-        const ok = await checkTwitterLike(social.socialId, taskInCampaign.tweetId)
+        const ok = await checkTwitterLike(
+          social.socialId,
+          taskInCampaign.tweetId
+        )
         if (!ok) {
           return NextResponse.json(
             { error: "Twitter task not completed (not liked)" },
@@ -190,7 +193,10 @@ export async function POST(req: Request) {
           await campaignDoc.save()
         }
 
-        const ok = await checkTwitterRetweet(social.socialId, taskInCampaign.tweetId)
+        const ok = await checkTwitterRetweet(
+          social.socialId,
+          taskInCampaign.tweetId
+        )
         if (!ok) {
           return NextResponse.json(
             { error: "Twitter task not completed (not retweeted)" },
@@ -214,18 +220,25 @@ export async function POST(req: Request) {
   })
 
   if (!submission) {
+    // ✅ FIX: inisialisasi semua campaignTasks, bukan cuma 1
     submission = await Submission.create({
       userId: session.user.id,
       campaignId,
-      tasks: [
-        {
-          service: incomingTask.service,
-          type: incomingTask.type,
-          url: incomingTask.url,
-          done: true,
-          verifiedAt: now,
-        },
-      ],
+      tasks: campaignTasks.map((ct) => ({
+        service: ct.service,
+        type: ct.type,
+        url: ct.url,
+        done:
+          ct.service === incomingTask.service &&
+          ct.type === incomingTask.type &&
+          ct.url === incomingTask.url,
+        verifiedAt:
+          ct.service === incomingTask.service &&
+          ct.type === incomingTask.type &&
+          ct.url === incomingTask.url
+            ? now
+            : undefined,
+      })),
       status: campaignTasks.length === 1 ? "submitted" : "pending",
     })
   } else {
