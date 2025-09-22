@@ -16,7 +16,7 @@ const TASK_TYPE_OPTIONS: Record<
 > = {
   twitter: [
     { value: 'follow', label: 'Follow' },
-    { value: 'retweet', label: 'Retweet', disabled: true },
+    { value: 'retweet', label: 'Retweet' },
     { value: 'post', label: 'Post', disabled: true },
   ],
   discord: [
