@@ -6,7 +6,6 @@ const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
 const BOT_BEARER = process.env.BOT_BEARER!
 const DEV_BEARER = process.env.DEV_BEARER_TOKEN!
 
-// Cache queryId per tweet
 const queryIdCache: Record<string, { Like?: string; Retweet?: string }> = {}
 
 function devHeaders() {
@@ -70,10 +69,9 @@ export async function checkTwitterFollow(social: any, targetId: string): Promise
 }
 
 // ─────────────────────────────
-// Ambil queryId Like/Retweet dan cache (refresh otomatis)
+// Ambil queryId Like/Retweet dan cache
 // ─────────────────────────────
 async function getGraphQLQueryId(tweetId: string, type: "Like" | "Retweet"): Promise<string | null> {
-  // Cek cache dulu
   if (queryIdCache[tweetId]?.[type]) return queryIdCache[tweetId][type]!
 
   try {
@@ -110,81 +108,93 @@ async function getGraphQLQueryId(tweetId: string, type: "Like" | "Retweet"): Pro
 }
 
 // ─────────────────────────────
-// Helper GraphQL fetch (stop-on-find + refresh queryId otomatis)
+// Check hunter like tweet (stop-on-find)
 // ─────────────────────────────
-async function checkTwitterGraphQL(
-  type: "Like" | "Retweet",
-  userId: string,
-  tweetId: string
-): Promise<boolean> {
+export async function checkTwitterLike(userId: string, tweetId: string): Promise<boolean> {
   try {
-    let queryId = await getGraphQLQueryId(tweetId, type)
+    const queryId = await getGraphQLQueryId(tweetId, "Like")
     if (!queryId) return false
 
-    const endpoint = type === "Like" ? "LikingUsers" : "RetweetedBy"
     let cursor: string | null = null
-
     do {
-      const body = JSON.stringify({
-        queryId,
-        variables: JSON.stringify({ focalTweetId: tweetId, includePromotedContent: false, count: 100, cursor }),
+      const body: string = JSON.stringify({
+        queryId: queryId,
+        variables: JSON.stringify({
+          focalTweetId: tweetId,
+          includePromotedContent: false,
+          count: 100,
+          cursor: cursor,
+        }),
       })
-
-      const res = await fetch(`https://twitter.com/i/api/graphql/${queryId}/${endpoint}`, {
+      const res = await fetch(`https://twitter.com/i/api/graphql/${queryId}/LikingUsers`, {
         method: "POST",
         headers: { ...botHeaders(), "Content-Type": "application/json" },
-        body,
+        body: body,
       })
-
-      if (res.status === 404) {
-        // QueryId expired → refresh otomatis
-        queryIdCache[tweetId] = { ...queryIdCache[tweetId], [type]: undefined }
-        queryId = await getGraphQLQueryId(tweetId, type)
-        if (!queryId) return false
-        continue
-      }
-
       if (!res.ok) {
-        console.error(`checkTwitter${type} failed:`, res.status, await res.text())
+        console.error("checkTwitterLike failed:", res.status, await res.text())
         return false
       }
 
       const json = await res.json().catch(() => null)
-      const users: Array<{ rest_id: string }> =
-        type === "Like"
-          ? json?.data?.focalTweet?.likedBy?.users ?? []
-          : json?.data?.focalTweet?.retweetedBy?.users ?? []
-
+      const users: Array<{ rest_id: string }> = json?.data?.focalTweet?.likedBy?.users ?? []
       if (users.some((u) => u.rest_id === userId)) return true
 
-      // ambil cursor selanjutnya jika ada (stop-on-find)
       cursor =
-        type === "Like"
-          ? json?.data?.focalTweet?.likedBy?.instructions?.[0]?.entries?.find(
-              (e: any) => e.entryId.startsWith("cursor-bottom-")
-            )?.content?.value ?? null
-          : json?.data?.focalTweet?.retweetedBy?.instructions?.[0]?.entries?.find(
-              (e: any) => e.entryId.startsWith("cursor-bottom-")
-            )?.content?.value ?? null
+        json?.data?.focalTweet?.likedBy?.instructions?.[0]?.entries?.find(
+          (e: any) => e.entryId.startsWith("cursor-bottom-")
+        )?.content?.value ?? null
     } while (cursor)
 
     return false
   } catch (e) {
-    console.error(`checkTwitter${type} error:`, e)
+    console.error("checkTwitterLike error:", e)
     return false
   }
 }
 
 // ─────────────────────────────
-// Check hunter like tweet
-// ─────────────────────────────
-export async function checkTwitterLike(userId: string, tweetId: string): Promise<boolean> {
-  return checkTwitterGraphQL("Like", userId, tweetId)
-}
-
-// ─────────────────────────────
-// Check hunter retweet tweet
+// Check hunter retweet tweet (stop-on-find)
 // ─────────────────────────────
 export async function checkTwitterRetweet(userId: string, tweetId: string): Promise<boolean> {
-  return checkTwitterGraphQL("Retweet", userId, tweetId)
+  try {
+    const queryId = await getGraphQLQueryId(tweetId, "Retweet")
+    if (!queryId) return false
+
+    let cursor: string | null = null
+    do {
+      const body: string = JSON.stringify({
+        queryId: queryId,
+        variables: JSON.stringify({
+          focalTweetId: tweetId,
+          includePromotedContent: false,
+          count: 100,
+          cursor: cursor,
+        }),
+      })
+      const res = await fetch(`https://twitter.com/i/api/graphql/${queryId}/RetweetedBy`, {
+        method: "POST",
+        headers: { ...botHeaders(), "Content-Type": "application/json" },
+        body: body,
+      })
+      if (!res.ok) {
+        console.error("checkTwitterRetweet failed:", res.status, await res.text())
+        return false
+      }
+
+      const json = await res.json().catch(() => null)
+      const users: Array<{ rest_id: string }> = json?.data?.focalTweet?.retweetedBy?.users ?? []
+      if (users.some((u) => u.rest_id === userId)) return true
+
+      cursor =
+        json?.data?.focalTweet?.retweetedBy?.instructions?.[0]?.entries?.find(
+          (e: any) => e.entryId.startsWith("cursor-bottom-")
+        )?.content?.value ?? null
+    } while (cursor)
+
+    return false
+  } catch (e) {
+    console.error("checkTwitterRetweet error:", e)
+    return false
+  }
 }
