@@ -12,7 +12,7 @@ const TaskSchema = new Schema(
       enum: [
         'follow',
         'retweet',
-        'post',
+        'like',
         'join',
         'comment',
         'join_channel',

@@ -13,7 +13,7 @@ interface CampaignTask {
   service: ServiceName
   type: string
   url: string
-  targetId?: string
+  targetId?: string // userId (follow) atau tweetId (like/retweet)
 }
 
 interface SubmissionTask {
@@ -22,6 +22,12 @@ interface SubmissionTask {
   url: string
   done?: boolean
   verifiedAt?: Date
+}
+
+// helper untuk ambil tweetId dari url
+function extractTweetId(url: string): string | null {
+  const match = url.match(/status\/(\d+)/)
+  return match ? match[1] : null
 }
 
 export async function POST(req: Request) {
@@ -91,55 +97,76 @@ export async function POST(req: Request) {
       )
     }
 
-    // --- ambil username dari URL
-    let usernameToCheck: string
-    try {
-      const u = new URL(incomingTask.url)
-      if (
-        !u.hostname.includes("twitter.com") &&
-        !u.hostname.includes("x.com")
-      ) {
-        throw new Error("Not a valid Twitter/X domain")
-      }
+    if (incomingTask.type === "follow") {
+      // --- FOLLOW: resolve username -> userId (sekali aja)
+      let usernameToCheck: string
+      try {
+        const u = new URL(incomingTask.url)
+        if (
+          !u.hostname.includes("twitter.com") &&
+          !u.hostname.includes("x.com")
+        ) {
+          throw new Error("Not a valid Twitter/X domain")
+        }
 
-      usernameToCheck = u.pathname
-        .replace(/^\/+/, "")
-        .split(/[/?]/)[0]
-        .replace(/^@/, "")
-        .toLowerCase()
+        usernameToCheck = u.pathname
+          .replace(/^\/+/, "")
+          .split(/[/?]/)[0]
+          .replace(/^@/, "")
+          .toLowerCase()
 
-      if (!usernameToCheck) throw new Error("empty username")
-    } catch (err) {
-      return NextResponse.json(
-        { error: "Invalid Twitter URL in task", details: String(err) },
-        { status: 400 }
-      )
-    }
-
-    // --- cek cache targetId
-    let targetId: string | undefined = taskInCampaign.targetId
-    if (!targetId) {
-      const resolvedId = await resolveTwitterUserId(usernameToCheck)
-      targetId = resolvedId ?? undefined
-      if (!targetId) {
+        if (!usernameToCheck) throw new Error("empty username")
+      } catch (err) {
         return NextResponse.json(
-          { error: "Twitter target not found", username: usernameToCheck },
-          { status: 404 }
+          { error: "Invalid Twitter URL in task", details: String(err) },
+          { status: 400 }
         )
       }
 
-      // ✅ simpan ke campaign (cache targetId)
-      taskInCampaign.targetId = targetId
-      await campaignDoc.save()
-    }
+      // --- cek cache targetId
+      let targetId: string | undefined = taskInCampaign.targetId
+      if (!targetId) {
+        const resolvedId = await resolveTwitterUserId(usernameToCheck)
+        targetId = resolvedId ?? undefined
+        if (!targetId) {
+          return NextResponse.json(
+            { error: "Twitter target not found", username: usernameToCheck },
+            { status: 404 }
+          )
+        }
 
-    // --- check follow pakai bot
-    const isFollowing = await checkTwitterFollow(social, targetId)
-    if (!isFollowing) {
-      return NextResponse.json(
-        { error: "Twitter task not completed (not following)" },
-        { status: 400 }
-      )
+        // ✅ simpan ke campaign (cache userId)
+        taskInCampaign.targetId = targetId
+        await campaignDoc.save()
+      }
+
+      // --- check follow pakai bot
+      const isFollowing = await checkTwitterFollow(social, targetId)
+      if (!isFollowing) {
+        return NextResponse.json(
+          { error: "Twitter task not completed (not following)" },
+          { status: 400 }
+        )
+      }
+    } else if (incomingTask.type === "like" || incomingTask.type === "retweet") {
+      // --- LIKE / RETWEET: cukup ambil tweetId dari url, no API
+      let tweetId: string | undefined = taskInCampaign.targetId
+      if (!tweetId) {
+        tweetId = extractTweetId(incomingTask.url) ?? undefined
+        if (!tweetId) {
+          return NextResponse.json(
+            { error: "Invalid Tweet URL, cannot extract tweetId" },
+            { status: 400 }
+          )
+        }
+
+        // ✅ simpan ke campaign (cache tweetId)
+        taskInCampaign.targetId = tweetId
+        await campaignDoc.save()
+      }
+
+      // ⚠️ TODO: tambahkan check like/retweet di sini kalau sudah ada fungsi bot
+      // Untuk sekarang kita anggap sukses
     }
   }
 
