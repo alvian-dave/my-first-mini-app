@@ -1,7 +1,7 @@
 'use client'
 
 import { Dialog } from '@headlessui/react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Toast from '@/components/Toast'
 
@@ -35,7 +35,8 @@ export default function TaskModal({
   onConfirm,
 }: TaskModalProps) {
   const [taskStates, setTaskStates] = useState(tasks)
-  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false) // loading utk confirm & submit
+  const [verifying, setVerifying] = useState<number | null>(null) // index task yg lagi verify
   const [twitterConnected, setTwitterConnected] = useState(false)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
@@ -81,7 +82,7 @@ export default function TaskModal({
 
   const handleVerify = async (idx: number, task: Task) => {
     try {
-      setLoading(true)
+      setVerifying(idx)
       if (task.service === 'twitter' && !twitterConnected) {
         const res = await fetch('/api/connect/twitter/start')
         const data = await res.json()
@@ -105,7 +106,7 @@ export default function TaskModal({
       console.error('verify failed', err)
       setToast({ message: 'Verification failed due to an error.', type: 'error' })
     } finally {
-      setLoading(false)
+      setVerifying(null)
     }
   }
 
@@ -116,7 +117,7 @@ export default function TaskModal({
     }
 
     try {
-      setLoading(true)
+      setSubmitting(true)
       const res = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +126,6 @@ export default function TaskModal({
       const data = await res.json()
 
       if (res.ok && data.success) {
-        // ✅ Treat first submit or already rewarded as success
         const submission = data.submission
         setTaskStates(submission.tasks)
         onConfirm(submission)
@@ -142,7 +142,7 @@ export default function TaskModal({
       console.error('submit failed', err)
       setToast({ message: 'Submission failed due to an error.', type: 'error' })
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
@@ -171,10 +171,19 @@ export default function TaskModal({
                 ) : (
                   <button
                     onClick={() => handleVerify(i, task)}
-                    disabled={loading}
-                    className="ml-3 px-3 py-1 text-sm rounded bg-green-600 hover:bg-green-700"
+                    disabled={verifying === i}
+                    className="ml-3 px-3 py-1 text-sm rounded bg-green-600 hover:bg-green-700 flex items-center gap-2"
                   >
-                    {task.service === 'twitter' && !twitterConnected ? 'Connect Twitter' : 'Verify'}
+                    {verifying === i ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : task.service === 'twitter' && !twitterConnected ? (
+                      'Connect Twitter'
+                    ) : (
+                      'Verify'
+                    )}
                   </button>
                 )}
               </div>
@@ -182,12 +191,19 @@ export default function TaskModal({
           </div>
 
           <button
-            className="w-full py-2 rounded font-semibold mt-4"
+            className="w-full py-2 rounded font-semibold mt-4 flex items-center justify-center gap-2"
             style={{ backgroundColor: '#16a34a' }}
             onClick={handleConfirm}
-            disabled={loading}
+            disabled={submitting}
           >
-            Confirm & Submit
+            {submitting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              'Confirm & Submit'
+            )}
           </button>
 
           {/* ✅ Toast */}
