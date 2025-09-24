@@ -1,22 +1,27 @@
 // /src/lib/twitter.ts
 import SocialAccount from "@/models/SocialAccount"
-import crypto from "crypto"
 
+const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
+const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
+const BOT_BEARER = process.env.BOT_BEARER!
 const DEV_BEARER = process.env.DEV_BEARER_TOKEN!
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID!
 const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET!
-
-// Bot OAuth1 credentials (untuk cek follow)
-const BOT_OAUTH_TOKEN = process.env.TWITTER_BOT_OAUTH_TOKEN!
-const BOT_OAUTH_TOKEN_SECRET = process.env.TWITTER_BOT_OAUTH_TOKEN_SECRET!
-const BOT_USER_ID = process.env.TWITTER_BOT_USER_ID!
 
 function devHeaders() {
   return { Authorization: `Bearer ${DEV_BEARER}` }
 }
 
+function botHeaders() {
+  return {
+    Authorization: `Bearer ${BOT_BEARER}`,
+    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
+    "x-csrf-token": BOT_CSRF,
+  }
+}
+
 // ─────────────────────────────
-// Resolve userId dari username
+// Resolve userId dari username (Bot only)
 // ─────────────────────────────
 export async function resolveTwitterUserId(username: string): Promise<string | null> {
   const clean = username
@@ -44,66 +49,17 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
 }
 
 // ─────────────────────────────
-// Helper: Percent encode RFC3986
-// ─────────────────────────────
-function percentEncode(str: string) {
-  return encodeURIComponent(str)
-    .replace(/[!*'()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
-}
-
-// ─────────────────────────────
-// Generate OAuth1 header manual
-// ─────────────────────────────
-function getOAuth1Header(url: string, method: string = "GET") {
-  const oauth: Record<string, string> = {
-    oauth_consumer_key: TWITTER_CLIENT_ID,
-    oauth_nonce: crypto.randomBytes(16).toString("hex"),
-    oauth_signature_method: "HMAC-SHA1",
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_token: BOT_OAUTH_TOKEN,
-    oauth_version: "1.0",
-  }
-
-  const params = Object.entries(oauth)
-    .map(([k, v]) => [percentEncode(k), percentEncode(v)])
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`)
-    .join("&")
-
-  const baseString = [
-    method.toUpperCase(),
-    percentEncode(url),
-    percentEncode(params),
-  ].join("&")
-
-  const signingKey = `${percentEncode(TWITTER_CLIENT_SECRET)}&${percentEncode(BOT_OAUTH_TOKEN_SECRET)}`
-  const signature = crypto.createHmac("sha1", signingKey).update(baseString).digest("base64")
-  oauth.oauth_signature = signature
-
-  const header =
-    "OAuth " +
-    Object.entries(oauth)
-      .map(([k, v]) => `${percentEncode(k)}="${percentEncode(v)}"`)
-      .join(", ")
-
-  return { Authorization: header }
-}
-
-// ─────────────────────────────
-// Check hunter follow target (OAuth1 bot)
+// Check hunter follow target (Bot only) - tetap manual bot
 // ─────────────────────────────
 export async function checkTwitterFollow(social: any, targetId: string): Promise<boolean> {
   try {
     const sourceId = social.socialId
     const url = `https://api.twitter.com/1.1/friendships/show.json?source_id=${sourceId}&target_id=${targetId}`
-    const headers = getOAuth1Header(url, "GET")
-
-    const res = await fetch(url, { headers })
+    const res = await fetch(url, { headers: botHeaders() })
     if (!res.ok) {
       console.error("checkTwitterFollow failed:", res.status, await res.text())
       return false
     }
-
     const json = await res.json().catch(() => null)
     return json?.relationship?.source?.following === true
   } catch (e) {
@@ -114,7 +70,7 @@ export async function checkTwitterFollow(social: any, targetId: string): Promise
 
 // ─────────────────────────────
 // Helper: ambil & refresh access token user + socialId
-// returns { accessToken, socialId } atau null
+// returns { accessToken, socialId } or null
 // ─────────────────────────────
 async function getUserCredentials(userId: string): Promise<{ accessToken: string; socialId: string } | null> {
   try {
@@ -128,13 +84,16 @@ async function getUserCredentials(userId: string): Promise<{ accessToken: string
       return null
     }
 
+    // jika ada accessToken dan belum expired, gunakan langsung
     if (account.accessToken && (!account.expiresAt || account.expiresAt > new Date())) {
       return { accessToken: account.accessToken, socialId: account.socialId }
     }
 
+    // kalau ada refreshToken -> coba refresh pakai confidential client
     if (account.refreshToken) {
       try {
         const basicAuth = Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString("base64")
+
         const body = new URLSearchParams({
           grant_type: "refresh_token",
           refresh_token: account.refreshToken,
@@ -163,6 +122,7 @@ async function getUserCredentials(userId: string): Promise<{ accessToken: string
           return null
         }
 
+        // update DB
         account.accessToken = json.access_token
         if (json.refresh_token) account.refreshToken = json.refresh_token
         if (json.expires_in) {
@@ -177,6 +137,7 @@ async function getUserCredentials(userId: string): Promise<{ accessToken: string
       }
     }
 
+    // tidak ada token valid & tidak ada refreshToken
     console.error("getUserCredentials: no valid accessToken and no refreshToken for userId", userId)
     return null
   } catch (e) {
