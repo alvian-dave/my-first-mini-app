@@ -39,6 +39,7 @@ export interface Task {
   url: string  // link target (profile, group, post, dll)
   targetId?: string
   tweetId?: string
+  isOld?: boolean
 }
 
 // ==========================
