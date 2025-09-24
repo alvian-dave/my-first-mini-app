@@ -169,7 +169,7 @@ export async function POST(req: Request) {
         }
 
         const ok = await checkTwitterLike(
-          social.socialId,
+          session.user.id,
           taskInCampaign.tweetId
         )
         if (!ok) {
@@ -194,7 +194,7 @@ export async function POST(req: Request) {
         }
 
         const ok = await checkTwitterRetweet(
-          social.socialId,
+          session.user.id,
           taskInCampaign.tweetId
         )
         if (!ok) {

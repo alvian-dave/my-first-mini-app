@@ -49,7 +49,7 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
 }
 
 // ─────────────────────────────
-// Check hunter follow target (Bot only)
+// Check hunter follow target (Bot only) - tetap manual bot
 // ─────────────────────────────
 export async function checkTwitterFollow(social: any, targetId: string): Promise<boolean> {
   try {
@@ -69,24 +69,30 @@ export async function checkTwitterFollow(social: any, targetId: string): Promise
 }
 
 // ─────────────────────────────
-// Helper: ambil & refresh access token user
+// Helper: ambil & refresh access token user + socialId
+// returns { accessToken, socialId } or null
 // ─────────────────────────────
-async function getUserAccessToken(userId: string): Promise<string | null> {
+async function getUserCredentials(userId: string): Promise<{ accessToken: string; socialId: string } | null> {
   try {
     const account = await SocialAccount.findOne({ userId, provider: "twitter" })
-    if (!account) return null
-
-    // kalau belum expired → langsung pakai
-    if (account.expiresAt && account.expiresAt > new Date()) {
-      return account.accessToken
+    if (!account) {
+      console.error("getUserCredentials: no SocialAccount for userId", userId)
+      return null
+    }
+    if (!account.socialId) {
+      console.error("getUserCredentials: SocialAccount missing socialId for userId", userId)
+      return null
     }
 
-    // kalau ada refreshToken → refresh token pakai confidential client
+    // jika ada accessToken dan belum expired, gunakan langsung
+    if (account.accessToken && (!account.expiresAt || account.expiresAt > new Date())) {
+      return { accessToken: account.accessToken, socialId: account.socialId }
+    }
+
+    // kalau ada refreshToken -> coba refresh pakai confidential client
     if (account.refreshToken) {
       try {
-        const basicAuth = Buffer.from(
-          `${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`
-        ).toString("base64")
+        const basicAuth = Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString("base64")
 
         const body = new URLSearchParams({
           grant_type: "refresh_token",
@@ -102,13 +108,19 @@ async function getUserAccessToken(userId: string): Promise<string | null> {
           body: body.toString(),
         })
 
+        const text = await res.text().catch(() => "")
         if (!res.ok) {
-          console.error("refreshToken failed:", res.status, await res.text())
+          console.error("refreshToken failed:", res.status, text)
           return null
         }
 
-        const json = await res.json().catch(() => null)
-        if (!json?.access_token) return null
+        let json: any = null
+        try { json = JSON.parse(text) } catch (e) { json = null }
+
+        if (!json || !json.access_token) {
+          console.error("refreshToken: invalid response", text)
+          return null
+        }
 
         // update DB
         account.accessToken = json.access_token
@@ -118,33 +130,36 @@ async function getUserAccessToken(userId: string): Promise<string | null> {
         }
         await account.save()
 
-        return account.accessToken
+        return { accessToken: account.accessToken!, socialId: account.socialId }
       } catch (e) {
-        console.error("getUserAccessToken refresh error:", e)
+        console.error("getUserCredentials refresh error:", e)
         return null
       }
     }
 
+    // tidak ada token valid & tidak ada refreshToken
+    console.error("getUserCredentials: no valid accessToken and no refreshToken for userId", userId)
     return null
   } catch (e) {
-    console.error("getUserAccessToken error:", e)
+    console.error("getUserCredentials error:", e)
     return null
   }
 }
 
 // ─────────────────────────────
 // Check hunter like tweet (Twitter API v2)
+// expects app userId (session.user.id) as first param
 // ─────────────────────────────
 export async function checkTwitterLike(userId: string, tweetId: string): Promise<boolean> {
   try {
-    const accessToken = await getUserAccessToken(userId)
-    if (!accessToken) {
-      console.error("checkTwitterLike: no access token for user", userId)
+    const creds = await getUserCredentials(userId)
+    if (!creds) {
+      console.error("checkTwitterLike: no credentials for user", userId)
       return false
     }
 
-    const res = await fetch(`https://api.twitter.com/2/users/${userId}/liked_tweets`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    const res = await fetch(`https://api.twitter.com/2/users/${creds.socialId}/liked_tweets`, {
+      headers: { Authorization: `Bearer ${creds.accessToken}` },
     })
     if (!res.ok) {
       console.error("checkTwitterLike failed:", res.status, await res.text())
@@ -162,17 +177,18 @@ export async function checkTwitterLike(userId: string, tweetId: string): Promise
 
 // ─────────────────────────────
 // Check hunter retweet tweet (Twitter API v2)
+// expects app userId (session.user.id) as first param
 // ─────────────────────────────
 export async function checkTwitterRetweet(userId: string, tweetId: string): Promise<boolean> {
   try {
-    const accessToken = await getUserAccessToken(userId)
-    if (!accessToken) {
-      console.error("checkTwitterRetweet: no access token for user", userId)
+    const creds = await getUserCredentials(userId)
+    if (!creds) {
+      console.error("checkTwitterRetweet: no credentials for user", userId)
       return false
     }
 
     const res = await fetch(`https://api.twitter.com/2/tweets/${tweetId}/retweeted_by`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${creds.accessToken}` },
     })
     if (!res.ok) {
       console.error("checkTwitterRetweet failed:", res.status, await res.text())
@@ -180,7 +196,7 @@ export async function checkTwitterRetweet(userId: string, tweetId: string): Prom
     }
 
     const json = await res.json().catch(() => null)
-    const retweeted = json?.data?.some((u: any) => u.id === userId) ?? false
+    const retweeted = json?.data?.some((u: any) => u.id === creds.socialId) ?? false
     return retweeted
   } catch (e) {
     console.error("checkTwitterRetweet error:", e)
