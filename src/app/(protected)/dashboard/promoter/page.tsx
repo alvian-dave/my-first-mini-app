@@ -8,6 +8,7 @@ import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
 import TopupModal from '@/components/TopupModal'
+import Toast from '@/components/Toast' // ✅ import Toast
 import type { Campaign as BaseCampaign } from '@/types'
 
 // UI Campaign type (tambahkan tasks)
@@ -18,6 +19,10 @@ type UICampaign = BaseCampaign & {
   participants?: string[]
   tasks?: { service: string; type: string; url: string }[]
 }
+
+type ToastState =
+  | { message: string; type?: 'success' | 'error' }
+  | { message: string; type: 'confirm'; onConfirm: () => void; onCancel?: () => void }
 
 export default function PromoterDashboard() {
   const { data: session, status } = useSession()
@@ -33,6 +38,9 @@ export default function PromoterDashboard() {
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
+
+  // ✅ Toast state (bisa confirm atau normal)
+  const [toast, setToast] = useState<ToastState | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
@@ -79,12 +87,14 @@ export default function PromoterDashboard() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(campaign),
         })
+        setToast({ message: 'Campaign updated successfully', type: 'success' })
       } else {
         await fetch('/api/campaigns', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(campaign),
         })
+        setToast({ message: 'Campaign created successfully', type: 'success' })
       }
 
       const res = await fetch('/api/campaigns')
@@ -96,6 +106,7 @@ export default function PromoterDashboard() {
       setEditingCampaign(null)
     } catch (err) {
       console.error('Failed to submit campaign:', err)
+      setToast({ message: 'Failed to submit campaign', type: 'error' })
     }
   }
 
@@ -110,19 +121,30 @@ export default function PromoterDashboard() {
       const data = await res.json()
       const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
       setCampaigns(filtered)
+      setToast({ message: 'Campaign marked as finished', type: 'success' })
     } catch (err) {
       console.error('Failed to mark finished:', err)
+      setToast({ message: 'Failed to mark finished', type: 'error' })
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this campaign?')) return
-    try {
-      await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
-      setCampaigns(prev => prev.filter(p => p._id !== id))
-    } catch (err) {
-      console.error('Failed to delete campaign:', err)
-    }
+  // ✅ Delete with toast confirmation
+  const handleDelete = (id: string) => {
+    setToast({
+      message: 'Are you sure you want to delete this campaign?',
+      type: 'confirm',
+      onConfirm: async () => {
+        try {
+          await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
+          setCampaigns(prev => prev.filter(p => p._id !== id))
+          setToast({ message: 'Campaign deleted successfully', type: 'success' })
+        } catch (err) {
+          console.error('Failed to delete campaign:', err)
+          setToast({ message: 'Failed to delete campaign', type: 'error' })
+        }
+      },
+      onCancel: () => setToast(null),
+    })
   }
 
   const current = campaigns
@@ -166,99 +188,91 @@ export default function PromoterDashboard() {
           <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
 
-{/* Campaign list */}
-{current.length === 0 ? (
-  <p className="text-center text-gray-400">No campaigns in this tab.</p>
-) : (
-  <div className="grid md:grid-cols-2 gap-6">
-    {current.map(c => (
-      <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
-        {/* Judul Campaign */}
-        <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
+        {/* Campaign list */}
+        {current.length === 0 ? (
+          <p className="text-center text-gray-400">No campaigns in this tab.</p>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-6">
+            {current.map(c => (
+              <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
+                <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
+                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
 
-        {/* Deskripsi */}
-        <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
+                {/* Task List */}
+                {Array.isArray(c.tasks) && c.tasks.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {c.tasks.map((t, i) => {
+                      const serviceIcon =
+                        t.service.toLowerCase().includes('twitter') ? '🐦' :
+                        t.service.toLowerCase().includes('discord') ? '💬' :
+                        t.service.toLowerCase().includes('telegram') ? '📨' :
+                        '🔗'
 
-{/* Task List */}
-{Array.isArray(c.tasks) && c.tasks.length > 0 && (
-  <div className="mt-2 flex flex-wrap gap-2">
-    {c.tasks.map((t, i) => {
-      const serviceIcon =
-        t.service.toLowerCase().includes('twitter') ? '🐦' :
-        t.service.toLowerCase().includes('discord') ? '💬' :
-        t.service.toLowerCase().includes('telegram') ? '📨' :
-        '🔗'
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
+                        >
+                          <span className="mr-2">{serviceIcon}</span>
+                          <span className="text-yellow-300">{t.service}</span>
+                          <span className="mx-1 text-gray-400">•</span>
+                          <span className="text-gray-200">{t.type}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
 
-      return (
-        <div
-          key={i}
-          className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
-        >
-          <span className="mr-2">{serviceIcon}</span>
-          <span className="text-yellow-300">{t.service}</span>
-          <span className="mx-1 text-gray-400">•</span>
-          <span className="text-gray-200">{t.type}</span>
-        </div>
-      )
-    })}
-  </div>
-)}
+                <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
+                <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
 
-
-        {/* Reward & Budget */}
-        <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
-        <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
-
-        {/* Contributors */}
-        <p
-          className="text-sm text-gray-400 cursor-pointer hover:underline"
-          onClick={() => {
-            setParticipants(Array.isArray(c.participants) ? c.participants : [])
-            setShowParticipants(true)
-          }}
-        >
-          Contributors: <b>{c.contributors ?? 0}</b>
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-3">
-          {c.status !== 'finished' && (
-            <>
-              <button
-                onClick={() => {
-                  setEditingCampaign(c)
-                  setIsModalOpen(true)
-                }}
-                className="px-3 py-1 rounded font-medium"
-                style={{ backgroundColor: '#facc15', color: '#000' }}
-              >
-                Edit
-              </button>
-              {c.contributors > 0 ? (
-                <button
-                  onClick={() => handleMarkFinished(c._id)}
-                  className="px-3 py-1 rounded font-medium"
-                  style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                <p
+                  className="text-sm text-gray-400 cursor-pointer hover:underline"
+                  onClick={() => {
+                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
+                    setShowParticipants(true)
+                  }}
                 >
-                  Mark Finished
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleDelete(c._id)}
-                  className="px-3 py-1 rounded font-medium"
-                  style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                >
-                  Delete
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    ))}
-  </div>
-)}
+                  Contributors: <b>{c.contributors ?? 0}</b>
+                </p>
 
+                <div className="flex gap-2 mt-3">
+                  {c.status !== 'finished' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditingCampaign(c)
+                          setIsModalOpen(true)
+                        }}
+                        className="px-3 py-1 rounded font-medium"
+                        style={{ backgroundColor: '#facc15', color: '#000' }}
+                      >
+                        Edit
+                      </button>
+                      {c.contributors > 0 ? (
+                        <button
+                          onClick={() => handleMarkFinished(c._id)}
+                          className="px-3 py-1 rounded font-medium"
+                          style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                        >
+                          Mark Finished
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleDelete(c._id)}
+                          className="px-3 py-1 rounded font-medium"
+                          style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Modal form */}
         <CampaignForm
@@ -269,8 +283,6 @@ export default function PromoterDashboard() {
           }}
           onSubmit={handleSubmit}
           editingCampaign={editingCampaign as unknown as BaseCampaign | null}
-          // <-- wrapper: CampaignForm expects (c: Campaign | null) => void
-          //     we pass a function that forwards to our setter and cast to UICampaign
           setEditingCampaign={(c: BaseCampaign | null) => setEditingCampaign(c as unknown as UICampaign | null)}
         />
 
@@ -334,6 +346,34 @@ export default function PromoterDashboard() {
           </div>
         )}
       </div>
+
+      {/* ✅ Toast */}
+      {toast && toast.type !== 'confirm' && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      {toast && toast.type === 'confirm' && (
+        <div className="fixed top-4 right-4 z-50 bg-gray-800 px-4 py-3 rounded shadow-md flex flex-col gap-2">
+          <p className="text-white">{toast.message}</p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => { toast.onConfirm(); setToast(null) }}
+              className="px-3 py-1 bg-red-600 text-white rounded"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => { toast.onCancel?.(); setToast(null) }}
+              className="px-3 py-1 bg-gray-500 text-white rounded"
+            >
+              No
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
