@@ -131,17 +131,18 @@ export const CampaignForm = ({
       setErrorMessage('Description is required')
       return
     }
-    if (campaign.reward < 10) {
+    const rewardPerTask = parseFloat(campaign.reward || '0')
+  const totalBudget = parseFloat(campaign.budget || '0')
+
+  if (rewardPerTask < 10) {
     setErrorMessage('Reward per task cannot be less than 10')
     return
   }
-    if (
-      parseFloat(campaign.reward || '0') >
-      parseFloat(campaign.budget || '0')
-    ) {
-      setErrorMessage('Reward cannot be greater than total budget')
-      return
-    }
+
+  if (rewardPerTask > totalBudget) {
+    setErrorMessage('Reward cannot be greater than total budget')
+    return
+  }
 
     onSubmit(campaign)
     setEditingCampaign(null)
