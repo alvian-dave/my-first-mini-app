@@ -351,7 +351,7 @@ export default function PromoterDashboard() {
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
       {toast && toast.type === 'confirm' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
           <div className="bg-gray-800 px-6 py-4 rounded shadow-md flex flex-col gap-4 max-w-sm w-full">
             <p className="text-white text-center">{toast.message}</p>
             <div className="flex justify-center gap-4">
