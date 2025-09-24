@@ -256,6 +256,8 @@ export const CampaignForm = ({
                             onChange={(e) =>
                               updateTask(i, 'url', e.target.value)
                             }
+                            readOnly={!!editingCampaign?.tasks?.[i]?.url} // ✅ readonly untuk task lama
+                            style={editingCampaign?.tasks?.[i]?.url ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                           />
 
                           <button
