@@ -131,7 +131,7 @@ export const CampaignForm = ({
       setErrorMessage('Description is required')
       return
     }
-    if (rewardPerTask < 10) {
+    if (campaign.reward < 10) {
     setErrorMessage('Reward per task cannot be less than 10')
     return
   }
