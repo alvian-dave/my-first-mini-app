@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import TaskModal from '@/components/TaskModal'
+import Toast from '@/components/Toast' // ✅ import Toast
 
 interface Task {
   service: string
@@ -42,6 +43,9 @@ export default function HunterDashboard() {
   const [loadingIds, setLoadingIds] = useState<string[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
 
+  // ✅ Toast state
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
+
   // Redirect if not logged in
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/')
@@ -57,6 +61,7 @@ export default function HunterDashboard() {
       }
     } catch (err) {
       console.error('Failed to load campaigns', err)
+      setToast({ message: 'Failed to load campaigns', type: 'error' })
     }
   }
 
@@ -70,6 +75,7 @@ export default function HunterDashboard() {
       }
     } catch (err) {
       console.error('Failed to load completed campaigns', err)
+      setToast({ message: 'Failed to load completed campaigns', type: 'error' })
     }
   }
 
@@ -82,6 +88,7 @@ export default function HunterDashboard() {
       if (data.success) setDbBalance(data.balance.amount ?? 0)
     } catch (err) {
       console.error('Failed to fetch hunter balance', err)
+      setToast({ message: 'Failed to fetch balance', type: 'error' })
     }
   }
 
@@ -90,7 +97,6 @@ export default function HunterDashboard() {
     fetchCampaigns()
     fetchCompleted()
     fetchBalance()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id])
 
   // helper loading
@@ -117,7 +123,7 @@ export default function HunterDashboard() {
     <div className="min-h-screen bg-gray-900 text-white w-full">
       <Topbar />
 
-   <div className="w-full px-6 py-8">
+      <div className="w-full px-6 py-8">
         <div
           className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
           style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
@@ -237,15 +243,14 @@ export default function HunterDashboard() {
           onClose={() => setSelectedCampaign(null)}
           onConfirm={async (submission: Submission) => {
             try {
-              // refresh data (completed, campaigns, balance)
               await Promise.all([fetchCompleted(), fetchCampaigns(), fetchBalance()])
-
-              // close modal & switch to completed tab
               setSelectedCampaign(null)
               setActiveTab('completed')
+              setToast({ message: 'Task submitted successfully', type: 'success' })
             } catch (err) {
               console.error('Failed to refresh after submission', err)
               setSelectedCampaign(null)
+              setToast({ message: 'Failed to submit task', type: 'error' })
             }
           }}
         />
@@ -277,6 +282,15 @@ export default function HunterDashboard() {
           </div>
         )}
       </div>
+
+      {/* ✅ Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   )
 }
