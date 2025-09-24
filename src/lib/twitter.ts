@@ -1,9 +1,6 @@
 // /src/lib/twitter.ts
 import SocialAccount from "@/models/SocialAccount"
 
-const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
-const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
-const BOT_BEARER = process.env.BOT_BEARER!
 const DEV_BEARER = process.env.DEV_BEARER_TOKEN!
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID!
 const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET!
@@ -12,16 +9,8 @@ function devHeaders() {
   return { Authorization: `Bearer ${DEV_BEARER}` }
 }
 
-function botHeaders() {
-  return {
-    Authorization: `Bearer ${BOT_BEARER}`,
-    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
-    "x-csrf-token": BOT_CSRF,
-  }
-}
-
 // ─────────────────────────────
-// Resolve userId dari username (Bot only)
+// Resolve userId dari username
 // ─────────────────────────────
 export async function resolveTwitterUserId(username: string): Promise<string | null> {
   const clean = username
@@ -49,19 +38,31 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
 }
 
 // ─────────────────────────────
-// Check hunter follow target (Bot only) - tetap manual bot
+// Check hunter follow target (OAuth2 user token, no bot)
 // ─────────────────────────────
 export async function checkTwitterFollow(social: any, targetId: string): Promise<boolean> {
   try {
-    const sourceId = social.socialId
-    const url = `https://api.twitter.com/1.1/friendships/show.json?source_id=${sourceId}&target_id=${targetId}`
-    const res = await fetch(url, { headers: botHeaders() })
+    const creds = await getUserCredentials(social.userId)
+    if (!creds) {
+      console.error("checkTwitterFollow: no credentials for user", social.userId)
+      return false
+    }
+
+    // Fetch list of following terbaru (max 100, asumsi user baru follow target)
+    const url = `https://api.twitter.com/2/users/${creds.socialId}/following?max_results=100`
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${creds.accessToken}` },
+    })
+
     if (!res.ok) {
       console.error("checkTwitterFollow failed:", res.status, await res.text())
       return false
     }
+
     const json = await res.json().catch(() => null)
-    return json?.relationship?.source?.following === true
+    // Cek apakah targetId ada di daftar following
+    const isFollowing = json?.data?.some((u: any) => u.id === targetId) ?? false
+    return isFollowing
   } catch (e) {
     console.error("checkTwitterFollow error:", e)
     return false
@@ -70,7 +71,7 @@ export async function checkTwitterFollow(social: any, targetId: string): Promise
 
 // ─────────────────────────────
 // Helper: ambil & refresh access token user + socialId
-// returns { accessToken, socialId } or null
+// returns { accessToken, socialId } atau null
 // ─────────────────────────────
 async function getUserCredentials(userId: string): Promise<{ accessToken: string; socialId: string } | null> {
   try {
