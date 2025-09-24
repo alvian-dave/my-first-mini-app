@@ -1,24 +1,7 @@
 'use client'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment, useState, useEffect } from 'react'
-
-// ✅ Type-safe Task
-interface Task {
-  service: 'twitter' | 'discord' | 'telegram' | ''
-  type: string
-  url: string
-  isOld?: boolean // tandai task lama
-}
-
-export interface Campaign {
-  id: number | string
-  title: string
-  description: string
-  budget: string
-  reward: string
-  status: string
-  tasks: Task[]
-}
+import { Campaign as CampaignType } from '@/types' // ✅ pakai tipe dari /types/index
 
 const MAX_TASKS = 3
 const SERVICE_OPTIONS = [
@@ -47,12 +30,19 @@ const TASK_TYPE_OPTIONS: Record<
   ],
 }
 
+interface Task {
+  service: 'twitter' | 'discord' | 'telegram' | ''
+  type: string
+  url: string
+  isOld?: boolean
+}
+
 interface Props {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (campaign: Campaign) => void | Promise<void>
-  editingCampaign: Campaign | null
-  setEditingCampaign: (c: Campaign | null) => void
+  onSubmit: (campaign: CampaignType) => void | Promise<void>
+  editingCampaign: CampaignType | null
+  setEditingCampaign: (c: CampaignType | null) => void
 }
 
 export const CampaignForm = ({
@@ -62,8 +52,8 @@ export const CampaignForm = ({
   editingCampaign,
   setEditingCampaign,
 }: Props) => {
-  const [campaign, setCampaign] = useState<Campaign>({
-    id: Date.now(),
+  const [campaign, setCampaign] = useState<CampaignType>({
+    id: Date.now(), // ✅ number cocok dengan tipe
     title: '',
     description: '',
     budget: '',
@@ -74,7 +64,6 @@ export const CampaignForm = ({
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // ✅ Load campaign, tandai task lama
   useEffect(() => {
     if (editingCampaign) {
       setCampaign({
@@ -83,7 +72,7 @@ export const CampaignForm = ({
         reward: editingCampaign.reward ?? '',
         tasks: (editingCampaign.tasks ?? []).map((t) => ({
           ...t,
-          isOld: true, // tandai task lama
+          isOld: true,
         })),
       })
     } else {
@@ -99,7 +88,6 @@ export const CampaignForm = ({
     }
   }, [editingCampaign])
 
-  // ✅ Auto close toast
   useEffect(() => {
     if (errorMessage) {
       const timer = setTimeout(() => setErrorMessage(null), 3000)
@@ -107,7 +95,7 @@ export const CampaignForm = ({
     }
   }, [errorMessage])
 
-  const handleChange = (key: keyof Campaign, value: any) => {
+  const handleChange = (key: keyof CampaignType, value: any) => {
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
