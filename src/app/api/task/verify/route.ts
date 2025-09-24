@@ -220,7 +220,7 @@ export async function POST(req: Request) {
   })
 
   if (!submission) {
-    // ✅ FIX: inisialisasi semua campaignTasks, bukan cuma 1
+    // ✅ inisialisasi semua campaignTasks
     submission = await Submission.create({
       userId: session.user.id,
       campaignId,
@@ -242,49 +242,37 @@ export async function POST(req: Request) {
       status: campaignTasks.length === 1 ? "submitted" : "pending",
     })
   } else {
-    const subTasks = (Array.isArray((submission as any).tasks)
-      ? (submission as any).tasks
-      : []) as SubmissionTask[]
+    // ✅ FIX: merge semua campaignTasks agar tidak ada yang hilang
+    const subTasks = campaignTasks.map((ct) => {
+      const already = (submission.tasks as SubmissionTask[]).find(
+        (st) => st.service === ct.service && st.type === ct.type && st.url === ct.url
+      )
 
-    const idx = subTasks.findIndex(
-      (s) =>
-        s.service === incomingTask.service &&
-        s.type === incomingTask.type &&
-        s.url === incomingTask.url
-    )
-
-    if (idx >= 0) {
-      subTasks[idx] = {
-        service: incomingTask.service,
-        type: incomingTask.type,
-        url: incomingTask.url,
-        done: true,
-        verifiedAt: now,
+      if (
+        ct.service === incomingTask.service &&
+        ct.type === incomingTask.type &&
+        ct.url === incomingTask.url
+      ) {
+        // task yg baru diverifikasi
+        return {
+          service: ct.service,
+          type: ct.type,
+          url: ct.url,
+          done: true,
+          verifiedAt: now,
+        }
       }
-    } else {
-      subTasks.push({
-        service: incomingTask.service,
-        type: incomingTask.type,
-        url: incomingTask.url,
-        done: true,
-        verifiedAt: now,
-      })
-    }
+
+      return already || {
+        service: ct.service,
+        type: ct.type,
+        url: ct.url,
+        done: false,
+      }
+    })
 
     submission.tasks = subTasks
-
-    submission.status = campaignTasks.every((ct) =>
-      submission.tasks.some(
-        (st: SubmissionTask) =>
-          st.service === ct.service &&
-          st.type === ct.type &&
-          st.url === ct.url &&
-          st.done
-      )
-    )
-      ? "submitted"
-      : "pending"
-
+    submission.status = subTasks.every((st) => st.done) ? "submitted" : "pending"
     await submission.save()
   }
 
