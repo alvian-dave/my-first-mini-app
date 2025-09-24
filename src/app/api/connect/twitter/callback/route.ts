@@ -114,6 +114,7 @@ export async function GET(req: Request) {
         socialId: userData.id,
         username: userData.username,
         profileUrl: `https://twitter.com/${userData.username}`,
+        scope: tokenJson.scope ? tokenJson.scope.split(" ") : [],
         updatedAt: new Date(),
       },
     },

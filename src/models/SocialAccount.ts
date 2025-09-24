@@ -31,6 +31,9 @@ const socialAccountSchema = new Schema<ISocialAccount>(
     refreshToken: { type: String },
     expiresAt: { type: Date },
 
+    // Field baru untuk scope
+    scope: { type: [String], default: [] }, // ✅ simpan scopes sebagai array string
+    
     // Untuk record sementara (PKCE)
     state: { type: String },
     codeVerifier: { type: String },

@@ -79,6 +79,9 @@ export interface SocialAccount {
   state?: string
   codeVerifier?: string
 
+  // Field tambahan
+  scope?: string[] // array of scopes
+
   createdAt?: string
   updatedAt?: string
 }

@@ -8,7 +8,7 @@ import crypto from "crypto"
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID!
 const TWITTER_REDIRECT_URI = process.env.TWITTER_REDIRECT_URI!
 const TWITTER_SCOPE =
-  "tweet.read tweet.write users.read offline.access follows.read"
+  "tweet.read like.read tweet.write users.read offline.access follows.read"
 
 export async function GET() {
   await dbConnect()
