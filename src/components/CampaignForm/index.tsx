@@ -1,9 +1,26 @@
 'use client'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment, useState, useEffect } from 'react'
-import { Campaign } from '@/types'
 
-const MAX_TASKS = 3 // ✅ batas maksimal task per campaign
+// ✅ Type-safe Task
+interface Task {
+  service: 'twitter' | 'discord' | 'telegram' | ''
+  type: string
+  url: string
+  isOld?: boolean // tandai task lama
+}
+
+export interface Campaign {
+  id: number | string
+  title: string
+  description: string
+  budget: string
+  reward: string
+  status: string
+  tasks: Task[]
+}
+
+const MAX_TASKS = 3
 const SERVICE_OPTIONS = [
   { service: 'twitter', label: 'Twitter/X' },
   { service: 'discord', label: 'Discord' },
@@ -57,13 +74,17 @@ export const CampaignForm = ({
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
+  // ✅ Load campaign, tandai task lama
   useEffect(() => {
     if (editingCampaign) {
       setCampaign({
         ...editingCampaign,
         budget: editingCampaign.budget ?? '',
         reward: editingCampaign.reward ?? '',
-        tasks: editingCampaign.tasks ?? [],
+        tasks: (editingCampaign.tasks ?? []).map((t) => ({
+          ...t,
+          isOld: true, // tandai task lama
+        })),
       })
     } else {
       setCampaign({
@@ -78,7 +99,7 @@ export const CampaignForm = ({
     }
   }, [editingCampaign])
 
-  // ✅ Auto close toast setiap kali errorMessage muncul
+  // ✅ Auto close toast
   useEffect(() => {
     if (errorMessage) {
       const timer = setTimeout(() => setErrorMessage(null), 3000)
@@ -90,7 +111,6 @@ export const CampaignForm = ({
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
-  // ✅ FIX: Type-safe updateTask
   const updateTask = (
     index: number,
     key: 'service' | 'type' | 'url',
@@ -138,7 +158,6 @@ export const CampaignForm = ({
 
   return (
     <>
-      {/* Main Campaign Form Modal */}
       <Transition appear show={isOpen} as={Fragment}>
         <Dialog as="div" className="relative z-50" onClose={onClose}>
           <Transition.Child
@@ -156,7 +175,6 @@ export const CampaignForm = ({
                   {editingCampaign ? 'Edit Campaign' : 'Create New Campaign'}
                 </Dialog.Title>
 
-                {/* Form Content */}
                 <div className="flex-1 overflow-y-auto space-y-4 pr-1">
                   <input
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
@@ -193,10 +211,8 @@ export const CampaignForm = ({
                     onChange={(e) => handleChange('reward', e.target.value)}
                   />
 
-                  {/* Task Builder */}
                   <div className="space-y-3">
                     {(campaign.tasks || []).map((task, i) => {
-                      // ✅ placeholder logic
                       let urlPlaceholder = 'Paste target URL (e.g. profile link)'
                       if (task.service === 'twitter') {
                         if (task.type === 'follow') {
@@ -256,8 +272,8 @@ export const CampaignForm = ({
                             onChange={(e) =>
                               updateTask(i, 'url', e.target.value)
                             }
-                            readOnly={!!editingCampaign?.tasks?.[i]?.url} // ✅ readonly untuk task lama
-                            style={editingCampaign?.tasks?.[i]?.url ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                            readOnly={task.isOld} // ✅ readonly untuk task lama
+                            style={task.isOld ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                           />
 
                           <button
@@ -275,7 +291,7 @@ export const CampaignForm = ({
                         onClick={() =>
                           handleChange('tasks', [
                             ...(campaign.tasks || []),
-                            { service: '', type: '', url: '' },
+                            { service: '', type: '', url: '', isOld: false }, // ✅ task baru bisa edit
                           ])
                         }
                         className="px-3 py-2 rounded font-medium transition hover:brightness-110"
@@ -287,7 +303,6 @@ export const CampaignForm = ({
                   </div>
                 </div>
 
-                {/* Footer */}
                 <div className="flex gap-2 pt-4 mt-4 border-t border-gray-700">
                   <button
                     onClick={handleSubmit}
@@ -313,7 +328,6 @@ export const CampaignForm = ({
         </Dialog>
       </Transition>
 
-      {/* ✅ Toast Notification */}
       <Transition
         show={!!errorMessage}
         as={Fragment}
