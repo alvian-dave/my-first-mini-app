@@ -180,5 +180,3 @@ export async function checkTwitterRetweet(userId: string, tweetId: string): Prom
     return false
   }
 }
-
-jajal
