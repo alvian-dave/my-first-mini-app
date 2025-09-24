@@ -9,6 +9,7 @@ export interface ISocialAccount extends Document {
   accessToken?: string
   refreshToken?: string
   expiresAt?: Date
+  scope?: string[]
 
   // Field tambahan untuk OAuth PKCE (digunakan di twitter_temp)
   state?: string
