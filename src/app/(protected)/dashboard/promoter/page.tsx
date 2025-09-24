@@ -151,202 +151,203 @@ export default function PromoterDashboard() {
     .filter(c => (c.status || 'active') === activeTab)
     .sort((a, b) => (a._id > b._id ? -1 : 1))
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <Topbar />
-      <main className="w-full px-4 md:px-12 py-6">
-        {/* Balance + Topup */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="text-lg font-medium">
-            Balance <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
-          </div>
-          <button
-            onClick={() => setShowTopup(true)}
-            className="px-4 py-1 rounded font-medium"
-            style={{ backgroundColor: '#2563eb', color: '#fff' }}
-          >
-            Topup
-          </button>
+return (
+  <div className="min-h-screen bg-gray-900 text-white">
+    <Topbar />
+    <main className="w-full px-4 md:px-12 py-6">
+      {/* Balance + Topup */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="text-lg font-medium">
+          Balance <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
         </div>
+        <button
+          onClick={() => setShowTopup(true)}
+          className="px-4 py-1 rounded font-medium"
+          style={{ backgroundColor: '#2563eb', color: '#fff' }}
+        >
+          Topup
+        </button>
+      </div>
 
-        {/* Create Campaign */}
-        <div className="text-center mb-6">
-          <button
-            onClick={() => {
-              setEditingCampaign(null)
-              setIsModalOpen(true)
-            }}
-            className="px-6 py-2 rounded font-semibold shadow"
-            style={{ backgroundColor: '#16a34a', color: '#fff' }}
-          >
-            + Create Campaign
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="sticky top-18 bg-gray-900 z-40 pb-3">
-          <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-        </div>
-
-        {/* Campaign list */}
-        {current.length === 0 ? (
-          <p className="text-center text-gray-400">No campaigns in this tab.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {current.map(c => (
-              <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
-                <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
-                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
-
-                {/* Task List */}
-                {Array.isArray(c.tasks) && c.tasks.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {c.tasks.map((t, i) => {
-                      const serviceIcon =
-                        t.service.toLowerCase().includes('twitter') ? '🐦' :
-                        t.service.toLowerCase().includes('discord') ? '💬' :
-                        t.service.toLowerCase().includes('telegram') ? '📨' :
-                        '🔗'
-
-                      return (
-                        <div
-                          key={i}
-                          className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
-                        >
-                          <span className="mr-2">{serviceIcon}</span>
-                          <span className="text-yellow-300">{t.service}</span>
-                          <span className="mx-1 text-gray-400">•</span>
-                          <span className="text-gray-200">{t.type}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
-                <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
-
-                <p
-                  className="text-sm text-gray-400 cursor-pointer hover:underline"
-                  onClick={() => {
-                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
-                    setShowParticipants(true)
-                  }}
-                >
-                  Contributors: <b>{c.contributors ?? 0}</b>
-                </p>
-
-                <div className="flex gap-2 mt-3">
-                  {c.status !== 'finished' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditingCampaign(c)
-                          setIsModalOpen(true)
-                        }}
-                        className="px-3 py-1 rounded font-medium"
-                        style={{ backgroundColor: '#facc15', color: '#000' }}
-                      >
-                        Edit
-                      </button>
-                      {c.contributors > 0 ? (
-                        <button
-                          onClick={() => handleMarkFinished(c._id)}
-                          className="px-3 py-1 rounded font-medium"
-                          style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                        >
-                          Mark Finished
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleDelete(c._id)}
-                          className="px-3 py-1 rounded font-medium"
-                          style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Modal form */}
-        <CampaignForm
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false)
+      {/* Create Campaign */}
+      <div className="text-center mb-6">
+        <button
+          onClick={() => {
             setEditingCampaign(null)
+            setIsModalOpen(true)
           }}
-          onSubmit={handleSubmit}
-          editingCampaign={editingCampaign as unknown as BaseCampaign | null}
-          setEditingCampaign={(c: BaseCampaign | null) => setEditingCampaign(c as unknown as UICampaign | null)}
-        />
+          className="px-6 py-2 rounded font-semibold shadow"
+          style={{ backgroundColor: '#16a34a', color: '#fff' }}
+        >
+          + Create Campaign
+        </button>
+      </div>
 
-        {/* Participants modal */}
-        {showParticipants && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-            <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
-              <h2 className="text-lg font-bold mb-4">Participants</h2>
-              {participants.length === 0 ? (
-                <p className="text-gray-400">No participants yet.</p>
-              ) : (
-                <ul className="list-disc list-inside space-y-1">
-                  {participants.map(p => (
-                    <li key={p} className="text-sm text-gray-200">
-                      {p}
-                    </li>
-                  ))}
-                </ul>
+      {/* Tabs */}
+      <div className="sticky top-18 bg-gray-900 z-40 pb-3">
+        <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+      </div>
+
+      {/* Campaign list */}
+      {current.length === 0 ? (
+        <p className="text-center text-gray-400">No campaigns in this tab.</p>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-6">
+          {current.map(c => (
+            <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
+              <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
+              <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
+
+              {/* Task List */}
+              {Array.isArray(c.tasks) && c.tasks.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {c.tasks.map((t, i) => {
+                    const serviceIcon =
+                      t.service.toLowerCase().includes('twitter') ? '🐦' :
+                      t.service.toLowerCase().includes('discord') ? '💬' :
+                      t.service.toLowerCase().includes('telegram') ? '📨' :
+                      '🔗'
+
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
+                      >
+                        <span className="mr-2">{serviceIcon}</span>
+                        <span className="text-yellow-300">{t.service}</span>
+                        <span className="mx-1 text-gray-400">•</span>
+                        <span className="text-gray-200">{t.type}</span>
+                      </div>
+                    )
+                  })}
+                </div>
               )}
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={() => setShowParticipants(false)}
-                  className="px-4 py-2 rounded bg-green-600"
-                >
-                  Close
-                </button>
+
+              <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
+              <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
+
+              <p
+                className="text-sm text-gray-400 cursor-pointer hover:underline"
+                onClick={() => {
+                  setParticipants(Array.isArray(c.participants) ? c.participants : [])
+                  setShowParticipants(true)
+                }}
+              >
+                Contributors: <b>{c.contributors ?? 0}</b>
+              </p>
+
+              <div className="flex gap-2 mt-3">
+                {c.status !== 'finished' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditingCampaign(c)
+                        setIsModalOpen(true)
+                      }}
+                      className="px-3 py-1 rounded font-medium"
+                      style={{ backgroundColor: '#facc15', color: '#000' }}
+                    >
+                      Edit
+                    </button>
+                    {c.contributors > 0 ? (
+                      <button
+                        onClick={() => handleMarkFinished(c._id)}
+                        className="px-3 py-1 rounded font-medium"
+                        style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                      >
+                        Mark Finished
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleDelete(c._id)}
+                        className="px-3 py-1 rounded font-medium"
+                        style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
-          </div>
-        )}
-      </main>
-
-      {showTopup && session?.user?.id && (
-        <TopupModal
-          userId={session.user.id}
-          onClose={() => setShowTopup(false)}
-          onSuccess={newBalance => setBalance(newBalance)}
-        />
+          ))}
+        </div>
       )}
 
-      {/* Floating Chat */}
-      <div className="fixed bottom-4 left-4 z-50">
-        {!showChat ? (
-          <div className="text-center">
-            <button
-              className="p-3 rounded-full shadow hover:scale-105 transition"
-              style={{ backgroundColor: '#16a34a', color: '#fff' }}
-              onClick={() => setShowChat(true)}
-            >
-              💬
-            </button>
-            <p className="text-xs text-gray-400 mt-1">Chat</p>
-          </div>
-        ) : (
-          <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center px-4 py-2" style={{ backgroundColor: '#16a34a', color: '#fff' }}>
-              <span className="font-semibold">Global Chat</span>
-              <button onClick={() => setShowChat(false)}>✕</button>
+      {/* Modal form */}
+      <CampaignForm
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingCampaign(null)
+        }}
+        onSubmit={handleSubmit}
+        editingCampaign={editingCampaign as unknown as BaseCampaign | null}
+        setEditingCampaign={(c: BaseCampaign | null) => setEditingCampaign(c as unknown as UICampaign | null)}
+      />
+
+      {/* Participants modal */}
+      {showParticipants && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-4">Participants</h2>
+            {participants.length === 0 ? (
+              <p className="text-gray-400">No participants yet.</p>
+            ) : (
+              <ul className="list-disc list-inside space-y-1">
+                {participants.map(p => (
+                  <li key={p} className="text-sm text-gray-200">
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowParticipants(false)}
+                className="px-4 py-2 rounded bg-green-600"
+              >
+                Close
+              </button>
             </div>
-            <GlobalChatRoom />
           </div>
-        )}
-      </div>
-{/* ✅ Toast */}
+        </div>
+      )}
+    </main>
+
+    {showTopup && session?.user?.id && (
+      <TopupModal
+        userId={session.user.id}
+        onClose={() => setShowTopup(false)}
+        onSuccess={newBalance => setBalance(newBalance)}
+      />
+    )}
+
+    {/* Floating Chat */}
+    <div className="fixed bottom-4 left-4 z-50">
+      {!showChat ? (
+        <div className="text-center">
+          <button
+            className="p-3 rounded-full shadow hover:scale-105 transition"
+            style={{ backgroundColor: '#16a34a', color: '#fff' }}
+            onClick={() => setShowChat(true)}
+          >
+            💬
+          </button>
+          <p className="text-xs text-gray-400 mt-1">Chat</p>
+        </div>
+      ) : (
+        <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center px-4 py-2" style={{ backgroundColor: '#16a34a', color: '#fff' }}>
+            <span className="font-semibold">Global Chat</span>
+            <button onClick={() => setShowChat(false)}>✕</button>
+          </div>
+          <GlobalChatRoom />
+        </div>
+      )}
+    </div>
+
+    {/* ✅ Toast */}
     {toast && toast.type !== 'confirm' && (
       <Toast
         message={toast.message}
