@@ -109,7 +109,7 @@ export async function POST(req: Request) {
   const campaign = await Campaign.findOneAndUpdate(
     { _id: campaignId, status: "active" },
     {
-      $addToSet: { participants: session.user.username }, // tambahkan participant unik
+      $addToSet: { participants: session.user.id }, // tambahkan participant unik
     },
     { new: true }
   )
