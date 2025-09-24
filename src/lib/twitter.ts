@@ -6,6 +6,7 @@ const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
 const BOT_BEARER = process.env.BOT_BEARER!
 const DEV_BEARER = process.env.DEV_BEARER_TOKEN!
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID!
+const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET!
 
 function devHeaders() {
   return { Authorization: `Bearer ${DEV_BEARER}` }
@@ -80,18 +81,24 @@ async function getUserAccessToken(userId: string): Promise<string | null> {
       return account.accessToken
     }
 
-    // kalau ada refreshToken → refresh token
+    // kalau ada refreshToken → refresh token pakai confidential client
     if (account.refreshToken) {
       try {
+        const basicAuth = Buffer.from(
+          `${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`
+        ).toString("base64")
+
         const body = new URLSearchParams({
           grant_type: "refresh_token",
           refresh_token: account.refreshToken,
-          client_id: TWITTER_CLIENT_ID!,
         })
 
         const res = await fetch("https://api.twitter.com/2/oauth2/token", {
           method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${basicAuth}`,
+          },
           body: body.toString(),
         })
 
