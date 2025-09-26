@@ -6,9 +6,17 @@ const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
 const BOT_BEARER = process.env.TWITTER_BOT_BEARER!
 
 // ─────────────────────────────
-// Base Headers
+// Headers
 // ─────────────────────────────
-function baseHeaders() {
+function botHeaders() {
+  return {
+    Authorization: `Bearer ${BOT_BEARER}`,
+    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
+    "x-csrf-token": BOT_CSRF,
+  }
+}
+
+function graphqlHeaders() {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
@@ -57,7 +65,7 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
   try {
     const res = await fetch(url, {
       headers: {
-        ...baseHeaders(),
+        ...graphqlHeaders(),
         referer: `https://x.com/${clean}`,
       },
     })
@@ -80,12 +88,7 @@ export async function checkTwitterFollow(social: any, targetId: string): Promise
   try {
     const sourceId = social.socialId
     const url = `https://api.twitter.com/1.1/friendships/show.json?source_id=${sourceId}&target_id=${targetId}`
-    const res = await fetch(url, {
-      headers: {
-        ...baseHeaders(),
-        referer: `https://x.com/intent/user?user_id=${targetId}`,
-      },
-    })
+    const res = await fetch(url, { headers: botHeaders() })
     if (!res.ok) {
       console.error("checkTwitterFollow failed:", res.status, await res.text())
       return false
@@ -147,7 +150,7 @@ export async function checkTwitterLike(userId: string, tweetId: string): Promise
   try {
     const res = await fetch(url, {
       headers: {
-        ...baseHeaders(),
+        ...graphqlHeaders(),
         referer: `https://x.com/i/status/${tweetId}/likes`,
       },
     })
@@ -219,7 +222,7 @@ export async function checkTwitterRetweet(userId: string, tweetId: string): Prom
   try {
     const res = await fetch(url, {
       headers: {
-        ...baseHeaders(),
+        ...graphqlHeaders(),
         referer: `https://x.com/i/status/${tweetId}/retweets`,
       },
     })
