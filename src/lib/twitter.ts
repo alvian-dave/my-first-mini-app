@@ -8,7 +8,7 @@ const BOT_BEARER = process.env.TWITTER_BOT_BEARER!
 // ─────────────────────────────
 // Headers
 // ─────────────────────────────
-export function botHeaders() {
+function botHeaders() {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
@@ -60,16 +60,16 @@ export function retwHeader(tweetId: string) {
 // ─────────────────────────────
 // Resolve userId dari username
 // ─────────────────────────────
-export async function resolveTwitterUserId(username: string, resHeader: Record<string, string>): Promise<string | null> {
+export async function resolveTwitterUserId(username: string): Promise<string | null> {
   const clean = username
     .trim()
     .replace(/^@/, "")
     .replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\//, "")
     .replace(/\/+$/, "")
     .split(/[/?]/)[0]
-    .toLowerCase();
+    .toLowerCase()
 
-  const queryId = "96tVxbPqMZDoYB5pmzezKA"; // UserByScreenName
+  const queryId = "96tVxbPqMZDoYB5pmzezKA" // UserByScreenName
   const url = `https://x.com/i/api/graphql/${queryId}/UserByScreenName?variables=${encodeURIComponent(
     JSON.stringify({ screen_name: clean, withGrokTranslatedBio: false })
   )}&features=${encodeURIComponent(
@@ -88,29 +88,28 @@ export async function resolveTwitterUserId(username: string, resHeader: Record<s
       responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
       responsive_web_graphql_timeline_navigation_enabled: true,
     })
-  )}&fieldToggles=${encodeURIComponent(JSON.stringify({ withAuxiliaryUserLabels: true }))}`;
+  )}&fieldToggles=${encodeURIComponent(
+    JSON.stringify({ withAuxiliaryUserLabels: true })
+  )}`
 
   try {
     const res = await fetch(url, {
       headers: {
-        ...resHeader, // pakai header yang sudah dibuat
+        ...resHeaders(),
         referer: `https://x.com/${clean}`,
       },
-    });
-
+    })
     if (!res.ok) {
-      console.error("resolveTwitterUserId failed:", clean, res.status, await res.text());
-      return null;
+      console.error("resolveTwitterUserId failed:", clean, res.status, await res.text())
+      return null
     }
-
-    const json = await res.json().catch(() => null);
-    return json?.data?.user?.result?.rest_id ?? null;
+    const json = await res.json().catch(() => null)
+    return json?.data?.user?.result?.rest_id ?? null
   } catch (e) {
-    console.error("resolveTwitterUserId error:", e);
-    return null;
+    console.error("resolveTwitterUserId error:", e)
+    return null
   }
 }
-
 
 // ─────────────────────────────
 // Check hunter follow target
