@@ -17,7 +17,7 @@ function botHeaders() {
 }
 
 // Header khusus untuk resolve username -> userId
-export function resHeaders() {
+function resHeaders() {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     "x-csrf-token": BOT_CSRF,
@@ -29,7 +29,7 @@ export function resHeaders() {
 }
 
 // Header khusus untuk cek Like
-export function likeHeaders(tweetId: string) {
+function likeHeaders(tweetId: string) {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     "x-csrf-token": BOT_CSRF,
@@ -42,7 +42,7 @@ export function likeHeaders(tweetId: string) {
 }
 
 // Header khusus untuk cek Retweet
-export function retwHeaders(tweetId: string) {
+function retwHeaders(tweetId: string) {
   return {
     accept: "*/*",
     Authorization: `Bearer ${BOT_BEARER}`,
@@ -180,7 +180,7 @@ export async function checkTwitterLike(userId: string, tweetId: string): Promise
   try {
     const res = await fetch(url, {
       headers: {
-        ...likeHeaders(),
+        ...likeHeaders(tweetId),
         referer: `https://x.com/i/status/${tweetId}/likes`,
       },
     })
@@ -252,7 +252,7 @@ export async function checkTwitterRetweet(userId: string, tweetId: string): Prom
   try {
     const res = await fetch(url, {
       headers: {
-        ...retwHeaders(),
+        ...retwHeaders(tweetId),
         referer: `https://x.com/i/status/${tweetId}/retweets`,
       },
     })
