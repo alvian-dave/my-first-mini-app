@@ -17,7 +17,7 @@ function botHeaders() {
 }
 
 // Header khusus untuk resolve username -> userId
-export function resHeader() {
+export function resHeaders() {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     "x-csrf-token": BOT_CSRF,
@@ -29,7 +29,7 @@ export function resHeader() {
 }
 
 // Header khusus untuk cek Like
-export function likeHeader(tweetId: string) {
+export function likeHeaders(tweetId: string) {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     "x-csrf-token": BOT_CSRF,
@@ -42,7 +42,7 @@ export function likeHeader(tweetId: string) {
 }
 
 // Header khusus untuk cek Retweet
-export function retwHeader(tweetId: string) {
+export function retwHeaders(tweetId: string) {
   return {
     accept: "*/*",
     Authorization: `Bearer ${BOT_BEARER}`,
