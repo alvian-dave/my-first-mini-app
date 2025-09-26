@@ -8,7 +8,7 @@ const BOT_BEARER = process.env.TWITTER_BOT_BEARER!
 // ─────────────────────────────
 // Headers
 // ─────────────────────────────
-function botHeaders() {
+export function botHeaders() {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
@@ -16,30 +16,60 @@ function botHeaders() {
   }
 }
 
-function graphqlHeaders() {
+// Header khusus untuk resolve username -> userId
+export function resHeader() {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
-    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
     "x-csrf-token": BOT_CSRF,
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     "x-twitter-active-user": "yes",
     "x-twitter-client-language": "en",
+  }
+}
+
+// Header khusus untuk cek Like
+export function likeHeader(tweetId: string) {
+  return {
+    Authorization: `Bearer ${BOT_BEARER}`,
+    "x-csrf-token": BOT_CSRF,
+    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "x-twitter-active-user": "yes",
+    "x-twitter-client-language": "en",
+    Referer: `https://x.com/i/web/status/${tweetId}`,
+  }
+}
+
+// Header khusus untuk cek Retweet
+export function retwHeader(tweetId: string) {
+  return {
+    accept: "*/*",
+    Authorization: `Bearer ${BOT_BEARER}`,
+    "Content-Type": "application/json",
+    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
+    "x-csrf-token": BOT_CSRF,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+    "x-twitter-active-user": "yes",
+    "x-twitter-auth-type": "OAuth2Session",
+    "x-twitter-client-language": "en",
+    Referer: `https://x.com/i/web/status/${tweetId}`,
   }
 }
 
 // ─────────────────────────────
 // Resolve userId dari username
 // ─────────────────────────────
-export async function resolveTwitterUserId(username: string): Promise<string | null> {
+export async function resolveTwitterUserId(username: string, resHeader: Record<string, string>): Promise<string | null> {
   const clean = username
     .trim()
     .replace(/^@/, "")
     .replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\//, "")
     .replace(/\/+$/, "")
     .split(/[/?]/)[0]
-    .toLowerCase()
+    .toLowerCase();
 
-  const queryId = "96tVxbPqMZDoYB5pmzezKA" // UserByScreenName
+  const queryId = "96tVxbPqMZDoYB5pmzezKA"; // UserByScreenName
   const url = `https://x.com/i/api/graphql/${queryId}/UserByScreenName?variables=${encodeURIComponent(
     JSON.stringify({ screen_name: clean, withGrokTranslatedBio: false })
   )}&features=${encodeURIComponent(
@@ -58,28 +88,29 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
       responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
       responsive_web_graphql_timeline_navigation_enabled: true,
     })
-  )}&fieldToggles=${encodeURIComponent(
-    JSON.stringify({ withAuxiliaryUserLabels: true })
-  )}`
+  )}&fieldToggles=${encodeURIComponent(JSON.stringify({ withAuxiliaryUserLabels: true }))}`;
 
   try {
     const res = await fetch(url, {
       headers: {
-        ...graphqlHeaders(),
+        ...resHeader, // pakai header yang sudah dibuat
         referer: `https://x.com/${clean}`,
       },
-    })
+    });
+
     if (!res.ok) {
-      console.error("resolveTwitterUserId failed:", clean, res.status, await res.text())
-      return null
+      console.error("resolveTwitterUserId failed:", clean, res.status, await res.text());
+      return null;
     }
-    const json = await res.json().catch(() => null)
-    return json?.data?.user?.result?.rest_id ?? null
+
+    const json = await res.json().catch(() => null);
+    return json?.data?.user?.result?.rest_id ?? null;
   } catch (e) {
-    console.error("resolveTwitterUserId error:", e)
-    return null
+    console.error("resolveTwitterUserId error:", e);
+    return null;
   }
 }
+
 
 // ─────────────────────────────
 // Check hunter follow target
@@ -150,7 +181,7 @@ export async function checkTwitterLike(userId: string, tweetId: string): Promise
   try {
     const res = await fetch(url, {
       headers: {
-        ...graphqlHeaders(),
+        ...likeHeaders(),
         referer: `https://x.com/i/status/${tweetId}/likes`,
       },
     })
@@ -222,7 +253,7 @@ export async function checkTwitterRetweet(userId: string, tweetId: string): Prom
   try {
     const res = await fetch(url, {
       headers: {
-        ...graphqlHeaders(),
+        ...retwHeaders(),
         referer: `https://x.com/i/status/${tweetId}/retweets`,
       },
     })
