@@ -3,20 +3,16 @@ import SocialAccount from "@/models/SocialAccount"
 
 const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
 const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
-const BOT_BEARER = process.env.BOT_BEARER!
-const DEV_BEARER = process.env.DEV_BEARER_TOKEN!
-const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID!
-const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET!
-
-function devHeaders() {
-  return { Authorization: `Bearer ${DEV_BEARER}` }
-}
+const BOT_BEARER = process.env.TWITTER_BOT_BEARER!
 
 function botHeaders() {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
     "x-csrf-token": BOT_CSRF,
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "x-twitter-active-user": "yes",
+    "x-twitter-client-language": "en",
   }
 }
 
@@ -32,16 +28,41 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
     .split(/[/?]/)[0]
     .toLowerCase()
 
-  try {
-    const res = await fetch(`https://api.twitter.com/2/users/by/username/${clean}`, {
-      headers: devHeaders(),
+  const queryId = "96tVxbPqMZDoYB5pmzezKA" // UserByScreenName
+
+  const url = `https://x.com/i/api/graphql/${queryId}/UserByScreenName?variables=${encodeURIComponent(
+    JSON.stringify({
+      screen_name: clean,
+      withGrokTranslatedBio: false,
     })
+  )}&features=${encodeURIComponent(
+    JSON.stringify({
+      hidden_profile_subscriptions_enabled: true,
+      payments_enabled: false,
+      profile_label_improvements_pcf_label_in_post_enabled: true,
+      rweb_tipjar_consumption_enabled: true,
+      verified_phone_label_enabled: false,
+      subscriptions_verification_info_is_identity_verified_enabled: true,
+      subscriptions_verification_info_verified_since_enabled: true,
+      highlights_tweets_tab_ui_enabled: true,
+      responsive_web_twitter_article_notes_tab_enabled: true,
+      subscriptions_feature_can_gift_premium: true,
+      creator_subscriptions_tweet_preview_api_enabled: true,
+      responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+      responsive_web_graphql_timeline_navigation_enabled: true,
+    })
+  )}&fieldToggles=${encodeURIComponent(
+    JSON.stringify({ withAuxiliaryUserLabels: true })
+  )}`
+
+  try {
+    const res = await fetch(url, { headers: botHeaders() })
     if (!res.ok) {
       console.error("resolveTwitterUserId failed:", clean, res.status, await res.text())
       return null
     }
-    const json = await res.json()
-    return json?.data?.id ?? null
+    const json = await res.json().catch(() => null)
+    return json?.data?.user?.result?.rest_id ?? null
   } catch (e) {
     console.error("resolveTwitterUserId error:", e)
     return null
@@ -49,7 +70,7 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
 }
 
 // ─────────────────────────────
-// Check hunter follow target (Bot only) - tetap manual bot
+// Check hunter follow target (Bot only)
 // ─────────────────────────────
 export async function checkTwitterFollow(social: any, targetId: string): Promise<boolean> {
   try {
@@ -69,106 +90,68 @@ export async function checkTwitterFollow(social: any, targetId: string): Promise
 }
 
 // ─────────────────────────────
-// Helper: ambil & refresh access token user + socialId
-// returns { accessToken, socialId } or null
-// ─────────────────────────────
-async function getUserCredentials(userId: string): Promise<{ accessToken: string; socialId: string } | null> {
-  try {
-    const account = await SocialAccount.findOne({ userId, provider: "twitter" })
-    if (!account) {
-      console.error("getUserCredentials: no SocialAccount for userId", userId)
-      return null
-    }
-    if (!account.socialId) {
-      console.error("getUserCredentials: SocialAccount missing socialId for userId", userId)
-      return null
-    }
-
-    // jika ada accessToken dan belum expired, gunakan langsung
-    if (account.accessToken && (!account.expiresAt || account.expiresAt > new Date())) {
-      return { accessToken: account.accessToken, socialId: account.socialId }
-    }
-
-    // kalau ada refreshToken -> coba refresh pakai confidential client
-    if (account.refreshToken) {
-      try {
-        const basicAuth = Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString("base64")
-
-        const body = new URLSearchParams({
-          grant_type: "refresh_token",
-          refresh_token: account.refreshToken,
-        })
-
-        const res = await fetch("https://api.twitter.com/2/oauth2/token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: `Basic ${basicAuth}`,
-          },
-          body: body.toString(),
-        })
-
-        const text = await res.text().catch(() => "")
-        if (!res.ok) {
-          console.error("refreshToken failed:", res.status, text)
-          return null
-        }
-
-        let json: any = null
-        try { json = JSON.parse(text) } catch (e) { json = null }
-
-        if (!json || !json.access_token) {
-          console.error("refreshToken: invalid response", text)
-          return null
-        }
-
-        // update DB
-        account.accessToken = json.access_token
-        if (json.refresh_token) account.refreshToken = json.refresh_token
-        if (json.expires_in) {
-          account.expiresAt = new Date(Date.now() + json.expires_in * 1000)
-        }
-        await account.save()
-
-        return { accessToken: account.accessToken!, socialId: account.socialId }
-      } catch (e) {
-        console.error("getUserCredentials refresh error:", e)
-        return null
-      }
-    }
-
-    // tidak ada token valid & tidak ada refreshToken
-    console.error("getUserCredentials: no valid accessToken and no refreshToken for userId", userId)
-    return null
-  } catch (e) {
-    console.error("getUserCredentials error:", e)
-    return null
-  }
-}
-
-// ─────────────────────────────
-// Check hunter like tweet (Twitter API v2)
-// expects app userId (session.user.id) as first param
+// Check hunter like tweet (Bot only)
 // ─────────────────────────────
 export async function checkTwitterLike(userId: string, tweetId: string): Promise<boolean> {
-  try {
-    const creds = await getUserCredentials(userId)
-    if (!creds) {
-      console.error("checkTwitterLike: no credentials for user", userId)
-      return false
-    }
+  const queryId = "LJcJgGhFdz9zGTu13IlSBA" // Favoriters
 
-    const res = await fetch(`https://api.twitter.com/2/users/${creds.socialId}/liked_tweets`, {
-      headers: { Authorization: `Bearer ${creds.accessToken}` },
+  const url = `https://x.com/i/api/graphql/${queryId}/Favoriters?variables=${encodeURIComponent(
+    JSON.stringify({
+      tweetId,
+      count: 20,
+      includePromotedContent: true,
     })
+  )}&features=${encodeURIComponent(
+    JSON.stringify({
+      rweb_video_screen_enabled: false,
+      payments_enabled: false,
+      profile_label_improvements_pcf_label_in_post_enabled: true,
+      rweb_tipjar_consumption_enabled: true,
+      verified_phone_label_enabled: false,
+      creator_subscriptions_tweet_preview_api_enabled: true,
+      responsive_web_graphql_timeline_navigation_enabled: true,
+      responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+      premium_content_api_read_enabled: false,
+      communities_web_enable_tweet_community_results_fetch: true,
+      c9s_tweet_anatomy_moderator_badge_enabled: true,
+      responsive_web_grok_analyze_button_fetch_trends_enabled: false,
+      responsive_web_grok_analyze_post_followups_enabled: true,
+      responsive_web_jetfuel_frame: true,
+      responsive_web_grok_share_attachment_enabled: true,
+      articles_preview_enabled: true,
+      responsive_web_edit_tweet_api_enabled: true,
+      graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+      view_counts_everywhere_api_enabled: true,
+      longform_notetweets_consumption_enabled: true,
+      responsive_web_twitter_article_tweet_consumption_enabled: true,
+      tweet_awards_web_tipping_enabled: false,
+      responsive_web_grok_show_grok_translated_post: false,
+      responsive_web_grok_analysis_button_from_backend: true,
+      creator_subscriptions_quote_tweet_preview_enabled: false,
+      freedom_of_speech_not_reach_fetch_enabled: true,
+      standardized_nudges_misinfo: true,
+      tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+      longform_notetweets_rich_text_read_enabled: true,
+      longform_notetweets_inline_media_enabled: true,
+      responsive_web_grok_image_annotation_enabled: true,
+      responsive_web_grok_imagine_annotation_enabled: true,
+      responsive_web_grok_community_note_auto_translation_is_enabled: false,
+      responsive_web_enhance_cards_enabled: false,
+    })
+  )}`
+
+  try {
+    const res = await fetch(url, { headers: botHeaders() })
     if (!res.ok) {
       console.error("checkTwitterLike failed:", res.status, await res.text())
       return false
     }
-
     const json = await res.json().catch(() => null)
-    const liked = json?.data?.some((t: any) => t.id === tweetId) ?? false
-    return liked
+    const users = json?.data?.favoriters_timeline?.timeline?.instructions
+      ?.flatMap((i: any) => i.entries ?? [])
+      ?.flatMap((e: any) => (e.content?.itemContent?.user_results ? [e.content.itemContent.user_results.result] : [])) ?? []
+
+    return users.some((u: any) => u?.rest_id === userId)
   } catch (e) {
     console.error("checkTwitterLike error:", e)
     return false
@@ -176,28 +159,67 @@ export async function checkTwitterLike(userId: string, tweetId: string): Promise
 }
 
 // ─────────────────────────────
-// Check hunter retweet tweet (Twitter API v2)
-// expects app userId (session.user.id) as first param
+// Check hunter retweet tweet (Bot only)
 // ─────────────────────────────
 export async function checkTwitterRetweet(userId: string, tweetId: string): Promise<boolean> {
-  try {
-    const creds = await getUserCredentials(userId)
-    if (!creds) {
-      console.error("checkTwitterRetweet: no credentials for user", userId)
-      return false
-    }
+  const queryId = "pORrqerSnuFMTRxQ-YRPLA" // Retweeters
 
-    const res = await fetch(`https://api.twitter.com/2/tweets/${tweetId}/retweeted_by`, {
-      headers: { Authorization: `Bearer ${creds.accessToken}` },
+  const url = `https://x.com/i/api/graphql/${queryId}/Retweeters?variables=${encodeURIComponent(
+    JSON.stringify({
+      tweetId,
+      count: 20,
     })
+  )}&features=${encodeURIComponent(
+    JSON.stringify({
+      rweb_video_screen_enabled: false,
+      payments_enabled: false,
+      profile_label_improvements_pcf_label_in_post_enabled: true,
+      rweb_tipjar_consumption_enabled: true,
+      verified_phone_label_enabled: false,
+      creator_subscriptions_tweet_preview_api_enabled: true,
+      responsive_web_graphql_timeline_navigation_enabled: true,
+      responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+      premium_content_api_read_enabled: false,
+      communities_web_enable_tweet_community_results_fetch: true,
+      c9s_tweet_anatomy_moderator_badge_enabled: true,
+      responsive_web_grok_analyze_button_fetch_trends_enabled: false,
+      responsive_web_grok_analyze_post_followups_enabled: true,
+      responsive_web_jetfuel_frame: true,
+      responsive_web_grok_share_attachment_enabled: true,
+      articles_preview_enabled: true,
+      responsive_web_edit_tweet_api_enabled: true,
+      graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+      view_counts_everywhere_api_enabled: true,
+      longform_notetweets_consumption_enabled: true,
+      responsive_web_twitter_article_tweet_consumption_enabled: true,
+      tweet_awards_web_tipping_enabled: false,
+      responsive_web_grok_show_grok_translated_post: false,
+      responsive_web_grok_analysis_button_from_backend: true,
+      creator_subscriptions_quote_tweet_preview_enabled: false,
+      freedom_of_speech_not_reach_fetch_enabled: true,
+      standardized_nudges_misinfo: true,
+      tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+      longform_notetweets_rich_text_read_enabled: true,
+      longform_notetweets_inline_media_enabled: true,
+      responsive_web_grok_image_annotation_enabled: true,
+      responsive_web_grok_imagine_annotation_enabled: true,
+      responsive_web_grok_community_note_auto_translation_is_enabled: false,
+      responsive_web_enhance_cards_enabled: false,
+    })
+  )}`
+
+  try {
+    const res = await fetch(url, { headers: botHeaders() })
     if (!res.ok) {
       console.error("checkTwitterRetweet failed:", res.status, await res.text())
       return false
     }
-
     const json = await res.json().catch(() => null)
-    const retweeted = json?.data?.some((u: any) => u.id === creds.socialId) ?? false
-    return retweeted
+    const users = json?.data?.retweeters_timeline?.timeline?.instructions
+      ?.flatMap((i: any) => i.entries ?? [])
+      ?.flatMap((e: any) => (e.content?.itemContent?.user_results ? [e.content.itemContent.user_results.result] : [])) ?? []
+
+    return users.some((u: any) => u?.rest_id === userId)
   } catch (e) {
     console.error("checkTwitterRetweet error:", e)
     return false

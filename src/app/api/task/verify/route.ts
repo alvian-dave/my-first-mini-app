@@ -169,7 +169,7 @@ export async function POST(req: Request) {
         }
 
         const ok = await checkTwitterLike(
-          session.user.id,
+          social.socialId,
           taskInCampaign.tweetId
         )
         if (!ok) {
@@ -194,7 +194,7 @@ export async function POST(req: Request) {
         }
 
         const ok = await checkTwitterRetweet(
-          session.user.id,
+          social.socialId,
           taskInCampaign.tweetId
         )
         if (!ok) {
@@ -242,10 +242,11 @@ export async function POST(req: Request) {
       status: campaignTasks.length === 1 ? "submitted" : "pending",
     })
   } else {
-    // ✅ FIX: merge semua campaignTasks agar tidak ada yang hilang
+    // ✅ merge semua campaignTasks agar tidak ada yang hilang
     const subTasks = campaignTasks.map((ct) => {
       const already = (submission.tasks as SubmissionTask[]).find(
-        (st) => st.service === ct.service && st.type === ct.type && st.url === ct.url
+        (st) =>
+          st.service === ct.service && st.type === ct.type && st.url === ct.url
       )
 
       if (
