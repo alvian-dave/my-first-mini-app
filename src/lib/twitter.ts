@@ -137,7 +137,7 @@ export async function checkTwitterFollow(social: any, targetId: string): Promise
 export async function checkTwitterLike(userId: string, tweetId: string): Promise<boolean> {
   const queryId = "LJcJgGhFdz9zGTu13IlSBA" // Favoriters
   const url = `https://x.com/i/api/graphql/${queryId}/Favoriters?variables=${encodeURIComponent(
-    JSON.stringify({ tweetId, count: 20, includePromotedContent: true })
+    JSON.stringify({ tweetId, count: 20, enableRanking: true, includePromotedContent: true })
   )}&features=${encodeURIComponent(
     JSON.stringify({
       rweb_video_screen_enabled: false,
