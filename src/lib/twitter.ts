@@ -3,7 +3,7 @@ import SocialAccount from "@/models/SocialAccount"
 
 const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
 const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
-const BOT_BEARER = process.env.TWITTER_BOT_BEARER!
+const BOT_BEARER = process.env.BOT_BEARER!
 
 // ─────────────────────────────
 // Headers
