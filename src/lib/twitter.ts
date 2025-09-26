@@ -1,11 +1,15 @@
 // /src/lib/twitter.ts
 import SocialAccount from "@/models/SocialAccount"
 
+// Ambil credential bot dari .env
 const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
 const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
 const BOT_BEARER = process.env.TWITTER_BOT_BEARER!
 
-function botHeaders() {
+// ─────────────────────────────
+// Base Headers untuk semua request bot
+// ─────────────────────────────
+function baseHeaders() {
   return {
     Authorization: `Bearer ${BOT_BEARER}`,
     Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
@@ -17,7 +21,7 @@ function botHeaders() {
 }
 
 // ─────────────────────────────
-// Resolve userId dari username (Bot only)
+// Resolve userId dari username
 // ─────────────────────────────
 export async function resolveTwitterUserId(username: string): Promise<string | null> {
   const clean = username
@@ -29,12 +33,8 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
     .toLowerCase()
 
   const queryId = "96tVxbPqMZDoYB5pmzezKA" // UserByScreenName
-
   const url = `https://x.com/i/api/graphql/${queryId}/UserByScreenName?variables=${encodeURIComponent(
-    JSON.stringify({
-      screen_name: clean,
-      withGrokTranslatedBio: false,
-    })
+    JSON.stringify({ screen_name: clean, withGrokTranslatedBio: false })
   )}&features=${encodeURIComponent(
     JSON.stringify({
       hidden_profile_subscriptions_enabled: true,
@@ -56,7 +56,12 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
   )}`
 
   try {
-    const res = await fetch(url, { headers: botHeaders() })
+    const res = await fetch(url, {
+      headers: {
+        ...baseHeaders(),
+        referer: `https://x.com/${clean}`,
+      },
+    })
     if (!res.ok) {
       console.error("resolveTwitterUserId failed:", clean, res.status, await res.text())
       return null
@@ -70,13 +75,18 @@ export async function resolveTwitterUserId(username: string): Promise<string | n
 }
 
 // ─────────────────────────────
-// Check hunter follow target (Bot only)
+// Check hunter follow target
 // ─────────────────────────────
 export async function checkTwitterFollow(social: any, targetId: string): Promise<boolean> {
   try {
     const sourceId = social.socialId
     const url = `https://api.twitter.com/1.1/friendships/show.json?source_id=${sourceId}&target_id=${targetId}`
-    const res = await fetch(url, { headers: botHeaders() })
+    const res = await fetch(url, {
+      headers: {
+        ...baseHeaders(),
+        referer: `https://x.com/intent/user?user_id=${targetId}`,
+      },
+    })
     if (!res.ok) {
       console.error("checkTwitterFollow failed:", res.status, await res.text())
       return false
@@ -90,66 +100,67 @@ export async function checkTwitterFollow(social: any, targetId: string): Promise
 }
 
 // ─────────────────────────────
-// Check hunter like tweet (Bot only)
+// Check hunter like tweet
 // ─────────────────────────────
 export async function checkTwitterLike(userId: string, tweetId: string): Promise<boolean> {
   const queryId = "LJcJgGhFdz9zGTu13IlSBA" // Favoriters
-
   const url = `https://x.com/i/api/graphql/${queryId}/Favoriters?variables=${encodeURIComponent(
-    JSON.stringify({
-      tweetId,
-      count: 20,
-      includePromotedContent: true,
-    })
-  )}&features=${encodeURIComponent(
-    JSON.stringify({
-      rweb_video_screen_enabled: false,
-      payments_enabled: false,
-      profile_label_improvements_pcf_label_in_post_enabled: true,
-      rweb_tipjar_consumption_enabled: true,
-      verified_phone_label_enabled: false,
-      creator_subscriptions_tweet_preview_api_enabled: true,
-      responsive_web_graphql_timeline_navigation_enabled: true,
-      responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
-      premium_content_api_read_enabled: false,
-      communities_web_enable_tweet_community_results_fetch: true,
-      c9s_tweet_anatomy_moderator_badge_enabled: true,
-      responsive_web_grok_analyze_button_fetch_trends_enabled: false,
-      responsive_web_grok_analyze_post_followups_enabled: true,
-      responsive_web_jetfuel_frame: true,
-      responsive_web_grok_share_attachment_enabled: true,
-      articles_preview_enabled: true,
-      responsive_web_edit_tweet_api_enabled: true,
-      graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
-      view_counts_everywhere_api_enabled: true,
-      longform_notetweets_consumption_enabled: true,
-      responsive_web_twitter_article_tweet_consumption_enabled: true,
-      tweet_awards_web_tipping_enabled: false,
-      responsive_web_grok_show_grok_translated_post: false,
-      responsive_web_grok_analysis_button_from_backend: true,
-      creator_subscriptions_quote_tweet_preview_enabled: false,
-      freedom_of_speech_not_reach_fetch_enabled: true,
-      standardized_nudges_misinfo: true,
-      tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
-      longform_notetweets_rich_text_read_enabled: true,
-      longform_notetweets_inline_media_enabled: true,
-      responsive_web_grok_image_annotation_enabled: true,
-      responsive_web_grok_imagine_annotation_enabled: true,
-      responsive_web_grok_community_note_auto_translation_is_enabled: false,
-      responsive_web_enhance_cards_enabled: false,
-    })
-  )}`
+    JSON.stringify({ tweetId, count: 20, includePromotedContent: true })
+  )}&features=${encodeURIComponent({
+    rweb_video_screen_enabled: false,
+    payments_enabled: false,
+    profile_label_improvements_pcf_label_in_post_enabled: true,
+    rweb_tipjar_consumption_enabled: true,
+    verified_phone_label_enabled: false,
+    creator_subscriptions_tweet_preview_api_enabled: true,
+    responsive_web_graphql_timeline_navigation_enabled: true,
+    responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+    premium_content_api_read_enabled: false,
+    communities_web_enable_tweet_community_results_fetch: true,
+    c9s_tweet_anatomy_moderator_badge_enabled: true,
+    responsive_web_grok_analyze_button_fetch_trends_enabled: false,
+    responsive_web_grok_analyze_post_followups_enabled: true,
+    responsive_web_jetfuel_frame: true,
+    responsive_web_grok_share_attachment_enabled: true,
+    articles_preview_enabled: true,
+    responsive_web_edit_tweet_api_enabled: true,
+    graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+    view_counts_everywhere_api_enabled: true,
+    longform_notetweets_consumption_enabled: true,
+    responsive_web_twitter_article_tweet_consumption_enabled: true,
+    tweet_awards_web_tipping_enabled: false,
+    responsive_web_grok_show_grok_translated_post: false,
+    responsive_web_grok_analysis_button_from_backend: true,
+    creator_subscriptions_quote_tweet_preview_enabled: false,
+    freedom_of_speech_not_reach_fetch_enabled: true,
+    standardized_nudges_misinfo: true,
+    tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+    longform_notetweets_rich_text_read_enabled: true,
+    longform_notetweets_inline_media_enabled: true,
+    responsive_web_grok_image_annotation_enabled: true,
+    responsive_web_grok_imagine_annotation_enabled: true,
+    responsive_web_grok_community_note_auto_translation_is_enabled: false,
+    responsive_web_enhance_cards_enabled: false,
+  })}`
 
   try {
-    const res = await fetch(url, { headers: botHeaders() })
+    const res = await fetch(url, {
+      headers: {
+        ...baseHeaders(),
+        referer: `https://x.com/i/status/${tweetId}/likes`,
+      },
+    })
     if (!res.ok) {
       console.error("checkTwitterLike failed:", res.status, await res.text())
       return false
     }
     const json = await res.json().catch(() => null)
-    const users = json?.data?.favoriters_timeline?.timeline?.instructions
-      ?.flatMap((i: any) => i.entries ?? [])
-      ?.flatMap((e: any) => (e.content?.itemContent?.user_results ? [e.content.itemContent.user_results.result] : [])) ?? []
+    const users =
+      json?.data?.favoriters_timeline?.timeline?.instructions
+        ?.flatMap((i: any) => i.entries ?? [])
+        ?.flatMap((e: any) =>
+          e.content?.itemContent?.user_results ? [e.content.itemContent.user_results.result] : []
+        ) ?? []
 
     return users.some((u: any) => u?.rest_id === userId)
   } catch (e) {
@@ -159,65 +170,67 @@ export async function checkTwitterLike(userId: string, tweetId: string): Promise
 }
 
 // ─────────────────────────────
-// Check hunter retweet tweet (Bot only)
+// Check hunter retweet tweet
 // ─────────────────────────────
 export async function checkTwitterRetweet(userId: string, tweetId: string): Promise<boolean> {
   const queryId = "pORrqerSnuFMTRxQ-YRPLA" // Retweeters
-
   const url = `https://x.com/i/api/graphql/${queryId}/Retweeters?variables=${encodeURIComponent(
-    JSON.stringify({
-      tweetId,
-      count: 20,
-    })
-  )}&features=${encodeURIComponent(
-    JSON.stringify({
-      rweb_video_screen_enabled: false,
-      payments_enabled: false,
-      profile_label_improvements_pcf_label_in_post_enabled: true,
-      rweb_tipjar_consumption_enabled: true,
-      verified_phone_label_enabled: false,
-      creator_subscriptions_tweet_preview_api_enabled: true,
-      responsive_web_graphql_timeline_navigation_enabled: true,
-      responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
-      premium_content_api_read_enabled: false,
-      communities_web_enable_tweet_community_results_fetch: true,
-      c9s_tweet_anatomy_moderator_badge_enabled: true,
-      responsive_web_grok_analyze_button_fetch_trends_enabled: false,
-      responsive_web_grok_analyze_post_followups_enabled: true,
-      responsive_web_jetfuel_frame: true,
-      responsive_web_grok_share_attachment_enabled: true,
-      articles_preview_enabled: true,
-      responsive_web_edit_tweet_api_enabled: true,
-      graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
-      view_counts_everywhere_api_enabled: true,
-      longform_notetweets_consumption_enabled: true,
-      responsive_web_twitter_article_tweet_consumption_enabled: true,
-      tweet_awards_web_tipping_enabled: false,
-      responsive_web_grok_show_grok_translated_post: false,
-      responsive_web_grok_analysis_button_from_backend: true,
-      creator_subscriptions_quote_tweet_preview_enabled: false,
-      freedom_of_speech_not_reach_fetch_enabled: true,
-      standardized_nudges_misinfo: true,
-      tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
-      longform_notetweets_rich_text_read_enabled: true,
-      longform_notetweets_inline_media_enabled: true,
-      responsive_web_grok_image_annotation_enabled: true,
-      responsive_web_grok_imagine_annotation_enabled: true,
-      responsive_web_grok_community_note_auto_translation_is_enabled: false,
-      responsive_web_enhance_cards_enabled: false,
-    })
-  )}`
+    JSON.stringify({ tweetId, count: 20 })
+  )}&features=${encodeURIComponent({
+    rweb_video_screen_enabled: false,
+    payments_enabled: false,
+    profile_label_improvements_pcf_label_in_post_enabled: true,
+    rweb_tipjar_consumption_enabled: true,
+    verified_phone_label_enabled: false,
+    creator_subscriptions_tweet_preview_api_enabled: true,
+    responsive_web_graphql_timeline_navigation_enabled: true,
+    responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+    premium_content_api_read_enabled: false,
+    communities_web_enable_tweet_community_results_fetch: true,
+    c9s_tweet_anatomy_moderator_badge_enabled: true,
+    responsive_web_grok_analyze_button_fetch_trends_enabled: false,
+    responsive_web_grok_analyze_post_followups_enabled: true,
+    responsive_web_jetfuel_frame: true,
+    responsive_web_grok_share_attachment_enabled: true,
+    articles_preview_enabled: true,
+    responsive_web_edit_tweet_api_enabled: true,
+    graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+    view_counts_everywhere_api_enabled: true,
+    longform_notetweets_consumption_enabled: true,
+    responsive_web_twitter_article_tweet_consumption_enabled: true,
+    tweet_awards_web_tipping_enabled: false,
+    responsive_web_grok_show_grok_translated_post: false,
+    responsive_web_grok_analysis_button_from_backend: true,
+    creator_subscriptions_quote_tweet_preview_enabled: false,
+    freedom_of_speech_not_reach_fetch_enabled: true,
+    standardized_nudges_misinfo: true,
+    tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+    longform_notetweets_rich_text_read_enabled: true,
+    longform_notetweets_inline_media_enabled: true,
+    responsive_web_grok_image_annotation_enabled: true,
+    responsive_web_grok_imagine_annotation_enabled: true,
+    responsive_web_grok_community_note_auto_translation_is_enabled: false,
+    responsive_web_enhance_cards_enabled: false,
+  })}`
 
   try {
-    const res = await fetch(url, { headers: botHeaders() })
+    const res = await fetch(url, {
+      headers: {
+        ...baseHeaders(),
+        referer: `https://x.com/i/status/${tweetId}/retweets`,
+      },
+    })
     if (!res.ok) {
       console.error("checkTwitterRetweet failed:", res.status, await res.text())
       return false
     }
     const json = await res.json().catch(() => null)
-    const users = json?.data?.retweeters_timeline?.timeline?.instructions
-      ?.flatMap((i: any) => i.entries ?? [])
-      ?.flatMap((e: any) => (e.content?.itemContent?.user_results ? [e.content.itemContent.user_results.result] : [])) ?? []
+    const users =
+      json?.data?.retweeters_timeline?.timeline?.instructions
+        ?.flatMap((i: any) => i.entries ?? [])
+        ?.flatMap((e: any) =>
+          e.content?.itemContent?.user_results ? [e.content.itemContent.user_results.result] : []
+        ) ?? []
 
     return users.some((u: any) => u?.rest_id === userId)
   } catch (e) {
