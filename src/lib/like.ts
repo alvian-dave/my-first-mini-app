@@ -1,4 +1,4 @@
-// like.ts
+// src/lib/like.ts
 import fetch from "node-fetch"
 
 const AUTH_BEARER =
@@ -6,6 +6,30 @@ const AUTH_BEARER =
 const CSRF_TOKEN =
   "c7221c7b45aefdd8e198b2479ca3cb0a0e6b82d0e6a79a7e6cde61697fdfc630d860e10d2b92b26749a2966d534e97c8e4a6f6f30a8775f2c855fa3ad055fa036d823c802a90974b3f8c16389c6b3502"
 const COOKIE = `auth_token=768bd7a0ba6de3ecad8c0bdcbecfab84ba5dfcf7; ct0=${CSRF_TOKEN}`
+
+// 🔹 Minimal typing biar tidak error di strict mode
+interface FavoritersResponse {
+  data?: {
+    favoriters_timeline?: {
+      timeline?: {
+        instructions?: {
+          entries?: {
+            content?: {
+              itemContent?: {
+                itemType?: string
+                user_results?: {
+                  result?: {
+                    rest_id?: string
+                  }
+                }
+              }
+            }
+          }[]
+        }[]
+      }
+    }
+  }
+}
 
 export async function checkTwitterLike(
   userId: string,
@@ -40,18 +64,21 @@ export async function checkTwitterLike(
     },
   })
 
-  const data = await res.json()
+  // ⬇️ kasih typing biar TS gak error
+  const data = (await res.json()) as FavoritersResponse
 
   const entries =
     data?.data?.favoriters_timeline?.timeline?.instructions?.flatMap(
-      (i: any) => i.entries || []
+      (i) => i.entries || []
     ) || []
 
   const users: string[] = entries
-    .filter((e: any) => e?.content?.itemContent?.itemType === "TimelineUser")
+    .filter((e) => e?.content?.itemContent?.itemType === "TimelineUser")
     .map(
-      (e: any) => e.content.itemContent.user_results.result.rest_id as string
+      (e) =>
+        e.content?.itemContent?.user_results?.result?.rest_id as string
     )
+    .filter(Boolean)
 
   return users.includes(userId)
 }
