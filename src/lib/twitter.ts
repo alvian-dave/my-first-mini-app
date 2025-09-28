@@ -28,17 +28,26 @@ function resHeaders() {
   }
 }
 
-// Header khusus untuk cek Like
-function likeHeaders(tweetId: string) {
-  return {
-    Authorization: `Bearer ${BOT_BEARER}`,
-    "x-csrf-token": BOT_CSRF,
-    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "x-twitter-active-user": "yes",
-    "x-twitter-client-language": "en",
-    Referer: `https://x.com/i/web/status/${tweetId}`,
-  } 
+function likeHeaders(tweetId: string): Headers {
+  const headers = new Headers()
+
+  headers.set("Authorization", `Bearer ${BOT_BEARER}`)
+  headers.set("x-csrf-token", BOT_CSRF)
+  headers.set("Cookie", `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`)
+
+  // ⚠️ pakai case persis "User-Agent" (U besar, A besar)
+  headers.set(
+    "User-Agent",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+  )
+
+  headers.set("x-twitter-active-user", "yes")
+  headers.set("x-twitter-client-language", "en")
+
+  // Referer wajib desktop web status
+  headers.set("Referer", `https://x.com/i/web/status/${tweetId}`)
+
+  return headers
 }
 
 // Header khusus untuk cek Retweet
