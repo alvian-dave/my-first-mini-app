@@ -10,7 +10,7 @@ import {
   checkTwitterFollow,
   checkTwitterRetweet,
 } from "@/lib/twitter"
-import { checkTwitterLike } from "@/lib/like"
+import { checkTwitterLike } from "@/lib/like.js"
 
 type ServiceName = "twitter" | "discord" | "telegram"
 

@@ -1,40 +1,17 @@
-// src/lib/like.ts
-import fetch from "node-fetch"
+import fetch from "node-fetch";
+import { fileURLToPath } from "url";
 
+// 🔑 Token & cookie (pakai punya lo yang valid)
 const AUTH_BEARER =
-  "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
+  "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
 const CSRF_TOKEN =
-  "c7221c7b45aefdd8e198b2479ca3cb0a0e6b82d0e6a79a7e6cde61697fdfc630d860e10d2b92b26749a2966d534e97c8e4a6f6f30a8775f2c855fa3ad055fa036d823c802a90974b3f8c16389c6b3502"
-const COOKIE = `auth_token=768bd7a0ba6de3ecad8c0bdcbecfab84ba5dfcf7; ct0=${CSRF_TOKEN}`
+  "c7221c7b45aefdd8e198b2479ca3cb0a0e6b82d0e6a79a7e6cde61697fdfc630d860e10d2b92b26749a2966d534e97c8e4a6f6f30a8775f2c855fa3ad055fa036d823c802a90974b3f8c16389c6b3502";
+const COOKIE = `auth_token=768bd7a0ba6de3ecad8c0bdcbecfab84ba5dfcf7; ct0=${CSRF_TOKEN}`;
 
-// 🔹 Minimal typing biar tidak error di strict mode
-interface FavoritersResponse {
-  data?: {
-    favoriters_timeline?: {
-      timeline?: {
-        instructions?: {
-          entries?: {
-            content?: {
-              itemContent?: {
-                itemType?: string
-                user_results?: {
-                  result?: {
-                    rest_id?: string
-                  }
-                }
-              }
-            }
-          }[]
-        }[]
-      }
-    }
-  }
-}
-
-export async function checkTwitterLike(
-  userId: string,
-  tweetId: string
-): Promise<boolean> {
+/**
+ * ✅ Cek apakah userId sudah like tweetId
+ */
+export async function checkTwitterLike(userId, tweetId) {
   const url = `https://x.com/i/api/graphql/LJcJgGhFdz9zGTu13IlSBA/Favoriters?variables=${encodeURIComponent(
     JSON.stringify({
       tweetId,
@@ -44,7 +21,7 @@ export async function checkTwitterLike(
     })
   )}&features=${encodeURIComponent(
     JSON.stringify({
-rweb_video_screen_enabled: false,
+      rweb_video_screen_enabled: false,
       payments_enabled: false,
       profile_label_improvements_pcf_label_in_post_enabled: true,
       rweb_tipjar_consumption_enabled: true,
@@ -79,7 +56,7 @@ rweb_video_screen_enabled: false,
       responsive_web_grok_community_note_auto_translation_is_enabled: false,
       responsive_web_enhance_cards_enabled: false,
     })
-  )}`
+  )}`;
 
   const res = await fetch(url, {
     headers: {
@@ -91,23 +68,41 @@ rweb_video_screen_enabled: false,
       "x-twitter-client-language": "en",
       referer: `https://x.com/i/web/status/${tweetId}`,
     },
-  })
+  });
 
-  // ⬇️ kasih typing biar TS gak error
-  const data = (await res.json()) as FavoritersResponse
+  if (!res.ok) {
+    throw new Error(`Request failed ${res.status}: ${await res.text()}`);
+  }
+
+  const data = await res.json();
 
   const entries =
     data?.data?.favoriters_timeline?.timeline?.instructions?.flatMap(
       (i) => i.entries || []
-    ) || []
+    ) || [];
 
-  const users: string[] = entries
+  const users = entries
     .filter((e) => e?.content?.itemContent?.itemType === "TimelineUser")
-    .map(
-      (e) =>
-        e.content?.itemContent?.user_results?.result?.rest_id as string
-    )
-    .filter(Boolean)
+    .map((e) => e.content.itemContent.user_results.result.rest_id);
 
-  return users.includes(userId)
+  return users.includes(userId); // ⬅️ true/false
+}
+
+// ─────────────────────────────
+// 🔍 Jika dijalankan langsung pakai "node like.js"
+// ─────────────────────────────
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
+  const TWEET_ID = "1971527515786383652";
+  const USER_ID = "1743014589485498368";
+
+  checkTwitterLike(USER_ID, TWEET_ID)
+    .then((ok) => {
+      if (ok) {
+        console.log(`✅ User ${USER_ID} SUDAH like tweet ${TWEET_ID}`);
+      } else {
+        console.log(`❌ User ${USER_ID} BELUM like tweet ${TWEET_ID}`);
+      }
+    })
+    .catch(console.error);
 }

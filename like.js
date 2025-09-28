@@ -1,21 +1,20 @@
-// like.js
 import fetch from "node-fetch";
+import { fileURLToPath } from "url";
 
-const TWEET_ID = "1971527515786383652";
-const USER_ID = "1743014589485498368";
-
+// 🔑 Token & cookie (pakai punya lo yang valid)
 const AUTH_BEARER =
   "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
 const CSRF_TOKEN =
   "c7221c7b45aefdd8e198b2479ca3cb0a0e6b82d0e6a79a7e6cde61697fdfc630d860e10d2b92b26749a2966d534e97c8e4a6f6f30a8775f2c855fa3ad055fa036d823c802a90974b3f8c16389c6b3502";
 const COOKIE = `auth_token=768bd7a0ba6de3ecad8c0bdcbecfab84ba5dfcf7; ct0=${CSRF_TOKEN}`;
 
-async function checkLike() {
-  console.log("\n=== CEK LIKE ===");
-
+/**
+ * ✅ Cek apakah userId sudah like tweetId
+ */
+export async function checkTwitterLike(userId, tweetId) {
   const url = `https://x.com/i/api/graphql/LJcJgGhFdz9zGTu13IlSBA/Favoriters?variables=${encodeURIComponent(
     JSON.stringify({
-      tweetId: TWEET_ID,
+      tweetId,
       count: 20,
       enableRanking: true,
       includePromotedContent: true,
@@ -67,29 +66,43 @@ async function checkLike() {
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       "x-twitter-active-user": "yes",
       "x-twitter-client-language": "en",
-      referer: `https://x.com/i/web/status/${TWEET_ID}`,
+      referer: `https://x.com/i/web/status/${tweetId}`,
     },
   });
 
+  if (!res.ok) {
+    throw new Error(`Request failed ${res.status}: ${await res.text()}`);
+  }
+
   const data = await res.json();
 
-  // Ambil semua entries
   const entries =
     data?.data?.favoriters_timeline?.timeline?.instructions?.flatMap(
       (i) => i.entries || []
     ) || [];
 
-  // Ambil hanya user
   const users = entries
     .filter((e) => e?.content?.itemContent?.itemType === "TimelineUser")
     .map((e) => e.content.itemContent.user_results.result.rest_id);
 
-  // Cek apakah USER_ID ada
-  if (users.includes(USER_ID)) {
-    console.log(`✅ User ${USER_ID} SUDAH like tweet ${TWEET_ID}`);
-  } else {
-    console.log(`❌ User ${USER_ID} BELUM like tweet ${TWEET_ID}`);
-  }
+  return users.includes(userId); // ⬅️ true/false
 }
 
-checkLike().catch(console.error);
+// ─────────────────────────────
+// 🔍 Jika dijalankan langsung pakai "node like.js"
+// ─────────────────────────────
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
+  const TWEET_ID = "1971527515786383652";
+  const USER_ID = "1743014589485498368";
+
+  checkTwitterLike(USER_ID, TWEET_ID)
+    .then((ok) => {
+      if (ok) {
+        console.log(`✅ User ${USER_ID} SUDAH like tweet ${TWEET_ID}`);
+      } else {
+        console.log(`❌ User ${USER_ID} BELUM like tweet ${TWEET_ID}`);
+      }
+    })
+    .catch(console.error);
+}
