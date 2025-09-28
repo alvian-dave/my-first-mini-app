@@ -8,9 +8,9 @@ import Submission from "@/models/Submission"
 import {
   resolveTwitterUserId,
   checkTwitterFollow,
-  checkTwitterLike,
   checkTwitterRetweet,
 } from "@/lib/twitter"
+import { checkTwitterLike } from "@/lib/like.ts"
 
 type ServiceName = "twitter" | "discord" | "telegram"
 
