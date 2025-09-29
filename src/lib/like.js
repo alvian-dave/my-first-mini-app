@@ -88,21 +88,3 @@ export async function checkTwitterLike(userId, tweetId) {
   return users.includes(userId); // ⬅️ true/false
 }
 
-// ─────────────────────────────
-// 🔍 Jika dijalankan langsung pakai "node like.js"
-// ─────────────────────────────
-const __filename = fileURLToPath(import.meta.url);
-if (process.argv[1] === __filename) {
-  const TWEET_ID = "1971527515786383652";
-  const USER_ID = "1743014589485498368";
-
-  checkTwitterLike(USER_ID, TWEET_ID)
-    .then((ok) => {
-      if (ok) {
-        console.log(`✅ User ${USER_ID} SUDAH like tweet ${TWEET_ID}`);
-      } else {
-        console.log(`❌ User ${USER_ID} BELUM like tweet ${TWEET_ID}`);
-      }
-    })
-    .catch(console.error);
-}
