@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+import { request } from "undici";
 
 const AUTH_BEARER = "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
 const CSRF_TOKEN = "c7221c7b45aefdd8e198b2479ca3cb0a0e6b82d0e6a79a7e6cde61697fdfc630d860e10d2b92b26749a2966d534e97c8e4a6f6f30a8775f2c855fa3ad055fa036d823c802a90974b3f8c16389c6b3502";
@@ -13,13 +13,13 @@ const COOKIE = `auth_token=768bd7a0ba6de3ecad8c0bdcbecfab84ba5dfcf7; ct0=${CSRF_
 export async function checkTwitterLike(userId, tweetId) {
   try {
     let cursor = undefined;
-    const maxPages = 5; // maksimal paging supaya tidak infinite loop
+    const maxPages = 5;
     let page = 0;
 
     while (page < maxPages) {
       const variables = {
         tweetId,
-        count: 50, // ambil 50 favoriters per request
+        count: 50,
         cursor,
         enableRanking: true,
         includePromotedContent: true,
@@ -52,7 +52,9 @@ export async function checkTwitterLike(userId, tweetId) {
         JSON.stringify(variables)
       )}&features=${encodeURIComponent(JSON.stringify(features))}`;
 
-      const res = await fetch(url, {
+      // pakai undici.request, header tetap sama persis
+      const { statusCode, body } = await request(url, {
+        method: "GET",
         headers: {
           authorization: `Bearer ${AUTH_BEARER}`,
           "x-csrf-token": CSRF_TOKEN,
@@ -64,12 +66,13 @@ export async function checkTwitterLike(userId, tweetId) {
         },
       });
 
-      if (!res.ok) {
-        console.warn(`⚠️ Twitter Like API returned ${res.status}`);
-        return false; // jangan throw, tapi return false
+      if (statusCode !== 200) {
+        console.warn(`⚠️ Twitter Like API returned ${statusCode}`);
+        return false;
       }
 
-      const data = await res.json();
+      const dataText = await body.text();
+      const data = JSON.parse(dataText);
 
       const entries =
         data?.data?.favoriters_timeline?.timeline?.instructions?.flatMap(
@@ -81,22 +84,21 @@ export async function checkTwitterLike(userId, tweetId) {
         .map((e) => e.content.itemContent.user_results.result.rest_id);
 
       if (users.includes(userId)) {
-        return true; // user ditemukan
+        return true;
       }
 
-      // ambil cursor untuk paging berikutnya
       const cursorEntry = entries.find(
         (e) => e?.content?.entryType === "TimelineTimelineCursor"
       );
       cursor = cursorEntry?.content?.value;
-      if (!cursor) break; // tidak ada halaman berikutnya
+      if (!cursor) break;
 
       page++;
     }
 
-    return false; // setelah paging semua, user tidak ditemukan
+    return false;
   } catch (err) {
     console.error("❌ checkTwitterLike error:", err);
-    return false; // jangan throw error, biar route.ts tetap bisa handle
+    return false;
   }
 }
