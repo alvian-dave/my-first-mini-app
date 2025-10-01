@@ -10,7 +10,6 @@ import {
   checkTwitterFollow,
   checkTwitterRetweet,
 } from "@/lib/twitter"
-import { checkTwitterLike } from "@/lib/like.js"
 
 type ServiceName = "twitter" | "discord" | "telegram"
 
@@ -162,30 +161,29 @@ export async function POST(req: Request) {
       }
     }
 
-    if (incomingTask.type === "like") {
-      try {
-        if (!taskInCampaign.tweetId) {
-          taskInCampaign.tweetId = parseTweetId(incomingTask.url)
-          await campaignDoc.save()
-        }
-
-        const ok = await checkTwitterLike(
-          social.socialId,
-          taskInCampaign.tweetId
-        )
-        if (!ok) {
-          return NextResponse.json(
-            { error: "Twitter task not completed (not liked)" },
-            { status: 400 }
-          )
-        }
-      } catch (err) {
-        return NextResponse.json(
-          { error: "Invalid Twitter Like task URL", details: String(err) },
-          { status: 400 }
-        )
-      }
+if (incomingTask.type === "like") {
+  try {
+    if (!taskInCampaign.tweetId) {
+      taskInCampaign.tweetId = parseTweetId(incomingTask.url)
+      await campaignDoc.save()
     }
+
+    // 🔥 Force verified tanpa cek API Twitter
+    const ok = true 
+
+    if (!ok) {
+      return NextResponse.json(
+        { error: "Twitter task not completed (not liked)" },
+        { status: 400 }
+      )
+    }
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Invalid Twitter Like task URL", details: String(err) },
+      { status: 400 }
+    )
+  }
+}
 
     if (incomingTask.type === "retweet") {
       try {
