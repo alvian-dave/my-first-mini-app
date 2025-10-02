@@ -7,7 +7,8 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!
 
 export async function POST(req: Request) {
   await dbConnect()
-  const { userId, groupId } = await req.json()
+  const { userId, targetId } = await req.json()  
+  // targetId = chatId/groupId yg tersimpan di Task DB
 
   // cari akun telegram hunter
   const account = await SocialAccount.findOne({ userId, provider: "telegram" })
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
 
   // cek membership via Telegram API
   const res = await fetch(
-    `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${groupId}&user_id=${account.socialId}`
+    `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${targetId}&user_id=${account.socialId}`
   )
   const data = await res.json()
 

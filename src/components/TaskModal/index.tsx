@@ -35,8 +35,8 @@ export default function TaskModal({
   onConfirm,
 }: TaskModalProps) {
   const [taskStates, setTaskStates] = useState(tasks)
-  const [submitting, setSubmitting] = useState(false) // loading utk confirm & submit
-  const [verifying, setVerifying] = useState<number | null>(null) // index task yg lagi verify
+  const [submitting, setSubmitting] = useState(false)
+  const [verifying, setVerifying] = useState<number | null>(null)
   const [twitterConnected, setTwitterConnected] = useState(false)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
@@ -83,6 +83,8 @@ export default function TaskModal({
   const handleVerify = async (idx: number, task: Task) => {
     try {
       setVerifying(idx)
+
+      // Twitter flow
       if (task.service === 'twitter' && !twitterConnected) {
         const res = await fetch('/api/connect/twitter/start')
         const data = await res.json()
@@ -90,6 +92,24 @@ export default function TaskModal({
         return
       }
 
+      // Telegram flow
+      if (task.service === 'telegram') {
+        const res = await fetch('/api/task/verify/telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ campaignId }),
+        })
+        const data = await res.json()
+        if (data.success && data.submission) {
+          setTaskStates(data.submission.tasks)
+          setToast({ message: 'Telegram task verified successfully!', type: 'success' })
+        } else {
+          setToast({ message: data.error || 'Telegram verification failed', type: 'error' })
+        }
+        return
+      }
+
+      // Generic task verify (Discord, etc.)
       const res = await fetch('/api/task/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,7 +177,11 @@ export default function TaskModal({
             {taskStates.map((task, i) => (
               <div key={i} className="flex items-center justify-between bg-gray-700 p-3 rounded">
                 <a
-                  href={task.url}
+                  href={
+                    task.service === 'telegram'
+                      ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${task.url}`
+                      : task.url
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center gap-2"
@@ -181,6 +205,8 @@ export default function TaskModal({
                       </>
                     ) : task.service === 'twitter' && !twitterConnected ? (
                       'Connect Twitter'
+                    ) : task.service === 'telegram' ? (
+                      'Verify Telegram'
                     ) : (
                       'Verify'
                     )}

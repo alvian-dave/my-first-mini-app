@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: body.message.chat.id,
-        text: "✅ Akunmu berhasil terhubung!",
+        text: "✅ Your account has been connected!",
       }),
     })
   }
