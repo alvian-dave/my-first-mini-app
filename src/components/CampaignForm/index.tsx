@@ -125,34 +125,7 @@ export const CampaignForm = ({
     setCampaign({ ...campaign, tasks: newTasks })
   }
 
-const handleVerifyTelegram = async (task: Task) => {
-  try {
-    const res = await fetch("/api/connect/telegram/verifyGroup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ url: task.url }), // asumsi task ada field url group/channel
-    })
-
-    const data = await res.json()
-
-    if (!res.ok || !data.valid) {
-      setErrorMessage(
-        "⚠️ Please make sure you have added our bot @myplatform_bot to your group/channel."
-      )
-    } else {
-      setErrorMessage("✅ Bot successfully verified in your group/channel!")
-      // kalau mau simpan chatId/title biar dipakai campaign:
-      console.log("Verified chat:", data.chatId, data.title, data.type)
-    }
-  } catch (err) {
-    console.error("verifyTelegram error:", err)
-    setErrorMessage("Failed to verify group. Please try again.")
-  }
-}
-
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!campaign.title.trim()) {
       setErrorMessage('Title is required')
       return
@@ -161,6 +134,31 @@ const handleVerifyTelegram = async (task: Task) => {
       setErrorMessage('Description is required')
       return
     }
+
+    // ✅ Check Telegram tasks verification
+    for (const t of campaign.tasks) {
+      if (t.service === 'telegram' && (t.type === 'join_group' || t.type === 'join_channel')) {
+        try {
+          const res = await fetch('/api/connect/telegram/verifyGroup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: t.url }),
+          })
+          const data = await res.json()
+          if (!res.ok || !data.valid) {
+            setErrorMessage(
+              '⚠️ Please make sure you have added our bot @myplatform_bot to your group/channel before publishing this campaign.'
+            )
+            return
+          }
+        } catch (err) {
+          console.error('verifyTelegram error:', err)
+          setErrorMessage('Failed to verify Telegram group/channel. Please try again.')
+          return
+        }
+      }
+    }
+
     const rewardPerTask = parseFloat(campaign.reward || '0')
     const totalBudget = parseFloat(campaign.budget || '0')
 
@@ -174,7 +172,7 @@ const handleVerifyTelegram = async (task: Task) => {
       return
     }
 
-    onSubmit(campaign)
+    await onSubmit(campaign)
     setEditingCampaign(null)
     onClose()
   }
@@ -314,27 +312,18 @@ const handleVerifyTelegram = async (task: Task) => {
                             }
                           />
 
-                          {/* Telegram Helper + Verify Button */}
+                          {/* Telegram Helper Message */}
                           {task.service === 'telegram' &&
                             (task.type === 'join_group' ||
                               task.type === 'join_channel') && (
-                              <div className="flex flex-col gap-2">
-                                <p className="text-yellow-400 text-sm">
-                                  ⚠️ Please make sure you have added our bot{' '}
-                                  <span className="font-semibold">
-                                    @myplatform_bot
-                                  </span>{' '}
-                                  to your group/channel before publishing this
-                                  campaign.
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => handleVerifyTelegram(task)}
-                                  className="px-3 py-1 bg-blue-600 rounded hover:bg-blue-700"
-                                >
-                                  Verify Bot in Group/Channel
-                                </button>
-                              </div>
+                              <p className="text-yellow-400 text-sm">
+                                ⚠️ Please make sure you have added our bot{' '}
+                                <span className="font-semibold">
+                                  @myplatform_bot
+                                </span>{' '}
+                                to your group/channel before publishing this
+                                campaign.
+                              </p>
                             )}
 
                           <button
