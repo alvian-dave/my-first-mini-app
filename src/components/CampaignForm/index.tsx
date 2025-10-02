@@ -1,7 +1,7 @@
 'use client'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment, useState, useEffect } from 'react'
-import { Campaign as CampaignType } from '@/types' // ✅ pakai tipe dari /types/index
+import { Campaign as CampaignType } from '@/types'
 
 const MAX_TASKS = 3
 const SERVICE_OPTIONS = [
@@ -24,8 +24,8 @@ const TASK_TYPE_OPTIONS: Record<
     { value: 'comment', label: 'Comment in Group', disabled: true },
   ],
   telegram: [
-    { value: 'join_channel', label: 'Join Channel', disabled: true },
-    { value: 'join_group', label: 'Join Group', disabled: true },
+    { value: 'join_channel', label: 'Join Channel' },
+    { value: 'join_group', label: 'Join Group' },
     { value: 'comment_group', label: 'Comment in Group', disabled: true },
   ],
 }
@@ -53,7 +53,7 @@ export const CampaignForm = ({
   setEditingCampaign,
 }: Props) => {
   const [campaign, setCampaign] = useState<CampaignType>({
-    id: Date.now(), // ✅ number cocok dengan tipe
+    id: Date.now(),
     title: '',
     description: '',
     budget: '',
@@ -109,6 +109,9 @@ export const CampaignForm = ({
 
     if (key === 'service') {
       newTasks[index][key] = value as '' | 'twitter' | 'discord' | 'telegram'
+      // reset type & url when service changed
+      newTasks[index].type = ''
+      newTasks[index].url = ''
     } else {
       newTasks[index][key] = value
     }
@@ -122,6 +125,33 @@ export const CampaignForm = ({
     setCampaign({ ...campaign, tasks: newTasks })
   }
 
+const handleVerifyTelegram = async (task: Task) => {
+  try {
+    const res = await fetch("/api/connect/telegram/verifyGroup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: task.url }), // asumsi task ada field url group/channel
+    })
+
+    const data = await res.json()
+
+    if (!res.ok || !data.valid) {
+      setErrorMessage(
+        "⚠️ Please make sure you have added our bot @myplatform_bot to your group/channel."
+      )
+    } else {
+      setErrorMessage("✅ Bot successfully verified in your group/channel!")
+      // kalau mau simpan chatId/title biar dipakai campaign:
+      console.log("Verified chat:", data.chatId, data.title, data.type)
+    }
+  } catch (err) {
+    console.error("verifyTelegram error:", err)
+    setErrorMessage("Failed to verify group. Please try again.")
+  }
+}
+
   const handleSubmit = () => {
     if (!campaign.title.trim()) {
       setErrorMessage('Title is required')
@@ -132,17 +162,17 @@ export const CampaignForm = ({
       return
     }
     const rewardPerTask = parseFloat(campaign.reward || '0')
-  const totalBudget = parseFloat(campaign.budget || '0')
+    const totalBudget = parseFloat(campaign.budget || '0')
 
-  if (rewardPerTask < 10) {
-    setErrorMessage('Reward per task cannot be less than 10')
-    return
-  }
+    if (rewardPerTask < 10) {
+      setErrorMessage('Reward per task cannot be less than 10')
+      return
+    }
 
-  if (rewardPerTask > totalBudget) {
-    setErrorMessage('Reward cannot be greater than total budget')
-    return
-  }
+    if (rewardPerTask > totalBudget) {
+      setErrorMessage('Reward cannot be greater than total budget')
+      return
+    }
 
     onSubmit(campaign)
     setEditingCampaign(null)
@@ -181,9 +211,7 @@ export const CampaignForm = ({
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
                     placeholder="Description"
                     value={campaign.description}
-                    onChange={(e) =>
-                      handleChange('description', e.target.value)
-                    }
+                    onChange={(e) => handleChange('description', e.target.value)}
                   />
 
                   <input
@@ -211,9 +239,21 @@ export const CampaignForm = ({
                         if (task.type === 'follow') {
                           urlPlaceholder =
                             'Paste profile URL (e.g. https://twitter.com/username)'
-                        } else if (task.type === 'like' || task.type === 'retweet') {
+                        } else if (
+                          task.type === 'like' ||
+                          task.type === 'retweet'
+                        ) {
                           urlPlaceholder =
                             'Paste tweet URL (e.g. https://twitter.com/username/status/123456)'
+                        }
+                      }
+                      if (task.service === 'telegram') {
+                        if (task.type === 'join_group') {
+                          urlPlaceholder =
+                            'Paste Telegram group URL (e.g. https://t.me/groupname)'
+                        } else if (task.type === 'join_channel') {
+                          urlPlaceholder =
+                            'Paste Telegram channel URL (e.g. https://t.me/channelname)'
                         }
                       }
 
@@ -252,7 +292,8 @@ export const CampaignForm = ({
                                   value={t.value}
                                   disabled={t.disabled}
                                 >
-                                  {t.label} {t.disabled ? '(Coming Soon)' : ''}
+                                  {t.label}{' '}
+                                  {t.disabled ? '(Coming Soon)' : ''}
                                 </option>
                               ))}
                             </select>
@@ -265,9 +306,36 @@ export const CampaignForm = ({
                             onChange={(e) =>
                               updateTask(i, 'url', e.target.value)
                             }
-                            readOnly={task.isOld} // ✅ readonly untuk task lama
-                            style={task.isOld ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                            readOnly={task.isOld}
+                            style={
+                              task.isOld
+                                ? { opacity: 0.6, cursor: 'not-allowed' }
+                                : {}
+                            }
                           />
+
+                          {/* Telegram Helper + Verify Button */}
+                          {task.service === 'telegram' &&
+                            (task.type === 'join_group' ||
+                              task.type === 'join_channel') && (
+                              <div className="flex flex-col gap-2">
+                                <p className="text-yellow-400 text-sm">
+                                  ⚠️ Please make sure you have added our bot{' '}
+                                  <span className="font-semibold">
+                                    @myplatform_bot
+                                  </span>{' '}
+                                  to your group/channel before publishing this
+                                  campaign.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => handleVerifyTelegram(task)}
+                                  className="px-3 py-1 bg-blue-600 rounded hover:bg-blue-700"
+                                >
+                                  Verify Bot in Group/Channel
+                                </button>
+                              </div>
+                            )}
 
                           <button
                             onClick={() => removeTask(i)}
@@ -284,7 +352,7 @@ export const CampaignForm = ({
                         onClick={() =>
                           handleChange('tasks', [
                             ...(campaign.tasks || []),
-                            { service: '', type: '', url: '', isOld: false }, // ✅ task baru bisa edit
+                            { service: '', type: '', url: '', isOld: false },
                           ])
                         }
                         className="px-3 py-2 rounded font-medium transition hover:brightness-110"
