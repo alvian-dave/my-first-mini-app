@@ -10,6 +10,7 @@ interface Task {
   type: string
   url: string
   done?: boolean
+  connected?: boolean
 }
 
 interface Submission {
@@ -24,6 +25,7 @@ interface TaskModalProps {
   tasks: Task[]
   onClose: () => void
   onConfirm: (submission: Submission) => void
+  session: { user: { id: string } }  // ✅ ambil dari props, bukan useSession
 }
 
 export default function TaskModal({
@@ -33,6 +35,7 @@ export default function TaskModal({
   tasks,
   onClose,
   onConfirm,
+  session,
 }: TaskModalProps) {
   const [taskStates, setTaskStates] = useState(tasks)
   const [submitting, setSubmitting] = useState(false)
@@ -74,6 +77,12 @@ export default function TaskModal({
       if (event.data?.type === 'TWITTER_FAILED') {
         setToast({ message: 'Twitter connection failed, please try again.', type: 'error' })
       }
+      if (event.data?.type === 'TELEGRAM_CONNECTED') {
+        setTaskStates(prev =>
+          prev.map(t => (t.service === 'telegram' ? { ...t, connected: true } : t))
+        )
+        setToast({ message: 'Telegram connected successfully!', type: 'success' })
+      }
     }
 
     window.addEventListener('message', handleMessage)
@@ -92,7 +101,7 @@ export default function TaskModal({
         return
       }
 
-      // Telegram flow
+      // Telegram verify (setelah connect)
       if (task.service === 'telegram') {
         const res = await fetch('/api/task/verify/telegram', {
           method: 'POST',
@@ -109,7 +118,7 @@ export default function TaskModal({
         return
       }
 
-      // Generic task verify (Discord, etc.)
+      // Generic verify
       const res = await fetch('/api/task/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -179,7 +188,7 @@ export default function TaskModal({
                 <a
                   href={
                     task.service === 'telegram'
-                      ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${task.url}`
+                      ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${session.user.id}`
                       : task.url
                   }
                   target="_blank"
@@ -205,8 +214,8 @@ export default function TaskModal({
                       </>
                     ) : task.service === 'twitter' && !twitterConnected ? (
                       'Connect Twitter'
-                    ) : task.service === 'telegram' ? (
-                      'Verify Telegram'
+                    ) : task.service === 'telegram' && !task.connected ? (
+                      'Connect Telegram'
                     ) : (
                       'Verify'
                     )}
@@ -232,7 +241,6 @@ export default function TaskModal({
             )}
           </button>
 
-          {/* ✅ Toast */}
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </Dialog.Panel>
       </div>

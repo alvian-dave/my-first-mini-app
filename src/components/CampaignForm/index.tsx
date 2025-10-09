@@ -147,7 +147,7 @@ export const CampaignForm = ({
           const data = await res.json()
           if (!res.ok || !data.valid) {
             setErrorMessage(
-              '⚠️ Please make sure you have added our bot @myplatform_bot to your group/channel before publishing this campaign.'
+              '⚠️ Please make sure you have added our bot @WR_PlatformBot to your group/channel before publishing this campaign.'
             )
             return
           }
@@ -319,7 +319,7 @@ export const CampaignForm = ({
                               <p className="text-yellow-400 text-sm">
                                 ⚠️ Please make sure you have added our bot{' '}
                                 <span className="font-semibold">
-                                  @myplatform_bot
+                                  @WR_PlatformBot
                                 </span>{' '}
                                 to your group/channel before publishing this
                                 campaign.
