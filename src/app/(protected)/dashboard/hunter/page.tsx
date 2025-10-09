@@ -240,6 +240,7 @@ export default function HunterDashboard() {
           title={selectedCampaign.title}
           description={selectedCampaign.description}
           tasks={selectedCampaign.tasks || []}
+          session={session}
           onClose={() => setSelectedCampaign(null)}
           onConfirm={async (submission: Submission) => {
             try {
