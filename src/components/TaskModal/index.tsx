@@ -25,7 +25,7 @@ interface TaskModalProps {
   tasks: Task[]
   onClose: () => void
   onConfirm: (submission: Submission) => void
-  session: { user: { id: string } }  // ✅ ambil dari props, bukan useSession
+  session: { user: { id: string } }
 }
 
 export default function TaskModal({
@@ -43,15 +43,27 @@ export default function TaskModal({
   const [twitterConnected, setTwitterConnected] = useState(false)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
-  // ✅ cek status twitter & submission
+  // ✅ Cek status Twitter & Telegram + submission
   useEffect(() => {
-    const checkTwitterStatus = async () => {
+    const checkConnections = async () => {
       try {
-        const res = await fetch('/api/connect/twitter/status')
-        const data = await res.json()
-        if (data.connected) setTwitterConnected(true)
+        // Cek Twitter
+        const twitterRes = await fetch('/api/connect/twitter/status')
+        const twitterData = await twitterRes.json()
+        if (twitterData.connected) setTwitterConnected(true)
+
+        // Cek Telegram
+        const telegramRes = await fetch('/api/connect/telegram/status')
+        const telegramData = await telegramRes.json()
+        if (telegramData.connected) {
+          setTaskStates(prev =>
+            prev.map(t =>
+              t.service === 'telegram' ? { ...t, connected: true } : t
+            )
+          )
+        }
       } catch (err) {
-        console.error('Failed to check twitter status', err)
+        console.error('Failed to check connection status', err)
       }
     }
 
@@ -65,9 +77,10 @@ export default function TaskModal({
       }
     }
 
-    checkTwitterStatus()
+    checkConnections()
     fetchSubmission()
 
+    // ✅ Event listener untuk notifikasi hasil koneksi (Twitter & Telegram)
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
       if (event.data?.type === 'TWITTER_CONNECTED') {
@@ -89,6 +102,7 @@ export default function TaskModal({
     return () => window.removeEventListener('message', handleMessage)
   }, [campaignId])
 
+  // ✅ Verifikasi task
   const handleVerify = async (idx: number, task: Task) => {
     try {
       setVerifying(idx)
@@ -101,8 +115,18 @@ export default function TaskModal({
         return
       }
 
-      // Telegram verify (setelah connect)
+      // Telegram flow
       if (task.service === 'telegram') {
+        // Jika belum connect → buka Telegram app
+        if (!task.connected) {
+          window.open(
+            `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${session.user.id}`,
+            '_blank'
+          )
+          return
+        }
+
+        // Jika sudah connect → verify
         const res = await fetch('/api/task/verify/telegram', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -118,7 +142,7 @@ export default function TaskModal({
         return
       }
 
-      // Generic verify
+      // Generic verification
       const res = await fetch('/api/task/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,8 +163,9 @@ export default function TaskModal({
     }
   }
 
+  // ✅ Submit semua task
   const handleConfirm = async () => {
-    if (!taskStates.every((t) => t.done)) {
+    if (!taskStates.every(t => t.done)) {
       setToast({ message: 'Please complete all tasks first.', type: 'error' })
       return
     }
@@ -160,7 +185,10 @@ export default function TaskModal({
         onConfirm(submission)
         onClose()
         if (data.alreadyRewarded) {
-          setToast({ message: 'You have already received the reward for this campaign.', type: 'success' })
+          setToast({
+            message: 'You have already received the reward for this campaign.',
+            type: 'success',
+          })
         } else {
           setToast({ message: 'All tasks submitted successfully!', type: 'success' })
         }
@@ -195,7 +223,9 @@ export default function TaskModal({
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center gap-2"
                 >
-                  <span>{task.service.toUpperCase()} — {task.type}</span>
+                  <span>
+                    {task.service.toUpperCase()} — {task.type}
+                  </span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
 
@@ -241,7 +271,13 @@ export default function TaskModal({
             )}
           </button>
 
-          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          )}
         </Dialog.Panel>
       </div>
     </Dialog>
