@@ -29,13 +29,14 @@ interface SubmissionTask {
 export async function POST(req: Request) {
   await dbConnect()
 
-  // auth like the other verify route
+  // 1️⃣ Auth
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   const userId = session.user.id
 
+  // 2️⃣ Parse body
   const body = await req.json().catch(() => null)
   if (!body) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
@@ -51,25 +52,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing campaignId" }, { status: 400 })
   }
 
-  // load campaign & tasks
+  // 3️⃣ Load campaign & tasks
   const campaignDoc = await Campaign.findById(campaignId)
   if (!campaignDoc) {
     return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
   }
 
-  const campaignTasks = Array.isArray((campaignDoc as any).tasks)
-    ? (campaignDoc as any).tasks
-    : ([] as CampaignTask[])
+  const campaignTasks: CampaignTask[] = Array.isArray((campaignDoc as any).tasks)
+    ? ((campaignDoc as any).tasks as CampaignTask[])
+    : []
 
-  // load user's submission (if any) to determine which task is pending
+  // 4️⃣ Load user's submission (if any)
   let submission = await Submission.findOne({ userId, campaignId })
 
-  // determine which task index to verify:
-  // priority:
-  // 1) explicit taskIndex in body
-  // 2) explicit task (service+type+url) in body
-  // 3) first telegram task in campaign that is not done in user's submission (if any)
-  // 4) first telegram task in campaign
+  // 5️⃣ Determine which task to verify
   let idx: number | null = null
 
   if (typeof taskIndex === "number") {
@@ -79,23 +75,28 @@ export async function POST(req: Request) {
     idx = taskIndex
   } else if (task && task.url) {
     idx = campaignTasks.findIndex(
-      (t) => t.service === (task.service || "telegram") && t.type === task.type && t.url === task.url
+      (t: CampaignTask) =>
+        t.service === (task.service || "telegram") &&
+        t.type === task.type &&
+        t.url === task.url
     )
     if (idx === -1) idx = null
   } else {
-    // try to find first telegram task that user hasn't done yet
+    // cari telegram task pertama yang belum done
     if (submission && Array.isArray(submission.tasks) && submission.tasks.length) {
-      idx = campaignTasks.findIndex((ct) => {
+      idx = campaignTasks.findIndex((ct: CampaignTask) => {
         if (ct.service !== "telegram") return false
         const matched = (submission.tasks as SubmissionTask[]).find(
-          (st) => st.service === ct.service && st.type === ct.type && st.url === ct.url
+          (st) =>
+            st.service === ct.service && st.type === ct.type && st.url === ct.url
         )
         return !matched || matched.done === false
       })
     }
-    // fallback: first telegram task in campaign
+
+    // fallback: ambil telegram pertama
     if (idx === -1 || idx === null) {
-      idx = campaignTasks.findIndex((t) => t.service === "telegram")
+      idx = campaignTasks.findIndex((t: CampaignTask) => t.service === "telegram")
       if (idx === -1) idx = null
     }
   }
@@ -109,22 +110,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid or non-telegram task" }, { status: 400 })
   }
 
-  // ensure user has Telegram social account connected
+  // 6️⃣ Pastikan user sudah connect Telegram
   const social = await SocialAccount.findOne({ userId, provider: "telegram" })
   if (!social || !social.socialId) {
     return NextResponse.json({ error: "Telegram not connected" }, { status: 400 })
   }
 
-  // resolve chat id if not cached
+  // 7️⃣ Resolve chat_id (cache jika belum)
   let chatId = taskInCampaign.targetId
   if (!chatId) {
     try {
-      // resolveTelegramChatId signature: (url, botToken) as in your earlier code
       chatId = await resolveTelegramChatId(taskInCampaign.url, BOT_TOKEN)
       if (!chatId) {
         return NextResponse.json({ error: "Failed to resolve chatId" }, { status: 400 })
       }
-      // cache to campaign
+
+      // cache ke campaign
       campaignTasks[idx].targetId = chatId
       campaignDoc.tasks = campaignTasks
       await campaignDoc.save()
@@ -138,11 +139,12 @@ export async function POST(req: Request) {
     }
   }
 
-  // call Telegram API getChatMember
+  // 8️⃣ Verify membership
   try {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${encodeURIComponent(
       String(chatId)
     )}&user_id=${encodeURIComponent(String(social.socialId))}`
+
     const res = await fetch(url)
     const data = await res.json()
     console.log("Telegram getChatMember:", { url, data })
@@ -164,10 +166,10 @@ export async function POST(req: Request) {
       )
     }
 
-    // user is member -> update/create submission (same style as twitter route)
+    // ✅ User adalah member → update submission
     const now = new Date()
+
     if (!submission) {
-      // initialize submission with campaign tasks; mark this one as done
       const tasksForSubmission = campaignTasks.map((ct, i) => ({
         service: ct.service,
         type: ct.type,
@@ -183,12 +185,16 @@ export async function POST(req: Request) {
         status: tasksForSubmission.every((t) => t.done) ? "submitted" : "pending",
       })
     } else {
-      // merge/ensure every campaign task exists in submission; mark current as done
-      const merged = campaignTasks.map((ct) => {
+      const merged = campaignTasks.map((ct: CampaignTask) => {
         const already = (submission!.tasks as SubmissionTask[]).find(
           (st) => st.service === ct.service && st.type === ct.type && st.url === ct.url
         )
-        if (ct.service === "telegram" && ct.type === taskInCampaign.type && ct.url === taskInCampaign.url) {
+
+        if (
+          ct.service === "telegram" &&
+          ct.type === taskInCampaign.type &&
+          ct.url === taskInCampaign.url
+        ) {
           return {
             service: ct.service,
             type: ct.type,
@@ -197,6 +203,7 @@ export async function POST(req: Request) {
             verifiedAt: now,
           }
         }
+
         return (
           already || {
             service: ct.service,
@@ -212,7 +219,7 @@ export async function POST(req: Request) {
       await submission.save()
     }
 
-    // return same shape as twitter route so frontend can use it directly
+    // ✅ Response sama format dengan Twitter verify
     return NextResponse.json({
       success: true,
       status: submission.status,
