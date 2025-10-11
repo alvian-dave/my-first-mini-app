@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic'
 const ProfileModal = dynamic(() => import('@/components/ProfileModal'), { ssr: false })
 const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
 const TopupModal = dynamic(() => import('@/components/TopupModal'), { ssr: false })
+const ContactUsModal = dynamic(() => import('@/components/ContactUs'), { ssr: false })
 
 export const Topbar = () => {
   const { data: session, status } = useSession()
@@ -18,6 +19,7 @@ export const Topbar = () => {
   const [showProfile, setShowProfile] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showTopup, setShowTopup] = useState(false)
+  const [showContactUs, setShowContactUs] = useState(false)
   const [role, setRole] = useState('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
 
@@ -147,6 +149,11 @@ export const Topbar = () => {
     setShowTopup(true)
   }
 
+  const handleGoToContactUs = () => {
+  setIsMenuOpen(false)
+  setShowContactUs(true)
+}
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center">
@@ -261,15 +268,14 @@ export const Topbar = () => {
                   </li>
 
                   <li>
-                    <a
-                      href="https://t.me/WRC_Community"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block px-4 py-2 hover:bg-gray-100 transition"
-                    >
-                      Contact us
-                    </a>
-                  </li>
+  <button
+    onClick={handleGoToContactUs}
+    className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+  >
+    Contact us
+  </button>
+</li>
+
 
                   <li>
                     <button
@@ -320,6 +326,9 @@ export const Topbar = () => {
           </div>
         </div>
       )}
+
+      {/* ✅ Contact Us Modal */}
+{showContactUs && <ContactUsModal onClose={() => setShowContactUs(false)} />}
 
       {/* --- Notification Modal --- */}
       {showNotificationsModal && (
