@@ -34,8 +34,11 @@ export default function ContactUsModal({ onClose }: ContactUsModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white w-full max-w-sm rounded-2xl shadow-lg overflow-hidden animate-fade-in-up">
         <div className="flex justify-between items-center border-b p-4">
-          <h2 className="text-lg font-semibold">Contact Us</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900">Contact Us</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -50,7 +53,12 @@ export default function ContactUsModal({ onClose }: ContactUsModalProps) {
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition"
             >
               {link.icon}
-              <span className="font-medium text-gray-800">{link.label}</span>
+              <span
+                className="font-medium"
+                style={{ color: '#2563eb' }} // 👈 force biru
+              >
+                {link.label}
+              </span>
             </a>
           ))}
         </div>
