@@ -62,7 +62,10 @@ export const CampaignForm = ({
     tasks: [],
   })
 
+  // toast / notification states
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
 
   useEffect(() => {
     if (editingCampaign) {
@@ -90,10 +93,17 @@ export const CampaignForm = ({
 
   useEffect(() => {
     if (errorMessage) {
-      const timer = setTimeout(() => setErrorMessage(null), 3000)
+      const timer = setTimeout(() => setErrorMessage(null), 4000)
       return () => clearTimeout(timer)
     }
   }, [errorMessage])
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [successMessage])
 
   const handleChange = (key: keyof CampaignType, value: any) => {
     setCampaign((prev) => ({ ...prev, [key]: value }))
@@ -125,6 +135,16 @@ export const CampaignForm = ({
     setCampaign({ ...campaign, tasks: newTasks })
   }
 
+  // build invite link from env - client needs NEXT_PUBLIC_*
+  const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ?? '1393523002750140446'
+  const DISCORD_PERMISSIONS = process.env.NEXT_PUBLIC_DISCORD_BOT_PERMISSIONS ?? '8'
+  const DISCORD_INVITE_URL =
+    DISCORD_CLIENT_ID.length > 0
+      ? `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(
+          DISCORD_CLIENT_ID
+        )}&permissions=${encodeURIComponent(DISCORD_PERMISSIONS)}&scope=bot`
+      : '#'
+
   const handleSubmit = async () => {
     if (!campaign.title.trim()) {
       setErrorMessage('Title is required')
@@ -135,7 +155,9 @@ export const CampaignForm = ({
       return
     }
 
-    // ✅ Check Telegram tasks verification
+    setPublishing(true)
+
+    // ✅ Check Telegram tasks verification (unchanged)
     for (const t of campaign.tasks) {
       if (t.service === 'telegram' && (t.type === 'join_group' || t.type === 'join_channel')) {
         try {
@@ -149,11 +171,38 @@ export const CampaignForm = ({
             setErrorMessage(
               '⚠️ Please make sure you have added our bot @WR_PlatformBot to your group/channel before publishing this campaign.'
             )
+            setPublishing(false)
             return
           }
         } catch (err) {
           console.error('verifyTelegram error:', err)
           setErrorMessage('Failed to verify Telegram group/channel. Please try again.')
+          setPublishing(false)
+          return
+        }
+      }
+
+      // ✅ Discord task verification
+      if (t.service === 'discord' && t.type === 'join') {
+        try {
+          const res = await fetch('/api/connect/discord/verifyServer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: t.url }),
+          })
+          const data = await res.json()
+          if (!res.ok || !data.valid) {
+            // English toast advising to invite bot
+            setErrorMessage(
+              '⚠️ Please invite the WR Platform Bot to your Discord server (use "Add WR Platform Bot to Server" button) and try again.'
+            )
+            setPublishing(false)
+            return
+          }
+        } catch (err) {
+          console.error('verifyDiscord error:', err)
+          setErrorMessage('Failed to verify Discord server. Please try again.')
+          setPublishing(false)
           return
         }
       }
@@ -164,17 +213,32 @@ export const CampaignForm = ({
 
     if (rewardPerTask < 10) {
       setErrorMessage('Reward per task cannot be less than 10')
+      setPublishing(false)
       return
     }
 
     if (rewardPerTask > totalBudget) {
       setErrorMessage('Reward cannot be greater than total budget')
+      setPublishing(false)
       return
     }
 
-    await onSubmit(campaign)
-    setEditingCampaign(null)
-    onClose()
+    try {
+      // call parent submit handler (it may save to DB)
+      await onSubmit(campaign)
+
+      // show success toast then close modal shortly after
+      setSuccessMessage('Campaign published successfully!')
+      setEditingCampaign(null)
+      setTimeout(() => {
+        setPublishing(false)
+        onClose()
+      }, 800)
+    } catch (err) {
+      console.error('publish error', err)
+      setErrorMessage('Failed to publish campaign. Please try again.')
+      setPublishing(false)
+    }
   }
 
   return (
@@ -235,23 +299,19 @@ export const CampaignForm = ({
                       let urlPlaceholder = 'Paste target URL (e.g. profile link)'
                       if (task.service === 'twitter') {
                         if (task.type === 'follow') {
-                          urlPlaceholder =
-                            'Paste profile URL (e.g. https://twitter.com/username)'
-                        } else if (
-                          task.type === 'like' ||
-                          task.type === 'retweet'
-                        ) {
-                          urlPlaceholder =
-                            'Paste tweet URL (e.g. https://twitter.com/username/status/123456)'
+                          urlPlaceholder = 'Paste profile URL (e.g. https://twitter.com/username)'
+                        } else if (task.type === 'like' || task.type === 'retweet') {
+                          urlPlaceholder = 'Paste tweet URL (e.g. https://twitter.com/username/status/123456)'
                         }
-                      }
-                      if (task.service === 'telegram') {
+                      } else if (task.service === 'telegram') {
                         if (task.type === 'join_group') {
-                          urlPlaceholder =
-                            'Paste Telegram group URL (e.g. https://t.me/groupname)'
+                          urlPlaceholder = 'Paste Telegram group URL (e.g. https://t.me/groupname)'
                         } else if (task.type === 'join_channel') {
-                          urlPlaceholder =
-                            'Paste Telegram channel URL (e.g. https://t.me/channelname)'
+                          urlPlaceholder = 'Paste Telegram channel URL (e.g. https://t.me/channelname)'
+                        }
+                      } else if (task.service === 'discord') {
+                        if (task.type === 'join') {
+                          urlPlaceholder = 'Paste Discord server invite URL (e.g. https://discord.gg/yourserver)'
                         }
                       }
 
@@ -262,9 +322,7 @@ export const CampaignForm = ({
                         >
                           <select
                             value={task.service}
-                            onChange={(e) =>
-                              updateTask(i, 'service', e.target.value)
-                            }
+                            onChange={(e) => updateTask(i, 'service', e.target.value)}
                             className="bg-gray-600 rounded p-2"
                           >
                             <option value="">Select Service</option>
@@ -278,9 +336,7 @@ export const CampaignForm = ({
                           {task.service && (
                             <select
                               value={task.type}
-                              onChange={(e) =>
-                                updateTask(i, 'type', e.target.value)
-                              }
+                              onChange={(e) => updateTask(i, 'type', e.target.value)}
                               className="bg-gray-600 rounded p-2"
                             >
                               <option value="">Select Task Type</option>
@@ -290,8 +346,7 @@ export const CampaignForm = ({
                                   value={t.value}
                                   disabled={t.disabled}
                                 >
-                                  {t.label}{' '}
-                                  {t.disabled ? '(Coming Soon)' : ''}
+                                  {t.label} {t.disabled ? '(Coming Soon)' : ''}
                                 </option>
                               ))}
                             </select>
@@ -301,9 +356,7 @@ export const CampaignForm = ({
                             className="bg-gray-600 rounded p-2 text-white"
                             placeholder={urlPlaceholder}
                             value={task.url}
-                            onChange={(e) =>
-                              updateTask(i, 'url', e.target.value)
-                            }
+                            onChange={(e) => updateTask(i, 'url', e.target.value)}
                             readOnly={task.isOld}
                             style={
                               task.isOld
@@ -318,13 +371,61 @@ export const CampaignForm = ({
                               task.type === 'join_channel') && (
                               <p className="text-yellow-400 text-sm">
                                 ⚠️ Please make sure you have added our bot{' '}
-                                <span className="font-semibold">
-                                  @WR_PlatformBot
-                                </span>{' '}
-                                to your group/channel before publishing this
-                                campaign.
+                                <span className="font-semibold">@WR_PlatformBot</span>{' '}
+                                to your group/channel before publishing this campaign.
                               </p>
                             )}
+
+                          {/* Discord Helper Message + Invite Button */}
+                          {task.service === 'discord' && task.type === 'join' && (
+                            <>
+                              <p className="text-yellow-400 text-sm">
+                                ⚠️ Please invite the WR Platform Bot to your Discord server before publishing this campaign.
+                                Use the button below to add the bot to your server.
+                              </p>
+
+                              <div className="flex gap-2">
+                                <a
+                                  href={DISCORD_INVITE_URL}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1 bg-indigo-600 rounded hover:bg-indigo-700 text-white text-sm"
+                                >
+                                  Add WR Platform Bot to Server
+                                </a>
+
+                                <button
+                                  onClick={async () => {
+                                    // quick check button for promoter convenience (optional)
+                                    try {
+                                      setPublishing(true)
+                                      const res = await fetch('/api/connect/discord/verifyServer', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ url: task.url }),
+                                      })
+                                      const data = await res.json()
+                                      if (!res.ok || !data.valid) {
+                                        setErrorMessage(
+                                          '⚠️ Bot is not present in the server yet. Please invite the WR Platform Bot and try again.'
+                                        )
+                                      } else {
+                                        setSuccessMessage('Bot successfully verified in server.')
+                                      }
+                                    } catch (err) {
+                                      console.error('quick verifyDiscord error:', err)
+                                      setErrorMessage('Failed to verify Discord server. Please try again.')
+                                    } finally {
+                                      setPublishing(false)
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-green-600 rounded hover:bg-green-700 text-white text-sm"
+                                >
+                                  Verify Bot Presence
+                                </button>
+                              </div>
+                            </>
+                          )}
 
                           <button
                             onClick={() => removeTask(i)}
@@ -356,10 +457,11 @@ export const CampaignForm = ({
                 <div className="flex gap-2 pt-4 mt-4 border-t border-gray-700">
                   <button
                     onClick={handleSubmit}
-                    className="flex-1 py-2 rounded font-medium transition hover:brightness-110"
+                    disabled={publishing}
+                    className="flex-1 py-2 rounded font-medium transition hover:brightness-110 flex items-center justify-center gap-2"
                     style={{ backgroundColor: '#16a34a', color: '#fff' }}
                   >
-                    {editingCampaign ? 'Update Campaign' : 'Publish'}
+                    {publishing ? 'Publishing...' : editingCampaign ? 'Update Campaign' : 'Publish'}
                   </button>
                   <button
                     onClick={() => {
@@ -378,6 +480,7 @@ export const CampaignForm = ({
         </Dialog>
       </Transition>
 
+      {/* Error toast (simple) */}
       <Transition
         show={!!errorMessage}
         as={Fragment}
@@ -391,6 +494,24 @@ export const CampaignForm = ({
         <div className="fixed bottom-4 right-4 z-[100]">
           <div className="bg-red-600 text-white px-4 py-2 rounded shadow-lg">
             {errorMessage}
+          </div>
+        </div>
+      </Transition>
+
+      {/* Success toast */}
+      <Transition
+        show={!!successMessage}
+        as={Fragment}
+        enter="transform ease-out duration-300"
+        enterFrom="translate-y-4 opacity-0"
+        enterTo="translate-y-0 opacity-100"
+        leave="transform ease-in duration-200"
+        leaveFrom="translate-y-0 opacity-100"
+        leaveTo="translate-y-4 opacity-0"
+      >
+        <div className="fixed bottom-4 left-4 z-[100]">
+          <div className="bg-green-600 text-white px-4 py-2 rounded shadow-lg">
+            {successMessage}
           </div>
         </div>
       </Transition>
