@@ -41,25 +41,34 @@ export default function TaskModal({
   const [submitting, setSubmitting] = useState(false)
   const [verifying, setVerifying] = useState<number | null>(null)
   const [twitterConnected, setTwitterConnected] = useState(false)
+  const [discordConnected, setDiscordConnected] = useState(false)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
-  // ✅ Cek status Twitter & Telegram + submission
+  // ✅ Cek status Twitter, Telegram, Discord + submission
   useEffect(() => {
     const checkConnections = async () => {
       try {
         // Cek Twitter
         const twitterRes = await fetch('/api/connect/twitter/status')
         const twitterData = await twitterRes.json()
-        if (twitterData.connected) setTwitterConnected(true)
+        if (twitterData?.connected) setTwitterConnected(true)
 
         // Cek Telegram
         const telegramRes = await fetch('/api/connect/telegram/status')
         const telegramData = await telegramRes.json()
-        if (telegramData.connected) {
+        if (telegramData?.connected) {
           setTaskStates(prev =>
-            prev.map(t =>
-              t.service === 'telegram' ? { ...t, connected: true } : t
-            )
+            prev.map(t => (t.service === 'telegram' ? { ...t, connected: true } : t))
+          )
+        }
+
+        // Cek Discord
+        const discordRes = await fetch('/api/connect/discord/status')
+        const discordData = await discordRes.json()
+        if (discordData?.connected) {
+          setDiscordConnected(true)
+          setTaskStates(prev =>
+            prev.map(t => (t.service === 'discord' ? { ...t, connected: true } : t))
           )
         }
       } catch (err) {
@@ -80,9 +89,10 @@ export default function TaskModal({
     checkConnections()
     fetchSubmission()
 
-    // ✅ Event listener untuk notifikasi hasil koneksi (Twitter & Telegram)
+    // ✅ Event listener untuk notifikasi hasil koneksi (Twitter, Telegram, Discord)
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
+
       if (event.data?.type === 'TWITTER_CONNECTED') {
         setTwitterConnected(true)
         setToast({ message: 'Twitter connected successfully!', type: 'success' })
@@ -96,6 +106,16 @@ export default function TaskModal({
         )
         setToast({ message: 'Telegram connected successfully!', type: 'success' })
       }
+      if (event.data?.type === 'DISCORD_CONNECTED') {
+        setDiscordConnected(true)
+        setTaskStates(prev =>
+          prev.map(t => (t.service === 'discord' ? { ...t, connected: true } : t))
+        )
+        setToast({ message: 'Discord connected successfully!', type: 'success' })
+      }
+      if (event.data?.type === 'DISCORD_FAILED') {
+        setToast({ message: 'Discord connection failed, please try again.', type: 'error' })
+      }
     }
 
     window.addEventListener('message', handleMessage)
@@ -107,7 +127,7 @@ export default function TaskModal({
     try {
       setVerifying(idx)
 
-      // Twitter flow
+      // Twitter flow (jangan ubah)
       if (task.service === 'twitter' && !twitterConnected) {
         const res = await fetch('/api/connect/twitter/start')
         const data = await res.json()
@@ -115,7 +135,7 @@ export default function TaskModal({
         return
       }
 
-      // Telegram flow
+      // Telegram flow (jangan ubah)
       if (task.service === 'telegram') {
         // Jika belum connect → buka Telegram app
         if (!task.connected) {
@@ -142,7 +162,38 @@ export default function TaskModal({
         return
       }
 
-      // Generic verification
+      // Discord flow (baru)
+      if (task.service === 'discord') {
+        // Jika belum connect → panggil backend start (sama pola Twitter)
+        if (!discordConnected) {
+          const res = await fetch('/api/connect/discord/start')
+          const data = await res.json()
+          if (data?.url) {
+            // Ikuti pola yang sudah ada: redirect ke url
+            window.location.href = data.url
+          } else {
+            setToast({ message: 'Failed to start Discord connect flow', type: 'error' })
+          }
+          return
+        }
+
+        // Jika sudah connect → panggil verify discord endpoint
+        const verifyRes = await fetch('/api/task/verify/discord', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ campaignId, taskIndex: idx, task }),
+        })
+        const verifyData = await verifyRes.json()
+        if (verifyData.success && verifyData.submission) {
+          setTaskStates(verifyData.submission.tasks)
+          setToast({ message: 'Discord task verified successfully!', type: 'success' })
+        } else {
+          setToast({ message: verifyData.error || 'Discord verification failed', type: 'error' })
+        }
+        return
+      }
+
+      // Generic verification (untuk task lain)
       const res = await fetch('/api/task/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -246,6 +297,8 @@ export default function TaskModal({
                       'Connect Twitter'
                     ) : task.service === 'telegram' && !task.connected ? (
                       'Connect Telegram'
+                    ) : task.service === 'discord' && !discordConnected ? (
+                      'Connect Discord'
                     ) : (
                       'Verify'
                     )}

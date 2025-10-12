@@ -20,8 +20,8 @@ const TASK_TYPE_OPTIONS: Record<
     { value: 'like', label: 'Like' },
   ],
   discord: [
-    { value: 'join', label: 'Join Group', disabled: true },
-    { value: 'comment', label: 'Comment in Group', disabled: true },
+    { value: 'join', label: 'Join Discord Server' },
+    { value: 'comment', label: 'Comment in Discord', disabled: true },
   ],
   telegram: [
     { value: 'join_channel', label: 'Join Channel' },

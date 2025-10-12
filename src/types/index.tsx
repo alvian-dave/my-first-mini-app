@@ -65,23 +65,24 @@ export interface SocialAccount {
   _id?: string                // dari Mongo
   userId: string              // ID user di WorldApp
 
-  // Bisa record final (twitter) atau sementara (twitter_temp)
-  provider: "twitter" | "twitter_temp"
+  // Bisa record final (twitter, discord, telegram)
+  // atau sementara (twitter_temp, discord_temp)
+  provider: "twitter" | "twitter_temp" | "discord" | "discord_temp" | "telegram"
 
   // Field final (kalau sudah connect)
   accessToken?: string
   refreshToken?: string
   expiresAt?: string          // ISO string dari Date
-  socialId?: string           // misal twitter user id
+  socialId?: string           // misal twitter user id, discord user id, telegram chat id
   username?: string
   profileUrl?: string
 
-  // Field sementara (PKCE, dipakai di twitter_temp)
+  // Field sementara (PKCE, dipakai di *_temp)
   state?: string
   codeVerifier?: string
 
   // Field tambahan
-  scope?: string[] // array of scopes
+  scope?: string[]            // array of scopes
 
   createdAt?: string
   updatedAt?: string
