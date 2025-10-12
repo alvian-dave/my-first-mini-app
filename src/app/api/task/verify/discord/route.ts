@@ -121,7 +121,7 @@ export async function POST(req: Request) {
   let guildId = taskInCampaign.targetId
   if (!guildId) {
     try {
-      guildId = await resolveDiscordGuildId(taskInCampaign.url, BOT_TOKEN)
+      guildId = (await resolveDiscordGuildId(taskInCampaign.url, BOT_TOKEN)) || undefined
       if (!guildId) {
         return NextResponse.json({ error: "Failed to resolve guild id from URL" }, { status: 400 })
       }
