@@ -7,6 +7,7 @@ import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import TaskModal from '@/components/TaskModal'
 import Toast from '@/components/Toast' // ✅ import Toast
+import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
 interface Task {
   service: string
@@ -79,18 +80,17 @@ export default function HunterDashboard() {
     }
   }
 
-  const fetchBalance = async () => {
-    if (!session?.user?.id) return
-    try {
-      const res = await fetch(`/api/balance/${session.user.id}`, { cache: 'no-store' })
-      if (!res.ok) return
-      const data = await res.json()
-      if (data.success) setDbBalance(data.balance.amount ?? 0)
-    } catch (err) {
-      console.error('Failed to fetch hunter balance', err)
-      setToast({ message: 'Failed to fetch balance', type: 'error' })
-    }
+const fetchBalance = async () => {
+  if (!session?.user?.walletAddress) return
+
+  try {
+    const balance = await getWRCreditBalance(session.user.walletAddress)
+    setDbBalance(balance) // tampilkan langsung ke UI
+  } catch (err) {
+    console.error("Failed to fetch blockchain balance:", err)
+    setToast({ message: 'Failed to fetch WR from blockchain', type: 'error' })
   }
+}
 
   // initial load
   useEffect(() => {
