@@ -317,13 +317,13 @@ useEffect(() => {
 
       {/* Topup Modal */}
       {showTopup && session?.user?.id && (
-        <TopupModal
-  userAddress={session.user.walletAddress || session.user.id}
+<TopupModal
+  isOpen={showTopup}
+  userAddress={session.user.walletAddress || session.user.id} // pakai wallet address kalau ada
   onClose={() => setShowTopup(false)}
   onSuccess={async () => {
     if (session.user.walletAddress) {
-      const updated = await getWRCreditBalance(session.user.walletAddress)
-      setBalance(Number(updated))
+      await fetchBalance(); // contoh update saldo sesudah topup
     }
   }}
 />
