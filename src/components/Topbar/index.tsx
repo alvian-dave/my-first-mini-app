@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
 const ProfileModal = dynamic(() => import('@/components/ProfileModal'), { ssr: false })
 const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
@@ -38,16 +39,18 @@ export const Topbar = () => {
     'Unknown User'
 
   // --- Fetch functions ---
-  const fetchBalance = async () => {
-    if (!session?.user?.id) return
-    try {
-      const res = await fetch(`/api/balance/${session.user.id}`)
-      const data = await res.json()
-      if (data.success && data.balance) setMainBalance(data.balance.amount ?? 0)
-    } catch (err) {
-      console.error('Failed to fetch balance:', err)
-    }
+const fetchBalance = async () => {
+  const walletAddress = session?.user?.walletAddress
+  if (!walletAddress) return
+
+  try {
+    const balance = await getWRCreditBalance(walletAddress)
+    setMainBalance(balance)
+  } catch (err) {
+    console.error('❌ Failed to fetch WRCredit balance:', err)
+    setMainBalance(0)
   }
+}
 
   const fetchNotifications = async (userRole?: string) => {
     if (!session?.user?.id) return
