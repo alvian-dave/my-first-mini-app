@@ -323,7 +323,7 @@ const fetchBalance = async () => {
           <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
             <TopupModal
               onClose={() => setShowTopup(false)}
-              userId={session.user.id}
+              userAddress={session.user.walletAddress}
               onSuccess={() => fetchBalance()}
             />
           </div>
