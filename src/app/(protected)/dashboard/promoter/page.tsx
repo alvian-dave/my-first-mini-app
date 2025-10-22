@@ -323,7 +323,8 @@ useEffect(() => {
   onClose={() => setShowTopup(false)}
   onSuccess={async () => {
     if (session.user.walletAddress) {
-      await fetchBalance(); // contoh update saldo sesudah topup
+      const updated = await getWRCreditBalance(session.user.walletAddress)
+      setBalance(Number(updated))
     }
   }}
 />
