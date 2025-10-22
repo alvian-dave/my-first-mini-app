@@ -10,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "npx --yes lightningcss --version || npm rebuild lightningcss --update-binary || true"
   },
   "dependencies": {
     "@auth/core": "^0.40.0",
