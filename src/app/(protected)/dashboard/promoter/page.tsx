@@ -318,7 +318,7 @@ useEffect(() => {
       {/* Topup Modal */}
       {showTopup && session?.user?.id && (
         <TopupModal
-  userId={session.user.id}
+  userAddress={session.user.walletAddress || session.user.id}
   onClose={() => setShowTopup(false)}
   onSuccess={async () => {
     if (session.user.walletAddress) {
