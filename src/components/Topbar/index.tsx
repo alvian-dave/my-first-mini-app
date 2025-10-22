@@ -8,7 +8,6 @@ import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
 const ProfileModal = dynamic(() => import('@/components/ProfileModal'), { ssr: false })
 const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
-const TopupModal = dynamic(() => import('@/components/TopupModal'), { ssr: false })
 const ContactUsModal = dynamic(() => import('@/components/ContactUs'), { ssr: false })
 
 export const Topbar = () => {
@@ -243,17 +242,6 @@ const fetchBalance = async () => {
                     </button>
                   </li>
 
-                  {/* --- Topup --- */}
-                  {role === 'promoter' && (
-                    <li>
-                      <button
-                        onClick={handleGoToTopup}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                      >
-                        Top-up
-                      </button>
-                    </li>
-                  )}
 
                   {/* --- Notification --- */}
                   <li>
@@ -317,18 +305,6 @@ const fetchBalance = async () => {
       )}
 
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
-
-      {showTopup && session?.user?.id && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
-            <TopupModal
-              onClose={() => setShowTopup(false)}
-              userAddress={session.user.walletAddress}
-              onSuccess={() => fetchBalance()}
-            />
-          </div>
-        </div>
-      )}
 
       {/* ✅ Contact Us Modal */}
 {showContactUs && <ContactUsModal onClose={() => setShowContactUs(false)} />}
