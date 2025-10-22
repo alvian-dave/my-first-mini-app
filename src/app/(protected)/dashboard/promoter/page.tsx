@@ -10,6 +10,7 @@ import { CampaignTabs } from '@/components/CampaignTabs'
 import TopupModal from '@/components/TopupModal'
 import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
+import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
 // UI Campaign type (tambahkan tasks)
 type UICampaign = BaseCampaign & {
@@ -46,19 +47,20 @@ export default function PromoterDashboard() {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
-  useEffect(() => {
-    if (!session?.user) return
-    const fetchBalance = async () => {
-      try {
-        const res = await fetch(`/api/balance/${session.user.id}`)
-        const data = await res.json()
-        if (data.success) setBalance(data.balance.amount)
-      } catch (err) {
-        console.error('Failed to fetch balance:', err)
-      }
+useEffect(() => {
+  if (!session?.user?.walletAddress) return
+
+  const fetchOnChainBalance = async () => {
+    try {
+      const onChainBal = await getWRCreditBalance(session.user.walletAddress)
+      setBalance(Number(onChainBal))
+    } catch (err) {
+      console.error('Failed to fetch on-chain balance:', err)
     }
-    fetchBalance()
-  }, [session])
+  }
+
+  fetchOnChainBalance()
+}, [session])
 
   useEffect(() => {
     if (!session?.user) return
@@ -316,10 +318,15 @@ export default function PromoterDashboard() {
       {/* Topup Modal */}
       {showTopup && session?.user?.id && (
         <TopupModal
-          userId={session.user.id}
-          onClose={() => setShowTopup(false)}
-          onSuccess={newBalance => setBalance(newBalance)}
-        />
+  userId={session.user.id}
+  onClose={() => setShowTopup(false)}
+  onSuccess={async () => {
+    if (session.user.walletAddress) {
+      const updated = await getWRCreditBalance(session.user.walletAddress)
+      setBalance(Number(updated))
+    }
+  }}
+/>
       )}
 
       {/* Floating Chat */}
