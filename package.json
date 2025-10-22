@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "npx --yes lightningcss --version || npm rebuild lightningcss --update-binary || true"
+    "vercel-build": "npm rebuild lightningcss --update-binary && next build"
   },
   "dependencies": {
     "@auth/core": "^0.40.0",
