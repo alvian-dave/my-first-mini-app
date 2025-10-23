@@ -14,7 +14,7 @@ import Toast from '@/components/Toast'
 // ---------------- HARD-CODE: ganti sesuai jaringan / deploy kamu ----------------
 const USDC_ADDRESS = '0x79A02482A880bCE3F13e09Da970dC34db4CD24d1' // USDC.e
 const WLD_ADDRESS = '0x2cFc85d8E48F8EAB294be644d9E25C3030863003' // WLD
-const UNISWAP_PAIR = '0x610E319bA3Ab56A0eD5562927D37c233774ba39' // WLD/USDC pair (Uniswap V2-like)
+const UNISWAP_PAIR = '0x610E319b3A3Ab56A0eD5562927D37c233774ba39' // WLD/USDC pair (Uniswap V2-like)
 // -----------------------------------------------------------------------------
 
 const UNISWAP_PAIR_ABI = [
