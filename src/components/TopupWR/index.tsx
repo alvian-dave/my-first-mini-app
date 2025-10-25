@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
 import { createPublicClient, http } from 'viem'
 import { MiniKit } from '@worldcoin/minikit-js'
-import { ethers } from 'ethers'
+import { parseUnits, Contract, JsonRpcProvider, Signature } from 'ethers'
 import WRABI from '@/abi/WRCredit.json'
 
 interface TopupWRProps {
@@ -15,6 +15,7 @@ interface TopupWRProps {
 }
 
 const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSuccess }) => {
+  // ✅ Baca dari .env
   const wrContractAddress = process.env.NEXT_PUBLIC_WR_CONTRACT as string
   const usdcContractAddress = process.env.NEXT_PUBLIC_USDC_CONTRACT as string
   const appId = process.env.NEXT_PUBLIC_APP_ID as string
@@ -26,7 +27,7 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
 
   const client = createPublicClient({
     chain: {
-      id: 410,
+      id: 410, // World Chain Mainnet
       name: 'World Chain Mainnet',
       network: 'worldchain',
       nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
@@ -52,7 +53,8 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
     setTopupError(null)
 
     try {
-      const amount = ethers.utils.parseUnits(usdcAmount, 6).toString()
+      // ✅ ethers v6: parseUnits langsung dari root
+      const amount = parseUnits(usdcAmount, 6).toString()
       const deadline = String(Math.floor(Date.now() / 1000) + 3600)
 
       const domain = {
@@ -72,11 +74,18 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
         ],
       }
 
-      const provider = new ethers.providers.JsonRpcProvider('https://worldchain-mainnet.g.alchemy.com/public')
-      const signer = provider.getSigner()
-      const signerAddress = userAddress || (await signer.getAddress())
+      // ✅ ethers v6: JsonRpcProvider langsung dari import
+      const provider = new JsonRpcProvider('https://worldchain-mainnet.g.alchemy.com/public')
 
-      const usdcContract = new ethers.Contract(usdcContractAddress, ['function nonces(address owner) view returns (uint256)'], signer)
+      // signer dummy, kita cuma pakai address dari user
+      const signerAddress = userAddress
+
+      const usdcContract = new Contract(
+        usdcContractAddress,
+        ['function nonces(address owner) view returns (uint256)'],
+        provider
+      )
+
       const nonce = await usdcContract.nonces(signerAddress)
 
       const message = {
@@ -97,7 +106,9 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
       }
 
       const signature = signatureResult.signature
-      const { v, r, s } = ethers.utils.splitSignature(signature)
+      // ✅ ethers v6: gunakan Signature.from
+      const sig = Signature.from(signature)
+      const { v, r, s } = sig
 
       const transaction = {
         address: wrContractAddress,
