@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { MiniKit } from '@worldcoin/minikit-js'
+import { MiniKit, MiniAppSendTransactionSuccessPayload } from '@worldcoin/minikit-js'
+import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
 import abi from '@/abi/WRCredit.json'
 import Toast from '@/components/Toast'
+import { createPublicClient, http } from 'viem'
+import { worldchain } from 'viem/chains'
 
 export default function TopupWR() {
   const { data: session } = useSession()
@@ -13,29 +16,32 @@ export default function TopupWR() {
   const [userAddress, setUserAddress] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [transactionId, setTransactionId] = useState<string>('')
 
-  // Alamat kontrak dari ENV
-  const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WRCREDIT_ADDRESS || ''
-  const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '' // USDC di WorldChain
-
-  // Rate konversi
+  const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WR_CONTRACT || ''
+  const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_CONTRACT || ''
   const RATE = 0.0050
 
-  // Ambil alamat user dari session
+  const client = createPublicClient({
+    chain: worldchain,
+    transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
+  })
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    client,
+    appConfig: { app_id: process.env.NEXT_PUBLIC_APP_ID || '' },
+    transactionId,
+  })
+
   useEffect(() => {
-    if (session?.user?.walletAddress) {
-      setUserAddress(session.user.walletAddress)
-    }
+    if (session?.user?.walletAddress) setUserAddress(session.user.walletAddress)
   }, [session])
 
-  // Hitung WR otomatis
   useEffect(() => {
     if (!amountUSDC) return setEstimatedWR('0.0000')
-    const wr = parseFloat(amountUSDC) * RATE
-    setEstimatedWR(wr.toFixed(4))
+    setEstimatedWR((parseFloat(amountUSDC) * RATE).toFixed(4))
   }, [amountUSDC])
 
-  // Fungsi kirim transaksi
   const handleTopup = async () => {
     if (!amountUSDC || !userAddress) {
       setToast({ message: 'Enter USDC amount and connect your wallet.', type: 'error' })
@@ -44,10 +50,8 @@ export default function TopupWR() {
 
     try {
       setLoading(true)
+      const usdcAmount = (Number(amountUSDC) * 1_000_000).toString()
 
-      const usdcAmount = (Number(amountUSDC) * 1_000_000).toString() // USDC = 6 decimals
-
-      // Send transaction via MiniKit (Permit2)
       const txResult = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
@@ -57,29 +61,27 @@ export default function TopupWR() {
             args: [
               userAddress,
               usdcAmount,
-              'PERMIT2_SIGNATURE_PLACEHOLDER_0', // MiniKit will replace automatically
+              'PERMIT2_SIGNATURE_PLACEHOLDER_0',
             ],
           },
         ],
         permit2: [
           {
-            permitted: {
-              token: USDC_ADDRESS,
-              amount: usdcAmount,
-            },
+            permitted: { token: USDC_ADDRESS, amount: usdcAmount },
             spender: CONTRACT_ADDRESS,
             nonce: Date.now().toString(),
-            deadline: Math.floor((Date.now() + 1000 * 60 * 10) / 1000).toString(), // 10 minutes
+            deadline: Math.floor((Date.now() + 1000 * 60 * 10) / 1000).toString(),
           },
         ],
       })
 
-      // Ambil transaction_id dari finalPayload
-      const transactionId = txResult.finalPayload?.transaction_id
-      if (transactionId) {
-        setToast({ message: `Transaction sent! ID: ${transactionId}`, type: 'success' })
+      // Ambil transaction_id dari finalPayload jika success
+      const successPayload = txResult.finalPayload as MiniAppSendTransactionSuccessPayload
+      if (successPayload?.transaction_id) {
+        setTransactionId(successPayload.transaction_id)
+        setToast({ message: `Transaction sent! ID: ${successPayload.transaction_id}`, type: 'success' })
       } else {
-        setToast({ message: 'Transaction sent but no transaction_id returned.', type: 'success' })
+        setToast({ message: 'Transaction sent but could not get transaction_id', type: 'success' })
       }
 
     } catch (error: any) {
@@ -93,11 +95,8 @@ export default function TopupWR() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-gray-900 p-6 rounded-2xl shadow-lg">
-        <h1 className="text-white text-2xl font-bold text-center mb-6">
-          Topup WR with USDC
-        </h1>
+        <h1 className="text-white text-2xl font-bold text-center mb-6">Topup WR with USDC</h1>
 
-        {/* Input USDC */}
         <label className="text-gray-400 text-sm">USDC Amount</label>
         <input
           type="number"
@@ -107,13 +106,11 @@ export default function TopupWR() {
           className="w-full p-3 mt-1 mb-4 rounded-xl bg-gray-800 text-white focus:outline-none"
         />
 
-        {/* Estimasi WR */}
         <div className="flex justify-between text-gray-300 text-sm mb-6">
           <span>WR you will receive:</span>
           <span className="text-white">{estimatedWR} WR</span>
         </div>
 
-        {/* Tombol kirim */}
         <button
           onClick={handleTopup}
           disabled={loading}
@@ -123,15 +120,18 @@ export default function TopupWR() {
         >
           {loading ? 'Processing...' : 'Confirm Topup'}
         </button>
+
+        {transactionId && (
+          <div className="mt-4 text-center text-gray-300 text-sm">
+            {isConfirming && <span>Transaction is confirming...</span>}
+            {isConfirmed && <span className="text-green-400">Transaction confirmed!</span>}
+            {!isConfirming && !isConfirmed && <span>Transaction sent, waiting for confirmation...</span>}
+          </div>
+        )}
       </div>
 
-      {/* Toast Notifikasi */}
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
     </div>
   )
