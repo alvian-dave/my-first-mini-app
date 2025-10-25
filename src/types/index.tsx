@@ -109,3 +109,16 @@ export interface Submission {
   createdAt?: string
   updatedAt?: string
 }
+
+// ==========================
+// TopupReference
+// ==========================
+export interface TopupReference {
+  _id?: string
+  referenceId: string
+  userAddress: string
+  status: "pending" | "success" | "failed"
+  isSent?: boolean
+  wrAmount: string
+  createdAt?: string
+}
