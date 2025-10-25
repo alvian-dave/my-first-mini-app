@@ -58,10 +58,11 @@ export default function TopupWR({ onClose }: TopupWRProps) {
     try {
       setLoading(true)
       const usdcAmount = (Number(amountUSDC) * 1_000_000).toString() // USDC = 6 decimals
-      const nonce = Date.now().toString()
-      const deadline = Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString() // 10 menit dari sekarang
 
-      // Format args sesuai kontrak WRCreditV4
+      // Generate permit fresh di saat klik tombol → signature selalu valid
+      const nonce = Date.now().toString()
+      const deadline = Math.floor((Date.now() + 60 * 60 * 1000) / 1000).toString() // 1 jam dari sekarang
+
       const permitArg = {
         permitted: { token: USDC_ADDRESS, amount: usdcAmount },
         spender: CONTRACT_ADDRESS,
@@ -75,13 +76,12 @@ export default function TopupWR({ onClose }: TopupWRProps) {
             address: CONTRACT_ADDRESS,
             abi,
             functionName: 'topupWithUSDCWithPermit2',
-            args: [permitArg, 'PERMIT2_SIGNATURE_PLACEHOLDER_0'], // placeholder MiniKit otomatis diganti
+            args: [permitArg, 'PERMIT2_SIGNATURE_PLACEHOLDER_0'], // MiniKit auto generate signature
           },
         ],
         permit2: [permitArg], // MiniKit pakai untuk generate signature
       })
 
-      // Ambil transaction_id dari finalPayload jika success
       const successPayload = txResult.finalPayload as MiniAppSendTransactionSuccessPayload
       if (successPayload?.transaction_id) {
         setTransactionId(successPayload.transaction_id)
