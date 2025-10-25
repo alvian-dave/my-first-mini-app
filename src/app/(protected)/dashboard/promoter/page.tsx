@@ -317,7 +317,7 @@ useEffect(() => {
 
       {/* Topup Modal */}
 {showTopup && (
-  <TopupWR />
+  <TopupWR onClose={() => setShowTopup(false)} />
 )}
 
       {/* Floating Chat */}
