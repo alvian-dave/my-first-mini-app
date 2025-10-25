@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
 import { createPublicClient, http } from 'viem'
 import { MiniKit } from '@worldcoin/minikit-js'
-import { parseUnits, Contract, JsonRpcProvider, Signature } from 'ethers'
+import { ethers } from 'ethers'
 import WRABI from '@/abi/WRCredit.json'
 
 interface TopupWRProps {
@@ -15,7 +15,6 @@ interface TopupWRProps {
 }
 
 const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSuccess }) => {
-  // ✅ Baca dari .env
   const wrContractAddress = process.env.NEXT_PUBLIC_WR_CONTRACT as string
   const usdcContractAddress = process.env.NEXT_PUBLIC_USDC_CONTRACT as string
   const appId = process.env.NEXT_PUBLIC_APP_ID as string
@@ -27,7 +26,7 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
 
   const client = createPublicClient({
     chain: {
-      id: 410, // World Chain Mainnet
+      id: 410,
       name: 'World Chain Mainnet',
       network: 'worldchain',
       nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
@@ -53,8 +52,8 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
     setTopupError(null)
 
     try {
-      // ✅ ethers v6: parseUnits langsung dari root
-      const amount = parseUnits(usdcAmount, 6).toString()
+      // ✅ ethers v6: parseUnits langsung dari ethers
+      const amount = ethers.parseUnits(usdcAmount, 6).toString()
       const deadline = String(Math.floor(Date.now() / 1000) + 3600)
 
       const domain = {
@@ -74,16 +73,14 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
         ],
       }
 
-      // ✅ ethers v6: JsonRpcProvider langsung dari import
-      const provider = new JsonRpcProvider('https://worldchain-mainnet.g.alchemy.com/public')
+      const provider = new ethers.JsonRpcProvider('https://worldchain-mainnet.g.alchemy.com/public')
+      const signer = await provider.getSigner()
+      const signerAddress = userAddress || (await signer.getAddress())
 
-      // signer dummy, kita cuma pakai address dari user
-      const signerAddress = userAddress
-
-      const usdcContract = new Contract(
+      const usdcContract = new ethers.Contract(
         usdcContractAddress,
         ['function nonces(address owner) view returns (uint256)'],
-        provider
+        signer
       )
 
       const nonce = await usdcContract.nonces(signerAddress)
@@ -96,18 +93,23 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
         deadline,
       }
 
-      const signatureResult = await MiniKit.commandsAsync.signMessage({
-        message: JSON.stringify({ domain, types, primaryType: 'Permit', message }),
+      // ✅ Fix untuk SDK baru — tidak pakai `status`
+      const { finalPayload } = await MiniKit.commandsAsync.signMessage({
+        message: JSON.stringify({
+          domain,
+          types,
+          primaryType: 'Permit',
+          message,
+        }),
       })
 
-      if (signatureResult.status === 'error') {
-        setTopupError(`Signature request failed: ${signatureResult.error}`)
+      if (!finalPayload?.signature) {
+        setTopupError('Failed to sign message. No signature returned.')
         return
       }
 
-      const signature = signatureResult.signature
-      // ✅ ethers v6: gunakan Signature.from
-      const sig = Signature.from(signature)
+      // ✅ ethers v6: Signature parsing pakai `ethers.Signature.from`
+      const sig = ethers.Signature.from(finalPayload.signature)
       const { v, r, s } = sig
 
       const transaction = {
@@ -117,15 +119,14 @@ const TopupWR: React.FC<TopupWRProps> = ({ isOpen, onClose, userAddress, onSucce
         args: [amount, deadline, v, r, s],
       }
 
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      const { finalPayload: txPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [transaction],
       })
 
-      if (finalPayload.status === 'error') {
-        console.error('Error topping up WR', finalPayload)
-        setTopupError(finalPayload.error)
+      if (!txPayload?.transaction_id) {
+        setTopupError('Transaction failed or was not returned.')
       } else {
-        setTransactionId(finalPayload.transaction_id)
+        setTransactionId(txPayload.transaction_id)
       }
     } catch (error: any) {
       console.error('Error:', error)
