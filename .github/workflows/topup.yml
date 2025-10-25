@@ -1,0 +1,16 @@
+name: Schedule WR Top-Up
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # setiap 5 menit
+  workflow_dispatch: {}     # bisa trigger manual juga
+
+jobs:
+  topup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Vercel Top-Up API
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.VERCEL_TOPUP_URL }} # endpoint API Vercel
+          method: GET
