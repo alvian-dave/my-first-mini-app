@@ -1,127 +1,138 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MiniKit, tokenToDecimals, Tokens, PayCommandInput } from '@worldcoin/minikit-js'
+import { MiniKit } from '@worldcoin/minikit-js'
+import abi from '@/abi/WRCredit.json'
+import Toast from '@/components/Toast'
 
-interface TopupWRProps {
-  isOpen: boolean
-  userAddress: string
-  onClose: () => void
-  onSuccess: () => Promise<void>
-}
+export default function TopupWR() {
+  const [amountUSDC, setAmountUSDC] = useState('')
+  const [estimatedWR, setEstimatedWR] = useState('0.0000')
+  const [userAddress, setUserAddress] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-export default function TopupWR({ isOpen, userAddress, onClose, onSuccess }: TopupWRProps) {
-  const [usdcAmount, setUsdcAmount] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  // Alamat kontrak dari ENV
+  const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WRCREDIT_ADDRESS || ''
+  const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || '' // USDC di WorldChain
+
+  // Rate konversi
   const RATE = 0.0050
-  const wrAmount = usdcAmount ? (parseFloat(usdcAmount) / RATE).toFixed(2) : '0'
 
+  // Ambil alamat user dari MiniKit
   useEffect(() => {
-    if (!isOpen) {
-      setUsdcAmount('')
-      setIsLoading(false)
+    const getWallet = async () => {
+      try {
+        const address = await MiniKit.commandsAsync.getAddress()
+        setUserAddress(address)
+      } catch (err) {
+        console.error('Wallet not connected:', err)
+      }
     }
-  }, [isOpen])
+    getWallet()
+  }, [])
 
+  // Hitung WR otomatis
+  useEffect(() => {
+    if (!amountUSDC) return setEstimatedWR('0.0000')
+    const wr = parseFloat(amountUSDC) * RATE
+    setEstimatedWR(wr.toFixed(4))
+  }, [amountUSDC])
+
+  // Fungsi kirim transaksi
   const handleTopup = async () => {
+    if (!amountUSDC || !userAddress) {
+      setToast({ message: 'Enter USDC amount and connect your wallet.', type: 'error' })
+      return
+    }
+
     try {
-      setIsLoading(true)
+      setLoading(true)
 
-      // 1️⃣ Create reference in backend
-      const res = await fetch('/api/initiate-pay', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress }),
-      })
-      const { id } = await res.json()
+      const usdcAmount = (Number(amountUSDC) * 1_000_000).toString() // USDC = 6 decimals
 
-      // 2️⃣ Prepare payload for World App
-      const payload: PayCommandInput = {
-        reference: id,
-        to: process.env.NEXT_PUBLIC_WR_CONTRACT!,
-        tokens: [
+      const { status, transaction_id } = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [
           {
-            symbol: Tokens.USDC,
-            token_amount: tokenToDecimals(parseFloat(usdcAmount), Tokens.USDC).toString(),
+            address: CONTRACT_ADDRESS,
+            abi,
+            functionName: 'topupWithUSDCWithPermit2',
+            args: [
+              userAddress,
+              usdcAmount,
+              'PERMIT2_SIGNATURE_PLACEHOLDER_0', // MiniKit will replace automatically
+            ],
           },
         ],
-        description: `Top-up ${wrAmount} WR Credit`,
-      }
+        permit2: [
+          {
+            permitted: {
+              token: USDC_ADDRESS,
+              amount: usdcAmount,
+            },
+            spender: CONTRACT_ADDRESS,
+            nonce: Date.now().toString(),
+            deadline: Math.floor((Date.now() + 1000 * 60 * 10) / 1000).toString(), // 10 minutes
+          },
+        ],
+      })
 
-      // 3️⃣ Execute World App Pay Command
-      if (!MiniKit.isInstalled()) {
-        alert('Please open this page in World App.')
-        return
+      if (status === 'pending') {
+        setToast({ message: `Transaction sent! ID: ${transaction_id}`, type: 'success' })
+      } else {
+        setToast({ message: 'Transaction failed to send.', type: 'error' })
       }
-
-      const { finalPayload } = await MiniKit.commandsAsync.pay(payload)
-
-      // 4️⃣ Send result to backend for verification
-      if (finalPayload.status === 'success') {
-        const confirmRes = await fetch('/api/confirm-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payload: finalPayload, userAddress }),
-        })
-        const confirmData = await confirmRes.json()
-        if (confirmData.success) {
-          alert(`Top-up successful! ${wrAmount} WR will be credited shortly.`)
-          await onSuccess()
-          onClose()
-        } else {
-          alert('Payment verification failed.')
-        }
-      }
-    } catch (err) {
-      console.error(err)
-      alert('An error occurred while processing the top-up.')
+    } catch (error: any) {
+      console.error(error)
+      setToast({ message: 'Failed to send transaction.', type: 'error' })
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-  <div className="bg-gray-900 border rounded-xl shadow-sm p-6 w-full max-w-md relative text-white">
-    <button
-      onClick={onClose}
-      className="absolute right-3 top-3 text-gray-300 hover:text-white text-xl"
-    >
-      ×
-    </button>
+    <div className="min-h-screen bg-black flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-gray-900 p-6 rounded-2xl shadow-lg">
+        <h1 className="text-white text-2xl font-bold text-center mb-6">
+          Topup WR with USDC
+        </h1>
 
-    <h1 className="text-2xl font-semibold text-center mb-4">Top-up WR Credit</h1>
+        {/* Input USDC */}
+        <label className="text-gray-400 text-sm">USDC Amount</label>
+        <input
+          type="number"
+          value={amountUSDC}
+          onChange={(e) => setAmountUSDC(e.target.value)}
+          placeholder="0.0"
+          className="w-full p-3 mt-1 mb-4 rounded-xl bg-gray-800 text-white focus:outline-none"
+        />
 
-    <label className="block text-sm font-medium mb-2">USDC Amount</label>
-    <input
-      type="number"
-      min="0"
-      step="0.01"
-      value={usdcAmount}
-      onChange={(e) => setUsdcAmount(e.target.value)}
-      placeholder="Enter USDC Amount"
-      className="w-full border border-gray-600 rounded-md p-2 mb-4 bg-gray-800 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-    />
+        {/* Estimasi WR */}
+        <div className="flex justify-between text-gray-300 text-sm mb-6">
+          <span>WR you will receive:</span>
+          <span className="text-white">{estimatedWR} WR</span>
+        </div>
 
-    <p className="text-sm text-gray-300 mb-1">
-      Rate: <strong>1 WR = 0.0050 USDC</strong>
-    </p>
-    <p className="text-sm text-gray-300 mb-4">
-      WR you will receive: <strong>{wrAmount}</strong>
-    </p>
+        {/* Tombol kirim */}
+        <button
+          onClick={handleTopup}
+          disabled={loading}
+          className={`w-full py-3 rounded-xl font-semibold text-white ${
+            loading ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {loading ? 'Processing...' : 'Confirm Topup'}
+        </button>
+      </div>
 
-    <button
-      onClick={handleTopup}
-      disabled={!usdcAmount || parseFloat(usdcAmount) <= 0 || isLoading}
-      className={`w-full py-2 rounded-md font-medium ${
-        isLoading ? 'bg-gray-600 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
-      }`}
-    >
-      {isLoading ? 'Processing...' : 'Top-up'}
-    </button>
-  </div>
-</div>
+      {/* Toast Notifikasi */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </div>
   )
 }
