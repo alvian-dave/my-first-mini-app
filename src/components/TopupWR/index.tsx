@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { MiniKit } from '@worldcoin/minikit-js'
 import abi from '@/abi/WRCredit.json'
 import Toast from '@/components/Toast'
 
 export default function TopupWR() {
+  const { data: session } = useSession()
   const [amountUSDC, setAmountUSDC] = useState('')
   const [estimatedWR, setEstimatedWR] = useState('0.0000')
   const [userAddress, setUserAddress] = useState<string | null>(null)
@@ -19,18 +21,12 @@ export default function TopupWR() {
   // Rate konversi
   const RATE = 0.0050
 
-  // Ambil alamat user dari MiniKit
+  // Ambil alamat user dari session
   useEffect(() => {
-    const getWallet = async () => {
-      try {
-        const address = await MiniKit.commandsAsync.getAddress()
-        setUserAddress(address)
-      } catch (err) {
-        console.error('Wallet not connected:', err)
-      }
+    if (session?.user?.walletAddress) {
+      setUserAddress(session.user.walletAddress)
     }
-    getWallet()
-  }, [])
+  }, [session])
 
   // Hitung WR otomatis
   useEffect(() => {
