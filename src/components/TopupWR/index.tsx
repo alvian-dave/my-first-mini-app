@@ -63,8 +63,8 @@ export default function TopupWR({ onClose }: TopupWRProps) {
 
       // Format args sesuai kontrak WRCreditV4
       const permitArg = {
-        token: USDC_ADDRESS,
-        amount: usdcAmount,
+        permitted: { token: USDC_ADDRESS, amount: usdcAmount },
+        spender: CONTRACT_ADDRESS,
         nonce,
         deadline,
       }
