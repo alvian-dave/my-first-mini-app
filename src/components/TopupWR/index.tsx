@@ -9,7 +9,11 @@ import Toast from '@/components/Toast'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
 
-export default function TopupWR() {
+interface TopupWRProps {
+  onClose: () => void
+}
+
+export default function TopupWR({ onClose }: TopupWRProps) {
   const { data: session } = useSession()
   const [amountUSDC, setAmountUSDC] = useState('')
   const [estimatedWR, setEstimatedWR] = useState('0.0000')
@@ -20,7 +24,7 @@ export default function TopupWR() {
 
   const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WR_CONTRACT || ''
   const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_CONTRACT || ''
-  const RATE = 0.0050
+  const RATE = 0.0050 // 1 WR = 0.0050 USDC → WR = USDC / 0.0050
 
   const client = createPublicClient({
     chain: worldchain,
@@ -33,13 +37,16 @@ export default function TopupWR() {
     transactionId,
   })
 
+  // Ambil wallet address dari session
   useEffect(() => {
     if (session?.user?.walletAddress) setUserAddress(session.user.walletAddress)
   }, [session])
 
+  // Hitung WR otomatis berdasarkan rate
   useEffect(() => {
     if (!amountUSDC) return setEstimatedWR('0.0000')
-    setEstimatedWR((parseFloat(amountUSDC) * RATE).toFixed(4))
+    const wr = parseFloat(amountUSDC) / RATE
+    setEstimatedWR(wr.toFixed(4))
   }, [amountUSDC])
 
   const handleTopup = async () => {
@@ -50,7 +57,7 @@ export default function TopupWR() {
 
     try {
       setLoading(true)
-      const usdcAmount = (Number(amountUSDC) * 1_000_000).toString()
+      const usdcAmount = (Number(amountUSDC) * 1_000_000).toString() // USDC = 6 decimals
 
       const txResult = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
@@ -58,11 +65,7 @@ export default function TopupWR() {
             address: CONTRACT_ADDRESS,
             abi,
             functionName: 'topupWithUSDCWithPermit2',
-            args: [
-              userAddress,
-              usdcAmount,
-              'PERMIT2_SIGNATURE_PLACEHOLDER_0',
-            ],
+            args: [userAddress, usdcAmount, 'PERMIT2_SIGNATURE_PLACEHOLDER_0'],
           },
         ],
         permit2: [
@@ -81,9 +84,8 @@ export default function TopupWR() {
         setTransactionId(successPayload.transaction_id)
         setToast({ message: `Transaction sent! ID: ${successPayload.transaction_id}`, type: 'success' })
       } else {
-        setToast({ message: 'Transaction sent but could not get transaction_id', type: 'success' })
+        setToast({ message: 'Transaction sent successfully!', type: 'success' })
       }
-
     } catch (error: any) {
       console.error(error)
       setToast({ message: 'Failed to send transaction.', type: 'error' })
@@ -93,8 +95,15 @@ export default function TopupWR() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-gray-900 p-6 rounded-2xl shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-gray-900 p-6 rounded-2xl shadow-lg w-full max-w-md relative">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-white font-bold"
+        >
+          ✕
+        </button>
+
         <h1 className="text-white text-2xl font-bold text-center mb-6">Topup WR with USDC</h1>
 
         <label className="text-gray-400 text-sm">USDC Amount</label>
@@ -128,11 +137,15 @@ export default function TopupWR() {
             {!isConfirming && !isConfirmed && <span>Transaction sent, waiting for confirmation...</span>}
           </div>
         )}
-      </div>
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-      )}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+      </div>
     </div>
   )
 }
