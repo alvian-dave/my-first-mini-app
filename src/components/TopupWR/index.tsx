@@ -58,6 +58,16 @@ export default function TopupWR({ onClose }: TopupWRProps) {
     try {
       setLoading(true)
       const usdcAmount = (Number(amountUSDC) * 1_000_000).toString() // USDC = 6 decimals
+      const nonce = Date.now().toString()
+      const deadline = Math.floor(Date.now() / 1000 + 60 * 10).toString() // 10 menit dari sekarang
+
+      // Format args sesuai kontrak WRCreditV4
+      const permitArg = {
+        token: USDC_ADDRESS,
+        amount: usdcAmount,
+        nonce,
+        deadline,
+      }
 
       const txResult = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
@@ -65,17 +75,10 @@ export default function TopupWR({ onClose }: TopupWRProps) {
             address: CONTRACT_ADDRESS,
             abi,
             functionName: 'topupWithUSDCWithPermit2',
-            args: [userAddress, usdcAmount, 'PERMIT2_SIGNATURE_PLACEHOLDER_0'],
+            args: [permitArg, 'PERMIT2_SIGNATURE_PLACEHOLDER_0'], // placeholder MiniKit otomatis diganti
           },
         ],
-        permit2: [
-          {
-            permitted: { token: USDC_ADDRESS, amount: usdcAmount },
-            spender: CONTRACT_ADDRESS,
-            nonce: Date.now().toString(),
-            deadline: Math.floor((Date.now() + 1000 * 60 * 10) / 1000).toString(),
-          },
-        ],
+        permit2: [permitArg], // MiniKit pakai untuk generate signature
       })
 
       // Ambil transaction_id dari finalPayload jika success
