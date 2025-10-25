@@ -47,7 +47,8 @@ export default function TopupWR() {
 
       const usdcAmount = (Number(amountUSDC) * 1_000_000).toString() // USDC = 6 decimals
 
-      const { status, transaction_id } = await MiniKit.commandsAsync.sendTransaction({
+      // Send transaction via MiniKit (Permit2)
+      const txResult = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
             address: CONTRACT_ADDRESS,
@@ -73,11 +74,14 @@ export default function TopupWR() {
         ],
       })
 
-      if (status === 'pending') {
-        setToast({ message: `Transaction sent! ID: ${transaction_id}`, type: 'success' })
+      // Ambil transaction_id dari finalPayload
+      const transactionId = txResult.finalPayload?.transaction_id
+      if (transactionId) {
+        setToast({ message: `Transaction sent! ID: ${transactionId}`, type: 'success' })
       } else {
-        setToast({ message: 'Transaction failed to send.', type: 'error' })
+        setToast({ message: 'Transaction sent but no transaction_id returned.', type: 'success' })
       }
+
     } catch (error: any) {
       console.error(error)
       setToast({ message: 'Failed to send transaction.', type: 'error' })
