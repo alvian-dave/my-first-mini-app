@@ -7,7 +7,7 @@ import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
-import TopupModal from '@/components/TopupModal'
+import TopupWR from '@/components/TopupWR'
 import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
@@ -317,7 +317,7 @@ useEffect(() => {
 
       {/* Topup Modal */}
       {showTopup && session?.user?.id && (
-<TopupModal
+<TopupWR
   isOpen={showTopup}
   userAddress={session.user.walletAddress || session.user.id} // pakai wallet address kalau ada
   onClose={() => setShowTopup(false)}

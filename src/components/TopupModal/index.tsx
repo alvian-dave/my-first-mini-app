@@ -10,6 +10,9 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { ethers } from 'ethers'
 import WRCreditABI from '@/abi/WRCredit.json'
 import Toast from '@/components/Toast'
+import { MiniKit } from '@worldcoin/minikit-js'; // Import MiniKit
+import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'; // Import useWaitForTransactionReceipt,
+
 
 // ---------------- HARD-CODE: ganti sesuai jaringan / deploy kamu ----------------
 const USDC_ADDRESS = '0x79A02482A880bCE3F13e09Da970dC34db4CD24d1' // USDC.e
@@ -48,6 +51,7 @@ export default function TopupModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
+  const [transactionId, setTransactionId] = useState<string>(''); // State untuk transactionId
 
   // Price & reserves state
   const [pricePerWrUsdRaw, setPricePerWrUsdRaw] = useState<bigint | null>(null) // 1e8
@@ -58,6 +62,7 @@ export default function TopupModal({
   // env
   const WRCREDIT_ADDRESS = process.env.NEXT_PUBLIC_WRCREDIT_ADDRESS!
   const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL!
+  const APP_ID = process.env.NEXT_PUBLIC_APP_ID!
 
   // provider (readonly) for fetching reserves & pricePerWrUsd
   const provider = useMemo(() => {
@@ -255,66 +260,42 @@ export default function TopupModal({
 
   // sign typed data using World App or fallback to window.ethereum eth_signTypedData_v4
   async function signTypedData(typed: any) {
-    const world = (window as any).world
-    // World App (if provides signTypedData) — API may differ across implementations
-    if (world && typeof world.signTypedData === 'function') {
-      // some implementations accept { address, data }
-      const sig = await world.signTypedData({ address: userAddress, data: typed })
-      return sig
+    try {
+      const world = (window as any).world
+      // World App (if provides signTypedData) — API may differ across implementations
+      if (world && typeof world.signTypedData === 'function') {
+        // some implementations accept { address, data }
+        const sig = await world.signTypedData({ address: userAddress, data: typed })
+        return sig
+      }
+
+      // fallback: window.ethereum
+      const eth = (window as any).ethereum
+      if (eth && typeof eth.request === 'function') {
+        const payload = JSON.stringify({
+          domain: typed.domain,
+          message: typed.message,
+          primaryType: 'Permit',
+          types: { EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' },
+          ], ...typed.types },
+        })
+        // eth_signTypedData_v4 expects JSON string of typed data as second param
+        const sig = await eth.request({
+          method: 'eth_signTypedData_v4',
+          params: [userAddress, payload],
+        })
+        return sig
+      }
+
+      throw new Error('No method available for signing typed data')
+    } catch (error) {
+      console.error('Signature error:', error)
+      throw error // Re-throw to be caught in handleConfirm
     }
-
-    // fallback: window.ethereum
-    const eth = (window as any).ethereum
-    if (eth && typeof eth.request === 'function') {
-      const payload = JSON.stringify({
-        domain: typed.domain,
-        message: typed.message,
-        primaryType: 'Permit',
-        types: { EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ], ...typed.types },
-      })
-      // eth_signTypedData_v4 expects JSON string of typed data as second param
-      const sig = await eth.request({
-        method: 'eth_signTypedData_v4',
-        params: [userAddress, payload],
-      })
-      return sig
-    }
-
-    throw new Error('No method available for signing typed data')
-  }
-
-  // ---------------- send tx via World App or MiniKit fallback ----------------
-  async function sendTransactionViaPlatform(tx: { to: string; data: string; value?: string }) {
-    const world = (window as any).world
-    if (world && typeof world.sendTransaction === 'function') {
-      await world.sendTransaction({ transaction: [{ to: tx.to, data: tx.data, value: tx.value ?? '0x0' }] })
-      return
-    }
-
-    // MiniKit example (global MiniKit available)
-    const MiniKit = (window as any).MiniKit
-    if (MiniKit && MiniKit.commandsAsync && typeof MiniKit.commandsAsync.sendTransaction === 'function') {
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({ transaction: [{ address: tx.to, abi: WRCreditABI, functionName: 'dummy', args: [] }], // placeholder
-      })
-      // For MiniKit we need to build correct call; we'll fallback to raw send using window.ethereum if available
-      // In most mini-app setups world.sendTransaction is available; adapt here if you prefer MiniKit directly.
-      return
-    }
-
-    // fallback: try window.ethereum sendRawTransaction using ethers Provider signer (NOT ideal in mini app)
-    const eth = (window as any).ethereum
-    if (eth && typeof eth.request === 'function') {
-      // We do not have direct access to wallet signer to send raw tx here with encoded data.
-      // But world.sendTransaction or MiniKit should be present in World App environment.
-      throw new Error('No supported platform tx method found (expect world.sendTransaction in World App).')
-    }
-
-    throw new Error('No supported transaction sender found')
   }
 
   // -------------------- MAIN: handleConfirm --------------------
@@ -346,20 +327,34 @@ export default function TopupModal({
       setStep('sending')
       const ifaceWRC = new ethers.Interface(WRCreditABI as any)
       const fn = token === 'USDC' ? 'topupWithUSDCWithPermit' : 'topupWithWLDWithPermit'
-      // contract expects (amount, deadline, v, r, s)
-      const data = ifaceWRC.encodeFunctionData(fn, [amountUnits, deadline, v, r, s])
 
-      await sendTransactionViaPlatform({ to: WRCREDIT_ADDRESS, data })
+      // --- Send transaction using MiniKit ---
+      const MiniKit = (window as any).MiniKit;
+      if (!MiniKit || !MiniKit.commandsAsync || typeof MiniKit.commandsAsync.sendTransaction !== 'function') {
+        throw new Error('MiniKit is not available');
+      }
 
-      setStep('success')
-      setToastType('success')
-      setToastMessage('Topup submitted. Wait for confirmation.')
+      const transaction = {
+        address: WRCREDIT_ADDRESS,
+        abi: WRCreditABI, // Ensure this ABI is up-to-date
+        functionName: fn,
+        args: [amountUnits, deadline, v, r, s],
+      };
 
-      setTimeout(() => {
-        setStep('idle')
-        onClose()
-        onSuccess && onSuccess()
-      }, 2000)
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [transaction],
+      });
+
+      if (finalPayload.status === 'error') {
+        console.error('Error sending transaction', finalPayload);
+        throw new Error(finalPayload.error || 'Transaction failed');
+      }
+      const transactionId = finalPayload.transaction_id;
+      setTransactionId(transactionId); // Set transactionId state
+      setStep('success');
+      setToastType('success');
+      setToastMessage(`Topup submitted. Transaction ID: ${transactionId}`);
+
     } catch (err: any) {
       console.error('Topup error:', err)
       setStep('error')
@@ -368,6 +363,41 @@ export default function TopupModal({
       setToastMessage(err?.message || 'Transaction failed/cancelled')
     }
   }
+
+  // Menggunakan useWaitForTransactionReceipt untuk memantau status transaksi
+  const { data: transactionReceipt, isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    client: provider, // Menggunakan provider ethers sebagai client
+    appConfig: {
+      app_id: APP_ID, // Menggunakan APP_ID dari environment variables
+    },
+    transactionId: transactionId, // Menggunakan transactionId dari state
+  });
+
+  // Efek untuk menangani status transaksi yang berhasil
+  useEffect(() => {
+    if (isConfirmed && transactionReceipt) {
+      console.log('Transaction Confirmed!', transactionReceipt);
+      setToastType('success');
+      setToastMessage('Topup confirmed on blockchain!');
+      setTimeout(() => {
+        setStep('idle');
+        onClose();
+        onSuccess && onSuccess();
+      }, 3000); // Menutup modal setelah 3 detik
+    }
+  }, [isConfirmed, transactionReceipt, onClose, onSuccess]);
+
+  // Efek untuk menangani kesalahan selama pemantauan transaksi
+  useEffect(() => {
+    if (transactionId && !isConfirming && !isConfirmed && step === 'success') {
+      console.log('Transaction mungkin gagal atau belum dikonfirmasi.');
+      // Jika transaksi tidak dikonfirmasi setelah beberapa waktu, tampilkan pesan kesalahan
+      setToastType('error');
+      setToastMessage('Transaksi mungkin gagal atau belum dikonfirmasi.');
+      setStep('error');
+      setErrorMsg('Transaksi mungkin gagal atau belum dikonfirmasi.');
+    }
+  }, [transactionId, isConfirming, isConfirmed, step]);
 
   if (!isOpen) return null
 
@@ -464,7 +494,13 @@ export default function TopupModal({
               <>
                 <div className="mb-3">✅</div>
                 <div className="font-semibold text-green-600">Topup submitted</div>
-                <div className="text-sm text-gray-600 mt-2">Wait for blockchain confirmation.</div>
+                <div className="text-sm text-gray-600 mt-2">
+                  Waiting for blockchain confirmation.
+                  <br />
+                  Transaction ID: {transactionId}
+                  {isConfirming && <div>Konfirmasi...</div>}
+                  {isConfirmed && <div>Terkonfirmasi!</div>}
+                </div>
               </>
             )}
 
