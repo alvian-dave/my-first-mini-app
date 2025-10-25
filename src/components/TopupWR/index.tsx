@@ -59,7 +59,7 @@ export default function TopupWR({ onClose }: TopupWRProps) {
       setLoading(true)
       const usdcAmount = (Number(amountUSDC) * 1_000_000).toString() // USDC = 6 decimals
       const nonce = Date.now().toString()
-      const deadline = Math.floor(Date.now() / 1000 + 60 * 10).toString() // 10 menit dari sekarang
+      const deadline = Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString() // 10 menit dari sekarang
 
       // Format args sesuai kontrak WRCreditV4
       const permitArg = {
