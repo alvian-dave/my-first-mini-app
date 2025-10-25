@@ -316,19 +316,9 @@ useEffect(() => {
       </main>
 
       {/* Topup Modal */}
-      {showTopup && session?.user?.id && (
-<TopupWR
-  isOpen={showTopup}
-  userAddress={session.user.walletAddress || session.user.id} // pakai wallet address kalau ada
-  onClose={() => setShowTopup(false)}
-  onSuccess={async () => {
-    if (session.user.walletAddress) {
-      const updated = await getWRCreditBalance(session.user.walletAddress)
-      setBalance(Number(updated))
-    }
-  }}
-/>
-      )}
+{showTopup && (
+  <TopupWR />
+)}
 
       {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">
