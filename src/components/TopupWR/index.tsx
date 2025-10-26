@@ -63,15 +63,15 @@ export default function TopupWR({ onClose }: TopupWRProps) {
       const permitTransfer = {
     permitted: {
       token: USDC_ADDRESS // The token I'm sending
-      amount: usdcAmount.toString(),
+      amount: usdcAmount,
     },
       const nonce = Date.now().toString()
       const deadline = Math.floor((Date.now() + 60 * 60 * 1000) / 1000).toString() // 1 jam dari sekarang
       };
-      
+
       const transferDetails = {
     to: address,
-    requestedAmount: usdcAmount.toString(),
+    requestedAmount: usdcAmount,
   };
 
       const permitArg = {
