@@ -67,7 +67,7 @@ export default function TopupWR({ onClose }: TopupWRProps) {
     }
 
 const transferDetails = {
-    to: address,
+    to: CONTRACT_ADDRESS,
     requestedAmount: usdcAmount,
   };
 
