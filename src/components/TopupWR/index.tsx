@@ -14,6 +14,7 @@ interface TopupWRProps {
 }
 
 export default function TopupWR({ onClose }: TopupWRProps) {
+  const { data: session } = useSession()
   const [amountUSDC, setAmountUSDC] = useState('')
   const [estimatedWR, setEstimatedWR] = useState('0.0000')
   const [userAddress, setUserAddress] = useState<string | null>(null)
