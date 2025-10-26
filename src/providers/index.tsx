@@ -43,11 +43,13 @@ export default function ClientProviders({
   session,
 }: ClientProvidersProps) {
   return (
+    <ErudaProvider>
     <MiniKitProvider>
       <SessionProvider session={session}>
         <SessionPersist /> {/* ✅ Tambahin persist logic */}
         {children}
       </SessionProvider>
     </MiniKitProvider>
+    </ErudaProvider>
   );
 }
