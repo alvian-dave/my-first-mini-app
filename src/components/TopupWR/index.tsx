@@ -64,19 +64,20 @@ export default function TopupWR({ onClose }: TopupWRProps) {
       const deadline = Math.floor((Date.now() + 60 * 60 * 1000) / 1000).toString() // 1 jam dari sekarang
 
       const permitArg = {
-        permitted: { token: USDC_ADDRESS, amount: usdcAmount },
-        spender: CONTRACT_ADDRESS,
+        token: USDC_ADDRESS,
+        amount: usdcAmount,
         nonce,
-        deadline,
+       deadline,
+       signature: 'PERMIT2_SIGNATURE_PLACEHOLDER_0',
       }
-
+      
       const txResult = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
             address: CONTRACT_ADDRESS,
             abi,
             functionName: 'topupWithUSDCWithPermit2',
-            args: [permitArg, 'PERMIT2_SIGNATURE_PLACEHOLDER_0'], // MiniKit auto generate signature
+            args: [permitArg], // MiniKit auto generate signature
           },
         ],
         permit2: [permitArg], // MiniKit pakai untuk generate signature
