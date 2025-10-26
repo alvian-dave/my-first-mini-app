@@ -65,7 +65,7 @@ export default function TopupWR({ onClose }: TopupWRProps) {
 
       const permitArg = {
         permitted: { token: USDC_ADDRESS, amount: usdcAmount },
-        spender: CONTRACT_ADDRESS,
+        spender: userAddress,
         nonce,
         deadline,
       }
