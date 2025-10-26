@@ -66,6 +66,11 @@ export default function TopupWR({ onClose }: TopupWRProps) {
       deadline,
     }
 
+const transferDetails = {
+    to: address,
+    requestedAmount: usdcAmount,
+  };
+
     try {
       const { commandPayload, finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
@@ -82,6 +87,7 @@ export default function TopupWR({ onClose }: TopupWRProps) {
                 permitArg.nonce,
                 permitArg.deadline,
                 ],
+                [transferDetails.to, transferDetails.requestedAmount],
                 'PERMIT2_SIGNATURE_PLACEHOLDER_0',
             ],
           },
