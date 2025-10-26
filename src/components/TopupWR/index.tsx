@@ -76,10 +76,7 @@ export default function TopupWR({ onClose }: TopupWRProps) {
             address: CONTRACT_ADDRESS,
             abi,
             functionName: 'topupWithUSDCWithPermit2',
-            args: [permitArg, 'PERMIT2_SIGNATURE_PLACEHOLDER_0'], // MiniKit auto generate signature
-          },
-        ],
-        permit2: [
+            args: [
           {
           token: permitArg.permitted.token,
           amount: permitArg.permitted.amount,
@@ -88,6 +85,9 @@ export default function TopupWR({ onClose }: TopupWRProps) {
           signature: 'PERMIT2_SIGNATURE_PLACEHOLDER_0',
           }
           ]
+          },
+        ],
+        permit2: [permitArg],
       })
 
       const successPayload = txResult.finalPayload as MiniAppSendTransactionSuccessPayload
