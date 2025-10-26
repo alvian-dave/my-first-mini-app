@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { MiniKit, MiniAppSendTransactionSuccessPayload } from '@worldcoin/minikit-js'
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
-import wrABI from '@/abi/WRCredit.json'
+import abi from '@/abi/WRCredit.json'
 import Toast from '@/components/Toast'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
@@ -60,22 +60,12 @@ export default function TopupWR({ onClose }: TopupWRProps) {
       const usdcAmount = (Number(amountUSDC) * 1_000_000).toString() // USDC = 6 decimals
 
       // Generate permit fresh di saat klik tombol → signature selalu valid
-      const permitTransfer = {
-    permitted: {
-      token: USDC_ADDRESS // The token I'm sending
-      usdcAmount,
-    },
       const nonce = Date.now().toString()
       const deadline = Math.floor((Date.now() + 60 * 60 * 1000) / 1000).toString() // 1 jam dari sekarang
-      };
-
-      const transferDetails = {
-    to: address,
-    requestedAmount: usdcAmount,
-  };
 
       const permitArg = {
         permitted: { token: USDC_ADDRESS, amount: usdcAmount },
+        spender: CONTRACT_ADDRESS,
         nonce,
         deadline,
       }
@@ -84,17 +74,12 @@ export default function TopupWR({ onClose }: TopupWRProps) {
         transaction: [
           {
             address: CONTRACT_ADDRESS,
-            abi: wrABI,
+            abi,
             functionName: 'topupWithUSDCWithPermit2',
-            args: [permitArg, [transferDetails.to, transferDetails.requestedAmount], 'PERMIT2_SIGNATURE_PLACEHOLDER_0'], // MiniKit auto generate signature
+            args: [permitArg, 'PERMIT2_SIGNATURE_PLACEHOLDER_0'], // MiniKit auto generate signature
           },
         ],
-        permit2: [
-          {
-            ...permitTransfer,
-            spender: CONTRACT_ADDRESS,
-            },
-            ], // MiniKit pakai untuk generate signature
+        permit2: [permitArg], // MiniKit pakai untuk generate signature
       })
 
       const successPayload = txResult.finalPayload as MiniAppSendTransactionSuccessPayload
