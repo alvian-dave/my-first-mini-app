@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { MiniKit } from '@worldcoin/minikit-js'
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
-import abi from '@/abi/WRCredit.json'
+import abi from '@/abi/Permit2.json'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
 import Toast from '@/components/Toast'
@@ -21,7 +21,7 @@ export default function TopupWR({ onClose }: TopupWRProps) {
   const [transactionId, setTransactionId] = useState<string>('')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WR_CONTRACT || ''
+  const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_WR_CONT || '0x000000000022D473030F116dDEE9F6B43aC78BA3'
   const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_CONTRACT || ''
   const RATE = 0.0050 // 1 WR = 0.0050 USDC
 
@@ -72,11 +72,13 @@ export default function TopupWR({ onClose }: TopupWRProps) {
           {
             address: CONTRACT_ADDRESS,
             abi,
-            functionName: 'topupWithUSDCWithPermit2',
+            functionName: 'signatureTransfer',
             args: [
               [
+                [
                 permitArg.permitted.token,
                 permitArg.permitted.amount,
+                ],
                 permitArg.nonce,
                 permitArg.deadline,
                 ],
