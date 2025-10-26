@@ -7,10 +7,11 @@ import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
-import USDCTransferModal from '@/components/USDCTransferModal'
+import TopupWR from '@/components/TopupWR'
 import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
+import TopupWR from '@/components/TopupWR'
 
 // UI Campaign type (tambahkan tasks)
 type UICampaign = BaseCampaign & {
@@ -317,7 +318,7 @@ useEffect(() => {
 
       {/* Topup Modal */}
 {showTopup && (
-  <USDCTransferModal onClose={() => setShowTopup(false)} />
+  <TopupWR onClose={() => setShowTopup(false)} />
 )}
 
       {/* Floating Chat */}
