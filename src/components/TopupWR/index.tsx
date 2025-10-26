@@ -80,7 +80,7 @@ export default function TopupWR({ onClose }: TopupWRProps) {
                 permitArg.nonce,
                 permitArg.deadline,
                 ],
-                'PERMIT2_SIGNATURE_PLACEHOLDER',
+                'PERMIT2_SIGNATURE_PLACEHOLDER_0',
             ],
           },
         ],
