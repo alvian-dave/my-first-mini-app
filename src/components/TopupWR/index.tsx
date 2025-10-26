@@ -74,13 +74,11 @@ export default function TopupWR({ onClose }: TopupWRProps) {
             abi,
             functionName: 'topupWithUSDCWithPermit2',
             args: [
-              {
-                token: permitArg.permitted.token,
-                amount: permitArg.permitted.amount,
-                nonce: permitArg.nonce,
-                deadline: permitArg.deadline,
-                signature: 'PERMIT2_SIGNATURE_PLACEHOLDER',
-              },
+                permitArg.permitted.token,
+                permitArg.permitted.amount,
+                permitArg.nonce,
+                permitArg.deadline,
+                'PERMIT2_SIGNATURE_PLACEHOLDER',
             ],
           },
         ],
