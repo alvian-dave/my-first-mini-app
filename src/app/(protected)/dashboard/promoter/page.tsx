@@ -7,7 +7,7 @@ import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import { CampaignTabs } from '@/components/CampaignTabs'
-import TopupWR from '@/components/TopupWR'
+import USDCTransferModal from '@/components/USDCTransferModal'
 import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
@@ -317,7 +317,7 @@ useEffect(() => {
 
       {/* Topup Modal */}
 {showTopup && (
-  <TopupWR onClose={() => setShowTopup(false)} />
+  <USDCTransferModal onClose={() => setShowTopup(false)} />
 )}
 
       {/* Floating Chat */}
