@@ -37,7 +37,7 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
     setEstimatedWR(wr.toFixed(4))
   }, [amountUSDC])
 
-  const sendUSDC = async () => {
+  const sendTransaction = async () => {
     if (!amountUSDC || Number(amountUSDC) <= 0) return
 
     const usdcAddress = process.env.NEXT_PUBLIC_USDC_CONTRACT || ''
@@ -45,7 +45,7 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
     const amount = (Number(amountUSDC) * 1_000_000).toString() // USDC 6 decimals
 
     try {
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      const { commandPayload, finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
             address: usdcAddress,
@@ -94,7 +94,7 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
         </div>
 
         <button
-          onClick={sendUSDC}
+          onClick={sendTransaction}
           disabled={isConfirming}
           className={`w-full py-3 rounded-xl font-semibold text-white ${
             isConfirming ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
