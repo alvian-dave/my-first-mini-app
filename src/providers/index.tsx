@@ -4,6 +4,12 @@ import { Session } from 'next-auth';
 import { SessionProvider, useSession } from 'next-auth/react';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
+
+const ErudaProvider = dynamic(
+  () => import('@/providers/Eruda').then((c) => c.ErudaProvider),
+  { ssr: false },
+);
 
 interface ClientProvidersProps {
   children: ReactNode;
