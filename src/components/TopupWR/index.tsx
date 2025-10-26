@@ -17,7 +17,7 @@ export default function TopupWR({ onClose }: TopupWRProps) {
   const { data: session } = useSession()
   const [amountUSDC, setAmountUSDC] = useState('')
   const [estimatedWR, setEstimatedWR] = useState('0.0000')
-  const [userAddress, setUserAddress] = useState<string | null>(null)
+  const [userAddress, setUserAddress] = useState<string>('')
   const [transactionId, setTransactionId] = useState<string>('')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
