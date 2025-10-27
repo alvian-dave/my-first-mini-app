@@ -19,6 +19,9 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
 
   const RATE = 0.0050 // 1 WR = 0.0050 USDC
 
+  const { data: session } = useSession()
+    const userAddress = session?.user?.walletAddress || ''
+
   // Public client untuk monitoring transaksi
   const client = createPublicClient({
     chain: worldchain,
@@ -71,11 +74,6 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
     // === [3] Setelah transaksi dikonfirmasi → kirim ke backend ===
   useEffect(() => {
     if (!isConfirmed || !transactionId) return
-
-    // ✅ Ambil address user dari session (atau context kamu sendiri)
-    const { data: session } = useSession()
-    const userAddress = session?.user?.walletAddress || '' 
-    // Ganti baris di atas dengan alamat user dari session auth kamu
 
     if (!userAddress) {
       console.warn('⚠️ Tidak ada userAddress di session, backend call dilewati.')
