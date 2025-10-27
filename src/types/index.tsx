@@ -111,14 +111,17 @@ export interface Submission {
 }
 
 // ==========================
-// TopupReference
+// Topup
 // ==========================
-export interface TopupReference {
+export interface Topup {
   _id?: string
-  referenceId: string
   userAddress: string
-  status: "pending" | "success" | "failed"
-  isSent?: boolean
-  wrAmount: string
+  depositTxHash: string
+  amountUSDC: number
+  amountWR: string
+  mintTxHash?: string
+  status: 'pending' | 'minted' | 'failed'
+  meta?: Record<string, any>
   createdAt?: string
+  updatedAt?: string
 }
