@@ -4,6 +4,7 @@ import dbConnect from '@/lib/mongodb'
 import Topup from '@/models/Topup'
 import WRABI from '@/abi/WRCredit.json'
 import { Notification } from '@/models/Notification'
+import { auth } from '@/auth'
 
 type Body = {
   depositTxHash: string // Worldcoin transaction ID (not on-chain)
@@ -40,6 +41,11 @@ export async function POST(req: Request) {
     }
 
     await dbConnect()
+
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
+    }    
 
     // ===== CEK JIKA SUDAH PERNAH DIPROSES =====
     const normalizedDeposit = depositTxHash.toLowerCase()
@@ -156,9 +162,9 @@ export async function POST(req: Request) {
         pending.mintTxHash = mintTx.hash
         await pending.save()
 
-          await Notification.create({
-          userAddress: userAddress.toLowerCase(),
-          role: 'user',
+        await Notification.create({
+          userId: session.user.id,
+          role: 'promoter',
           type: 'topup_success',
           message: `Top-up successful! ${wrAmount} WR has been added to your wallet. Please refresh your dashboard.`,
         })
