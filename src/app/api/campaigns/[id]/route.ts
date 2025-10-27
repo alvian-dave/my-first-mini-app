@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
-import Balance from "@/models/Balance"
 import Submission from "@/models/Submission"
 import { Notification } from "@/models/Notification"
 import { Types } from "mongoose"

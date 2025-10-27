@@ -32,8 +32,9 @@ export async function POST(req: Request) {
     const OWNER_PRIVATE_KEY = process.env.PRIVATE_KEY
     const WORLD_APP_ID = process.env.NEXT_PUBLIC_APP_ID
     const WORLD_API_KEY = process.env.WORLD_APP_API_KEY
+    const USDC_CONTRACT = process.env.NEXT_PUBLIC_USDC_CONTRACT // wajib
 
-    if (!RPC || !WR_CONTRACT || !OWNER_PRIVATE_KEY || !WORLD_APP_ID || !WORLD_API_KEY) {
+    if (!RPC || !WR_CONTRACT || !OWNER_PRIVATE_KEY || !WORLD_APP_ID || !WORLD_API_KEY || !USDC_CONTRACT) {
       return NextResponse.json({ ok: false, error: 'Server misconfigured' }, { status: 500 })
     }
 
@@ -73,6 +74,56 @@ export async function POST(req: Request) {
 
     if (receipt.status !== 1) {
       return NextResponse.json({ ok: false, error: 'Transaction failed on chain' }, { status: 400 })
+    }
+
+    // ===== STEP 2B: Validasi log transaksi (harus kirim USDC ke WR kontrak) =====
+    // Pastikan log Transfer dari kontrak USDC ada: from=userAddress, to=WR_CONTRACT, value==amountUSDC(6 dec)
+    const usdcContractLower = USDC_CONTRACT.toLowerCase()
+    const wrContractLower = WR_CONTRACT.toLowerCase()
+    const userLower = userAddress.toLowerCase()
+
+    const erc20Interface = new ethers.Interface([
+      'event Transfer(address indexed from, address indexed to, uint256 value)'
+    ])
+
+    let foundValidTransfer = false
+    let transferredAmountOnchain: bigint | null = null
+
+    for (const log of receipt.logs) {
+      // Cek log berasal dari kontrak USDC
+      if (log.address && log.address.toLowerCase() === usdcContractLower) {
+        // coba parse log; parseLog akan throw jika bukan event yang cocok
+        try {
+          const parsed = erc20Interface.parseLog(log)
+          if (!parsed) continue // ethers v6 bisa return null kalau log tidak cocok
+
+          const args = parsed.args as Record<string, any>
+          const fromAddr = (args.from as string).toLowerCase()
+          const toAddr = (args.to as string).toLowerCase()
+          const value = BigInt(args.value)
+
+          if (fromAddr === userLower && toAddr === wrContractLower) {
+            foundValidTransfer = true
+            transferredAmountOnchain = value
+            break
+          }
+        } catch {
+          // bukan event Transfer, lanjut
+        }
+      }
+    }
+
+    if (!foundValidTransfer || transferredAmountOnchain === null) {
+      return NextResponse.json({ ok: false, error: 'No valid USDC -> WR transfer found in transaction logs' }, { status: 400 })
+    }
+
+    // Cek jumlah sesuai dengan amountUSDC dari frontend (USDC = 6 decimals)
+    const expectedAmount = parseDecimalToBigInt(String(amountUSDC), 6)
+    if (transferredAmountOnchain !== expectedAmount) {
+      return NextResponse.json({
+        ok: false,
+        error: `Amount mismatch: on-chain ${transferredAmountOnchain.toString()} vs frontend ${expectedAmount.toString()}`
+      }, { status: 400 })
     }
 
     // ===== STEP 3: Hitung jumlah WR dari amountUSDC =====
