@@ -7,9 +7,9 @@ import ERC20ABI from '@/abi/ERC20.json'
 import WRABI from '@/abi/WRCredit.json'
 
 type Body = {
-  depositTxHash: string
+  depositTxHash: string // from frontend (Worldcoin transaction ID)
   userAddress: string
-  amountUSDC: string | number // e.g. "10.5" or 10.5
+  amountUSDC: string | number
 }
 
 /**
@@ -20,7 +20,6 @@ function parseDecimalToBigInt(amount: string, decimals: number): bigint {
   const [intPart, fracPart = ''] = amount.toString().split('.')
   const frac = (fracPart + '0'.repeat(decimals)).slice(0, decimals)
   const numeric = intPart + frac
-  // Remove leading zeros
   const trimmed = numeric.replace(/^0+(?!$)/, '')
   return BigInt(trimmed || '0')
 }
@@ -34,38 +33,54 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Missing parameters' }, { status: 400 })
     }
 
-    // env
+    // ===== ENV =====
     const RPC = process.env.NEXT_PUBLIC_RPC_URL
     const USDC_CONTRACT = process.env.NEXT_PUBLIC_USDC_CONTRACT
     const WR_CONTRACT = process.env.NEXT_PUBLIC_WR_CONTRACT
     const OWNER_PRIVATE_KEY = process.env.PRIVATE_KEY
-    
-    if (!RPC || !USDC_CONTRACT || !WR_CONTRACT || !OWNER_PRIVATE_KEY) {
-      console.error('Missing required env vars', { RPC: !!RPC, USDC_CONTRACT: !!USDC_CONTRACT, WR_CONTRACT: !!WR_CONTRACT, OWNER_PRIVATE_KEY: !!OWNER_PRIVATE_KEY })
+    const WORLD_APP_ID = process.env.NEXT_PUBLIC_APP_ID
+    const WORLD_API_KEY = process.env.WORLD_APP_API_KEY
+
+    if (!RPC || !USDC_CONTRACT || !WR_CONTRACT || !OWNER_PRIVATE_KEY || !WORLD_APP_ID || !WORLD_API_KEY) {
+      console.error('Missing required env vars', { RPC, USDC_CONTRACT, WR_CONTRACT, OWNER_PRIVATE_KEY, WORLD_APP_ID, WORLD_API_KEY })
       return NextResponse.json({ ok: false, error: 'Server misconfigured' }, { status: 500 })
     }
 
-    // connect to DB
     await dbConnect()
 
-    // idempotency: cek DB kalau depositTxHash sudah ada
+    // ===== Idempotency Check =====
     const normalizedDeposit = depositTxHash.toLowerCase()
     const existing = await Topup.findOne({ depositTxHash: normalizedDeposit })
     if (existing) {
       return NextResponse.json({ ok: true, message: 'Already processed', record: existing })
     }
 
-    // provider
-    const provider = new ethers.JsonRpcProvider(RPC)
+    // ===== Step 1: Ambil hash on-chain asli dari Worldcoin API =====
+    const wcRes = await fetch(
+      `https://developer.worldcoin.org/api/v2/minikit/transaction/${depositTxHash}?app_id=${WORLD_APP_ID}&type=transaction`,
+      { headers: { Authorization: `Bearer ${WORLD_API_KEY}` } }
+    )
 
-    // ambil tx & receipt
-    const tx = await provider.getTransaction(depositTxHash)
-    const receipt = await provider.getTransactionReceipt(depositTxHash)
+    if (!wcRes.ok) {
+      const errMsg = await wcRes.text()
+      return NextResponse.json({ ok: false, error: 'Worldcoin API error: ' + errMsg }, { status: 502 })
+    }
+
+    const wcData = await wcRes.json()
+    const onchainHash = wcData.transactionHash
+    if (!onchainHash) {
+      return NextResponse.json({ ok: false, error: 'No on-chain hash found from Worldcoin API' }, { status: 404 })
+    }
+
+    // ===== Step 2: Validasi on-chain =====
+    const provider = new ethers.JsonRpcProvider(RPC)
+    const tx = await provider.getTransaction(onchainHash)
+    const receipt = await provider.getTransactionReceipt(onchainHash)
+
     if (!tx || !receipt) {
       return NextResponse.json({ ok: false, error: 'Transaction not found on chain' }, { status: 404 })
     }
 
-    // cek receipt status (1 = success)
     if (receipt.status !== 1) {
       return NextResponse.json({ ok: false, error: 'Deposit transaction failed on-chain' }, { status: 400 })
     }
@@ -75,11 +90,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Transaction to unexpected address (not USDC contract)' }, { status: 400 })
     }
 
-    // decode input (transfer(address,uint256)) safely
+    // Decode input (transfer(address,uint256))
     const iface = new ethers.Interface(ERC20ABI as any)
     let parsed: ethers.TransactionDescription | null = null
     try {
-      // parseTransaction may throw if data doesn't match any function
       parsed = iface.parseTransaction({ data: tx.data, value: (tx as any).value })
     } catch (err) {
       parsed = null
@@ -89,60 +103,54 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Transaction is not an ERC20 transfer' }, { status: 400 })
     }
 
-    // args: [to, value]
     const args = parsed.args
     if (!args || args.length < 2) {
       return NextResponse.json({ ok: false, error: 'Transfer args missing' }, { status: 400 })
     }
 
     const recipient = String(args[0])
-    // raw value might be bigint (ethers v6 uses bigint for uint256)
     const rawValue: bigint = (() => {
       const v = args[1] as any
       if (typeof v === 'bigint') return v
       if (typeof v === 'string') return BigInt(v)
       if (typeof v === 'number') return BigInt(Math.floor(v))
-      // fallback: try to convert
       return BigInt(String(v))
     })()
 
-    // pastikan recipient adalah WR contract
+    // Validasi penerima dan pengirim
     if (recipient.toLowerCase() !== WR_CONTRACT.toLowerCase()) {
       return NextResponse.json({ ok: false, error: 'Transfer recipient is not WR contract' }, { status: 400 })
     }
 
-    // cek pengirim cocok dengan userAddress
     if ((tx.from || '').toLowerCase() !== userAddress.toLowerCase()) {
       return NextResponse.json({ ok: false, error: 'Transaction sender does not match userAddress' }, { status: 400 })
     }
 
-    // cek jumlah sesuai amountUSDC (USDC 6 decimals)
+    // Cek jumlah sesuai amountUSDC (6 decimals)
     const rawExpectedUSDC = parseDecimalToBigInt(String(amountUSDC), 6)
     if (rawValue !== rawExpectedUSDC) {
       return NextResponse.json({ ok: false, error: 'Transfer amount mismatch with provided amountUSDC' }, { status: 400 })
     }
 
-    // Hitung jumlah WR
+    // ===== Hitung jumlah WR =====
     // Rate: 1 WR = 0.0050 USDC -> 1 USDC = 200 WR
-    // rawUSDC (6d) * 200 * 10^(18-6)
     const multiplier = 200n
     const shift = 10n ** 12n // 18 - 6 = 12
-    const amountWRRaw = rawExpectedUSDC * multiplier * shift // bigint
+    const amountWRRaw = rawExpectedUSDC * multiplier * shift
 
-    // Mint via owner wallet
+    // ===== Mint WR =====
     const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, provider)
     const wr = new ethers.Contract(WR_CONTRACT, WRABI as any, wallet)
 
-    // Save preliminary pending record (idempotency & audit)
     const pending = await Topup.create({
       userAddress: userAddress.toLowerCase(),
       depositTxHash: normalizedDeposit,
+      onchainHash: onchainHash.toLowerCase(),
       amountUSDC: Number(amountUSDC),
       amountWR: (Number(amountUSDC) / 0.005).toString(),
       status: 'pending',
     })
 
-    // call mint (assumes mint(address,uint256) and owner key has permission)
     const mintTx = await wr.mint(userAddress, amountWRRaw)
     const mintReceipt = await mintTx.wait(1)
 
@@ -154,7 +162,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Mint transaction failed', mintTxHash: mintTx.hash }, { status: 500 })
     }
 
-    // update db success
+    // ===== Update success =====
     pending.status = 'minted'
     // @ts-ignore
     pending.mintTxHash = mintTx.hash
@@ -163,8 +171,9 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       message: 'Minted WR successfully',
-      mintTxHash: mintTx.hash,
       depositTxHash: normalizedDeposit,
+      onchainHash,
+      mintTxHash: mintTx.hash,
       amountWR: (Number(amountUSDC) / 0.005).toString(),
       record: pending,
     })
