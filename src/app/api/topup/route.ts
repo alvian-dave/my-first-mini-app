@@ -3,6 +3,7 @@ import { ethers } from 'ethers'
 import dbConnect from '@/lib/mongodb'
 import Topup from '@/models/Topup'
 import WRABI from '@/abi/WRCredit.json'
+import { Notification } from '@/models/Notification'
 
 type Body = {
   depositTxHash: string // Worldcoin transaction ID (not on-chain)
@@ -129,6 +130,7 @@ export async function POST(req: Request) {
     // ===== STEP 3: Hitung jumlah WR dari amountUSDC =====
     const rawUSDC = parseDecimalToBigInt(String(amountUSDC), 6)
     const wrAmountRaw = rawUSDC * 200n * 10n ** 12n // 1 USDC = 200 WR, 18 - 6 = 12
+    const wrAmount = (Number(amountUSDC) * 200).toString()
 
     // ===== STEP 4: Simpan status pending =====
     const pending = await Topup.create({
@@ -153,6 +155,13 @@ export async function POST(req: Request) {
         // @ts-ignore
         pending.mintTxHash = mintTx.hash
         await pending.save()
+
+          await Notification.create({
+          userAddress: userAddress.toLowerCase(),
+          role: 'user',
+          type: 'topup_success',
+          message: `Top-up successful! ${wrAmount} WR has been added to your wallet. Please refresh your dashboard.`,
+        })
 
         return NextResponse.json({
           ok: true,
