@@ -6,6 +6,7 @@ import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
 import ERC20 from '@/abi/ERC20.json'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
+import { useSession } from 'next-auth/react'
 
 interface USDCTransferModalProps {
   onClose: () => void
@@ -66,6 +67,47 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
       console.error('Unexpected error:', err)
     }
   }
+
+    // === [3] Setelah transaksi dikonfirmasi → kirim ke backend ===
+  useEffect(() => {
+    if (!isConfirmed || !transactionId) return
+
+    // ✅ Ambil address user dari session (atau context kamu sendiri)
+    const { data: session } = useSession()
+    const userAddress = session?.user?.walletAddress || '' 
+    // Ganti baris di atas dengan alamat user dari session auth kamu
+
+    if (!userAddress) {
+      console.warn('⚠️ Tidak ada userAddress di session, backend call dilewati.')
+      return
+    }
+
+    const sendToBackend = async () => {
+      try {
+        const res = await fetch('/api/topup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            depositTxHash: transactionId,
+            userAddress,
+            amountUSDC, // kirim string dari input
+          }),
+        })
+        const data = await res.json()
+
+        if (!res.ok || !data.ok) {
+          console.error('❌ Topup backend error:', data)
+        } else {
+          console.log('✅ Topup success & WR minted:', data)
+        }
+      } catch (err) {
+        console.error('Failed to call topup API:', err)
+      }
+    }
+
+    sendToBackend()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConfirmed, transactionId])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
