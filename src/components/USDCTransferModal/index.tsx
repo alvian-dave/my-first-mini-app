@@ -115,6 +115,15 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+
+  {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(null)}
+      />
+    )}
+
       <div className="bg-gray-900 p-6 rounded-2xl shadow-lg w-full max-w-md relative">
         <button
           onClick={onClose}
@@ -156,15 +165,6 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
             {!isConfirming && !isConfirmed && <span>Transaction sent, waiting for confirmation...</span>}
           </div>
         )}
-
-            {toast && (
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast(null)}
-      />
-    )}
-
       </div>
     </div>
   )
