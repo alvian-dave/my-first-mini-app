@@ -7,6 +7,7 @@ import ERC20 from '@/abi/ERC20.json'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
 import { useSession } from 'next-auth/react'
+import Toast from '@/components/Toast'
 
 interface USDCTransferModalProps {
   onClose: () => void
@@ -16,6 +17,7 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
   const [amountUSDC, setAmountUSDC] = useState('')
   const [estimatedWR, setEstimatedWR] = useState('0.0000')
   const [transactionId, setTransactionId] = useState<string>('')
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const RATE = 0.0050 // 1 WR = 0.0050 USDC
 
@@ -97,6 +99,10 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
           console.error('❌ Topup backend error:', data)
         } else {
           console.log('✅ Topup success & WR minted:', data)
+          setToast({
+            message: `Topup successful, ${estimatedWR} WR has been added to your wallet. Please refresh your dashboard.`,
+            type: 'success',
+          })
         }
       } catch (err) {
         console.error('Failed to call topup API:', err)
@@ -150,6 +156,15 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
             {!isConfirming && !isConfirmed && <span>Transaction sent, waiting for confirmation...</span>}
           </div>
         )}
+
+            {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(null)}
+      />
+    )}
+
       </div>
     </div>
   )
