@@ -59,6 +59,23 @@ const CampaignSchema = new Schema(
 
     // ✅ Simpan ID hunter yang sudah selesai
     participants: [{ type: String }],
+
+        // 🧾 Bukti deposit campaign (on-chain)
+    depositTxHash: { type: String, required: true }, // dari Worldcoin MiniKit (transaction_id)
+    onchainHash: { type: String, required: true },   // tx hash on blockchain
+
+    // 💰 Jumlah WR yang benar-benar dikirim on-chain (wei)
+    depositedWR: { type: String, required: true },   // dalam wei (BigInt string)
+    remainingWR: { type: String, required: true },   // update setiap reward dikirim
+
+    // 🔐 Alamat wallet promoter yang buat campaign
+    promoterAddress: { type: String, required: true },
+
+    // 📦 Hash transaksi refund / reward terakhir (optional, untuk log)
+    lastRescueTx: { type: String },
+
+    // 🧩 Tambahan optional:
+    error: { type: String }, // kalau gagal verifikasi atau rescue
   },
   { timestamps: true }
 )

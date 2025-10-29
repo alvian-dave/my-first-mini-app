@@ -43,19 +43,48 @@ export interface Task {
 }
 
 // ==========================
-// Campaign
+// Campaign Types
 // ==========================
+export interface Task {
+  service: "twitter" | "discord" | "telegram"
+  type:
+    | "follow"
+    | "retweet"
+    | "like"
+    | "join"
+    | "comment"
+    | "join_channel"
+    | "join_group"
+    | "comment_group"
+  url: string
+  targetId?: string
+  tweetId?: string
+}
+
 export interface Campaign {
-  _id?: string                 // dari Mongo
-  id?: number                  // opsional utk dummy/local
+  _id?: string // dari MongoDB
+  id?: number  // opsional untuk dummy/local
+
   title: string
   description: string
-  budget: string
-  reward: string
+  budget: string           // total WR budget (bisa string/number)
+  reward: string           // reward per task (WR)
   status: "active" | "finished" | "rejected"
-  tasks: Task[]                // ✅ ganti links → tasks
-  createdBy?: string           // userId promoter
-  contributors?: number        // jumlah hunter yg submit
+  tasks: Task[]            // daftar task campaign
+
+  createdBy?: string       // userId promoter
+  promoterAddress?: string // wallet address promoter
+
+  contributors?: number    // total hunter submit
+  participants?: string[]  // userId hunter yang sudah selesai
+
+  // ====== On-chain tracking ======
+  depositTxHash?: string   // hash Worldcoin transaction ID
+  onchainHash?: string     // hash transaksi on-chain
+  depositedWR?: string     // jumlah WR yang dikirim (wei)
+  remainingWR?: string     // saldo WR tersisa (wei)
+  lastRescueTx?: string    // hash rescue terakhir (reward/refund)
+  error?: string           // catatan error jika gagal
 }
 
 // ==========================

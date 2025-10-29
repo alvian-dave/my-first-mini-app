@@ -2,6 +2,9 @@
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment, useState, useEffect } from 'react'
 import { Campaign as CampaignType } from '@/types'
+import { MiniKit } from '@worldcoin/minikit-js'
+import WRABI from '@/abi/WRCredit.json'
+import { useSession } from 'next-auth/react'
 
 const MAX_TASKS = 3
 const SERVICE_OPTIONS = [
@@ -66,13 +69,15 @@ export const CampaignForm = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
+  const [transactionId, setTransactionId] = useState<string>('')
+
+  const { data: session } = useSession()
+  const userAddress = session?.user?.walletAddress || ''
 
   useEffect(() => {
     if (editingCampaign) {
       setCampaign({
         ...editingCampaign,
-        budget: editingCampaign.budget ?? '',
-        reward: editingCampaign.reward ?? '',
         tasks: (editingCampaign.tasks ?? []).map((t) => ({
           ...t,
           isOld: true,
@@ -134,6 +139,41 @@ export const CampaignForm = ({
     newTasks.splice(index, 1)
     setCampaign({ ...campaign, tasks: newTasks })
   }
+
+  // ============================================================
+// 🪙 STEP 1: Send WR transfer transaction via MiniKit
+// ============================================================
+const sendWRTransfer = async (): Promise<string | null> => {
+  try {
+    const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
+    const campaignContract = process.env.NEXT_PUBLIC_WR_CONTRACT! // sementara ke kontrak WR juga
+    const amount = (Number(campaign.budget) * 1e18).toString()
+
+    const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      transaction: [
+        {
+          address: wrAddress,
+          abi: WRABI,
+          functionName: 'transfer',
+          args: [campaignContract, amount],
+        },
+      ],
+    })
+
+    if (finalPayload.status === 'error') {
+      console.error('Transfer failed:', finalPayload)
+      setErrorMessage('Transaction failed. Please try again.')
+      return null
+    }
+
+    console.log('✅ WR transferred successfully:', finalPayload.transaction_id)
+    return finalPayload.transaction_id
+  } catch (err) {
+    console.error('Error sending WR:', err)
+    setErrorMessage('Failed to send WR transaction.')
+    return null
+  }
+}
 
   // build invite link from env - client needs NEXT_PUBLIC_*
   const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ?? '1393523002750140446'
@@ -223,23 +263,50 @@ export const CampaignForm = ({
       return
     }
 
-    try {
-      // call parent submit handler (it may save to DB)
-      await onSubmit(campaign)
 
-      // show success toast then close modal shortly after
+  // ============================================================
+  // 🪙 Step 3: Transfer WR tokens using MiniKit
+  // ============================================================
+  const txId = await sendWRTransfer()
+  if (!txId) {
+    setPublishing(false)
+    return
+  }
+  setTransactionId(txId)
+
+  // ============================================================
+  // 🧾 Step 4: Save campaign to backend
+  // ============================================================
+  try {
+    const res = await fetch('/api/campaign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...campaign,
+        depositTxHash: txId,
+        userAddress,
+      }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('Backend error:', data)
+      setErrorMessage('Failed to publish campaign.')
+    } else {
       setSuccessMessage('Campaign published successfully!')
       setEditingCampaign(null)
       setTimeout(() => {
         setPublishing(false)
         onClose()
-      }, 800)
-    } catch (err) {
-      console.error('publish error', err)
-      setErrorMessage('Failed to publish campaign. Please try again.')
-      setPublishing(false)
+      }, 1000)
     }
+  } catch (err) {
+    console.error('publish error', err)
+    setErrorMessage('Failed to publish campaign. Please try again.')
+  } finally {
+    setPublishing(false)
   }
+}
 
   return (
     <>
