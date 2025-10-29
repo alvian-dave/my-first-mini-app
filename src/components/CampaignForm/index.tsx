@@ -69,8 +69,7 @@ export const CampaignForm = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
-  const [transactionId, setTransactionId] = useState<string>('')
-
+  
   const { data: session } = useSession()
   const userAddress = session?.user?.walletAddress || ''
 
@@ -272,13 +271,12 @@ const sendWRTransfer = async (): Promise<string | null> => {
     setPublishing(false)
     return
   }
-  setTransactionId(txId)
 
   // ============================================================
   // 🧾 Step 4: Save campaign to backend
   // ============================================================
   try {
-    const res = await fetch('/api/campaign', {
+    const res = await fetch('/api/campaigns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

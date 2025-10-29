@@ -5,7 +5,6 @@ import dbConnect from '@/lib/mongodb'
 import { Campaign } from '@/models/Campaign'
 import { Notification } from '@/models/Notification'
 import { auth } from '@/auth'
-import WRABI from '@/abi/WRCredit.json'
 
 // ✅ Utility: konversi string ke BigInt dengan 18 desimal (WR)
 function parseToBigInt(amount: string | number): bigint {
