@@ -45,22 +45,6 @@ export interface Task {
 // ==========================
 // Campaign Types
 // ==========================
-export interface Task {
-  service: "twitter" | "discord" | "telegram"
-  type:
-    | "follow"
-    | "retweet"
-    | "like"
-    | "join"
-    | "comment"
-    | "join_channel"
-    | "join_group"
-    | "comment_group"
-  url: string
-  targetId?: string
-  tweetId?: string
-}
-
 export interface Campaign {
   _id?: string // dari MongoDB
   id?: number  // opsional untuk dummy/local
