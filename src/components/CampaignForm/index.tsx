@@ -69,6 +69,8 @@ export const CampaignForm = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
+  const [transactionId, setTransactionId] = useState<string>('')
+  const [isConfirmed, setIsConfirmed] = useState(false)
   
   const { data: session } = useSession()
   const userAddress = session?.user?.walletAddress || ''
@@ -140,7 +142,7 @@ export const CampaignForm = ({
   }
 
   // ============================================================
-// 🪙 STEP 1: Send WR transfer transaction via MiniKit
+// 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
 // ============================================================
 const sendWRTransfer = async (): Promise<string | null> => {
   try {
@@ -271,10 +273,15 @@ const sendWRTransfer = async (): Promise<string | null> => {
     setPublishing(false)
     return
   }
-
+  setTransactionId(txId)
   // ============================================================
   // 🧾 Step 4: Save campaign to backend
   // ============================================================
+  
+    useEffect(() => {
+    if (!isConfirmed || !transactionId) return
+
+    const saveCampaign = async () => {
   try {
     const res = await fetch('/api/campaigns', {
       method: 'POST',
@@ -293,8 +300,13 @@ const sendWRTransfer = async (): Promise<string | null> => {
     } else {
       setSuccessMessage('Campaign published successfully!')
       setEditingCampaign(null)
+        if (onSubmit) {
+    onSubmit(data.record) // data.record = campaign baru dari backend
+  }
+  
       setTimeout(() => {
         setPublishing(false)
+        setIsConfirmed(false)
         onClose()
       }, 1000)
     }
@@ -305,6 +317,8 @@ const sendWRTransfer = async (): Promise<string | null> => {
     setPublishing(false)
   }
 }
+    saveCampaign()
+  }, [isConfirmed, transactionId])
 
   return (
     <>
@@ -582,4 +596,5 @@ const sendWRTransfer = async (): Promise<string | null> => {
       </Transition>
     </>
   )
+}
 }
