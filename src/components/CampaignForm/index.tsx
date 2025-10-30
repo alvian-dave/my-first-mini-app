@@ -73,6 +73,7 @@ export const CampaignForm = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
   const [transactionId, setTransactionId] = useState<string>('')
+  const isEditing = !!editingCampaign
   
   const { data: session } = useSession()
   const userAddress = session?.user?.walletAddress || ''
@@ -112,45 +113,54 @@ export const CampaignForm = ({
     }
   }, [editingCampaign])
 
-  // ============================================================
-  // 🧾 Step 4: Save campaign to backend
-  // ============================================================  
-    useEffect(() => {
-    if (!isConfirmed || !transactionId) return
+  useEffect(() => {
+  // Kalau campaign baru → tunggu transaksi WR selesai
+  if (!editingCampaign && (!isConfirmed || !transactionId)) return
 
-    const saveCampaign = async () => {
-      try {
-        const res = await fetch('/api/campaigns', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...campaign, depositTxHash: transactionId, userAddress }),
-        })
+  const saveCampaign = async () => {
+    try {
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: campaign.title,
+          description: campaign.description,
+          tasks: campaign.tasks,
+          budget: campaign.budget,  // nilai lama tetap dikirim
+          reward: campaign.reward,  // nilai lama tetap dikirim
+          status: campaign.status,
+          depositTxHash: editingCampaign ? undefined : transactionId, // hanya campaign baru
+          userAddress,
+        }),
+      })
 
-    const data = await res.json()
-    if (!res.ok) {
-      console.error('Backend error:', data)
-      setErrorMessage('Failed to publish campaign.')
-    } else {
-      setSuccessMessage('Campaign published successfully!')
-      setEditingCampaign(null)
-        if (onSubmit) {
-    onSubmit(data.record) // data.record = campaign baru dari backend
-  }
+      const data = await res.json()
 
-      setTimeout(() => {
-        setPublishing(false)
-        onClose()
-      }, 1000)
+      if (!res.ok) {
+        console.error('Backend error:', data)
+        setErrorMessage(
+          editingCampaign ? 'Failed to update campaign.' : 'Failed to publish campaign.'
+        )
+      } else {
+        setSuccessMessage(
+          editingCampaign ? 'Campaign updated successfully!' : 'Campaign published successfully!'
+        )
+        setEditingCampaign(null)
+        if (onSubmit) onSubmit(data.record)
+      }
+    } catch (err) {
+      console.error('publish error', err)
+      setErrorMessage(
+        editingCampaign ? 'Failed to update campaign. Please try again.' : 'Failed to publish campaign. Please try again.'
+      )
+    } finally {
+      setPublishing(false)
+      onClose()
     }
-  } catch (err) {
-    console.error('publish error', err)
-    setErrorMessage('Failed to publish campaign. Please try again.')
-  } finally {
-    setPublishing(false)
   }
-}
-    saveCampaign()
-  }, [isConfirmed, transactionId])  
+
+  saveCampaign()
+}, [isConfirmed, transactionId, editingCampaign])
 
   useEffect(() => {
     if (errorMessage) {
@@ -300,6 +310,10 @@ export const CampaignForm = ({
   // ============================================================
   // 🪙 Step 3: Transfer WR tokens using MiniKit
   // ============================================================
+  if (editingCampaign) {
+    setTransactionId('')
+    return
+  }
   const txId = await sendWRTransfer()
   if (!txId) {
     setPublishing(false)
@@ -385,6 +399,7 @@ const sendWRTransfer = async (): Promise<string | null> => {
                     placeholder="Total Budget (e.g. 1000 WR)"
                     value={campaign.budget || ''}
                     onChange={(e) => handleChange('budget', e.target.value)}
+                    disabled={isEditing}
                   />
 
                   <input
@@ -394,6 +409,7 @@ const sendWRTransfer = async (): Promise<string | null> => {
                     placeholder="Reward per Task (e.g. 10 WR)"
                     value={campaign.reward || ''}
                     onChange={(e) => handleChange('reward', e.target.value)}
+                    disabled={isEditing}
                   />
 
                   <div className="space-y-3">
