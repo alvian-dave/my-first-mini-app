@@ -154,15 +154,22 @@ export async function POST(req: Request) {
     })
 
     // ======================================
-    // 5️⃣ Kirim notifikasi promoter
+    // 5️⃣ Kirim notifikasi promoter (dengan metadata link explorer)
     // ======================================
+    const explorerBase = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || 'https://worldscan.org/tx/'
+    const txLink = `${explorerBase}${onchainHash}`
+
     await Notification.create({
       userId: session.user.id,
       role: 'promoter',
       type: 'campaign_created',
-      message: `Your campaign "${newCampaign.title}" has been successfully created and verified on-chain.`,
+      message: `Your campaign "${newCampaign.title}" has been successfully created and verified on-chain. 🧾`,
+      metadata: {
+        onchainHash: onchainHash.toLowerCase(),
+        txLink,
+      },
     })
-
+    
     return NextResponse.json({
       ok: true,
       message: 'Campaign created and verified successfully',
