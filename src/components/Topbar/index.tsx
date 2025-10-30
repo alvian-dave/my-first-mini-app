@@ -324,22 +324,37 @@ const fetchBalance = async () => {
             </div>
 
             <div className="overflow-y-auto flex-1">
-              {notifications.length > 0 ? (
-                notifications.map((n) => (
-                  <div
-                    key={n._id}
-                    onClick={() => markAsRead(n._id)}
-                    className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
-                      n.isRead ? 'bg-white text-gray-800' : 'bg-gray-100 font-medium text-gray-900'
-                    } hover:bg-gray-200 transition`}
-                  >
-                    <p className="text-sm">{n.message}</p>
-                    <p className="text-xs text-gray-600">{new Date(n.createdAt).toLocaleString()}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
-              )}
+{notifications.length > 0 ? (
+  notifications.map((n) => (
+    <div
+      key={n._id}
+      onClick={() => markAsRead(n._id)}
+      className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
+        n.isRead ? 'bg-white text-gray-800' : 'bg-gray-100 font-medium text-gray-900'
+      } hover:bg-gray-200 transition`}
+    >
+      {/* 📨 Pesan utama */}
+      <p className="text-sm">{n.message}</p>
+      <p className="text-xs text-gray-600">{new Date(n.createdAt).toLocaleString()}</p>
+
+      {/* 🧾 Opsional: tampilkan link explorer kalau metadata ada */}
+      {n.metadata?.txLink && (
+        <a
+          href={n.metadata.txLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()} // biar klik link tidak men-trigger markAsRead
+          className="text-blue-600 text-xs underline mt-1 block hover:text-blue-800"
+        >
+          View on Explorer 🔗
+        </a>
+      )}
+    </div>
+  ))
+) : (
+  <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
+)}
+
             </div>
           </div>
         </div>
