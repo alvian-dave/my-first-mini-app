@@ -309,62 +309,37 @@ const fetchBalance = async () => {
       {/* ✅ Contact Us Modal */}
 {showContactUs && <ContactUsModal onClose={() => setShowContactUs(false)} />}
 
-{/* --- Notification Modal --- */}
-{showNotificationsModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-    <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
-      <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
-        <h2 className="text-lg font-semibold">Notifications</h2>
-        <button
-          onClick={() => setShowNotificationsModal(false)}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          Close
-        </button>
-      </div>
-
-      <div className="overflow-y-auto flex-1">
-        {notifications.length > 0 ? (
-          notifications.map((n) => {
-            const hash = n.metadata?.onchainHash || n.metadata?.mintTx || null
-            const txLink = n.metadata?.txLink || null
-
-            // Inline helper untuk truncate
-            const truncateHash = (h: string) => `${h.slice(0, 6)}...${h.slice(-4)}`
-
-            return (
-              <div
-                key={n._id}
-                onClick={() => markAsRead(n._id)}
-                className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
-                  n.isRead ? 'bg-white text-gray-800' : 'bg-gray-100 font-medium text-gray-900'
-                } hover:bg-gray-200 transition`}
+      {/* --- Notification Modal --- */}
+      {showNotificationsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
+            <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
+              <h2 className="text-lg font-semibold">Notifications</h2>
+              <button
+                onClick={() => setShowNotificationsModal(false)}
+                className="text-gray-500 hover:text-gray-700"
               >
-                {/* Pesan utama */}
-                <p className="text-sm">{n.message}</p>
-                <p className="text-xs text-gray-600">{new Date(n.createdAt).toLocaleString()}</p>
+                Close
+              </button>
+            </div>
 
-                {/* Jika ada hash, tampilkan "0x..." dan link view */}
-                {hash && txLink && (
-                  <div className="mt-2">
-                    <p className="text-xs font-mono">{truncateHash(hash)}</p>
-                    <a
-                      href={txLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()} // supaya klik link tidak mark as read lagi
-                      className="text-blue-600 text-xs underline block mt-1 hover:text-blue-800"
-                    >
-                      View on Blockchain
-                    </a>
+            <div className="overflow-y-auto flex-1">
+              {notifications.length > 0 ? (
+                notifications.map((n) => (
+                  <div
+                    key={n._id}
+                    onClick={() => markAsRead(n._id)}
+                    className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${
+                      n.isRead ? 'bg-white text-gray-800' : 'bg-gray-100 font-medium text-gray-900'
+                    } hover:bg-gray-200 transition`}
+                  >
+                    <p className="text-sm">{n.message}</p>
+                    <p className="text-xs text-gray-600">{new Date(n.createdAt).toLocaleString()}</p>
                   </div>
-                )}
-              </div>
-            )
-          })
-        ) : (
-          <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
-        )}
+                ))
+              ) : (
+                <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
+              )}
             </div>
           </div>
         </div>
