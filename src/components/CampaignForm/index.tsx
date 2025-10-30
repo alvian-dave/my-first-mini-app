@@ -113,9 +113,13 @@ export const CampaignForm = ({
     }
   }, [editingCampaign])
 
-  useEffect(() => {
-  // Kalau campaign baru → tunggu transaksi WR selesai
-  if (!editingCampaign && (!isConfirmed || !transactionId)) return
+useEffect(() => {
+  if (editingCampaign) {
+    // ❌ edit campaign → jangan tunggu transactionId
+  } else {
+    // ✅ campaign baru → tunggu transactionId
+    if (!isConfirmed || !transactionId) return
+  }
 
   const saveCampaign = async () => {
     try {
@@ -125,34 +129,25 @@ export const CampaignForm = ({
         body: JSON.stringify({
           title: campaign.title,
           description: campaign.description,
-          tasks: campaign.tasks,
-          budget: campaign.budget,  // nilai lama tetap dikirim
-          reward: campaign.reward,  // nilai lama tetap dikirim
+          tasks: campaign.tasks,  // selalu kirim tasks
+          budget: campaign.budget,
+          reward: campaign.reward,
           status: campaign.status,
-          depositTxHash: editingCampaign ? undefined : transactionId, // hanya campaign baru
+          depositTxHash: editingCampaign ? undefined : transactionId,
           userAddress,
         }),
       })
 
       const data = await res.json()
-
       if (!res.ok) {
-        console.error('Backend error:', data)
-        setErrorMessage(
-          editingCampaign ? 'Failed to update campaign.' : 'Failed to publish campaign.'
-        )
+        setErrorMessage(editingCampaign ? 'Failed to update campaign.' : 'Failed to publish campaign.')
       } else {
-        setSuccessMessage(
-          editingCampaign ? 'Campaign updated successfully!' : 'Campaign published successfully!'
-        )
+        setSuccessMessage(editingCampaign ? 'Campaign updated successfully!' : 'Campaign published successfully!')
         setEditingCampaign(null)
         if (onSubmit) onSubmit(data.record)
       }
     } catch (err) {
-      console.error('publish error', err)
-      setErrorMessage(
-        editingCampaign ? 'Failed to update campaign. Please try again.' : 'Failed to publish campaign. Please try again.'
-      )
+      setErrorMessage(editingCampaign ? 'Failed to update campaign. Please try again.' : 'Failed to publish campaign. Please try again.')
     } finally {
       setPublishing(false)
       onClose()
