@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     // 2️⃣ Validasi transaksi di blockchain
     // ======================================
     const RPC = process.env.NEXT_PUBLIC_RPC_URL
-    const WR_CONTRACT = process.env.NEXT_PUBLIC_WR_CONTRACT
+    const WR_CONTRACT = process.env.NEXT_PUBLIC_WR_ESCROW
     if (!RPC || !WR_CONTRACT) {
       return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
     }

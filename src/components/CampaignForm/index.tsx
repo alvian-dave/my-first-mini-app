@@ -317,7 +317,7 @@ export const CampaignForm = ({
 const sendWRTransfer = async (): Promise<string | null> => {
   try {
     const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
-    const campaignContract = process.env.NEXT_PUBLIC_WR_CONTRACT! // sementara ke kontrak WR juga
+    const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! // sementara ke kontrak WR juga
     const amount = (Number(campaign.budget) * 1e18).toString()
 
     const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
