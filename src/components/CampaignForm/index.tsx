@@ -215,6 +215,18 @@ export const CampaignForm = ({
       setErrorMessage('Description is required')
       return
     }
+  
+  if (!campaign.tasks || campaign.tasks.length === 0) {
+    setErrorMessage('At least one task is required')
+    return
+  }
+
+  for (const [index, t] of campaign.tasks.entries()) {
+    if (!t.service || !t.type || !t.url) {
+      setErrorMessage(`Task #${index + 1} is incomplete`)
+      return
+    }
+  }  
 
     setPublishing(true)
 
