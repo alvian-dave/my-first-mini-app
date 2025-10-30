@@ -98,8 +98,8 @@ export async function POST(req: Request) {
     // ======================================
     // 3️⃣ Validasi log transfer WR ke kontrak WR
     // ======================================
-    const wrContractLower = process.env.NEXT_PUBLIC_WR_CONTRACT!.toLowerCase();
-    const escrowAddrLower = process.env.NEXT_PUBLIC_WR_ESCROW!.toLowerCase();
+    const wrContractLower = WR_CONTRACT!.toLowerCase()
+    const escrowAddrLower = ESCROW_CONTRACT!.toLowerCase()
     const userLower = userAddress.toLowerCase();
 
     const erc20Interface = new ethers.Interface([
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
     let transferredAmount: bigint | null = null
 
     for (const log of receipt.logs) {
-      if (log.address.toLowerCase() === WR_CONTRACT) {
+      if (log.address.toLowerCase() === wrContractLower) {
         try {
           const parsed = erc20Interface.parseLog(log)
           if (!parsed) continue
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
           const value = BigInt(args.value)
 
           // promoter kirim WR ke kontrak WR
-      if (fromAddr === userLower && toAddr === ESCROW_CONTRACT) {
+      if (fromAddr === userLower && toAddr === escrowAddrLower) {
         foundValidTransfer = true;
         transferredAmount = value;
         break;
