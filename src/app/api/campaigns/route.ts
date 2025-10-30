@@ -79,7 +79,8 @@ export async function POST(req: Request) {
     // 2️⃣ Validasi transaksi di blockchain
     // ======================================
     const RPC = process.env.NEXT_PUBLIC_RPC_URL
-    const WR_CONTRACT = process.env.NEXT_PUBLIC_WR_ESCROW
+    const WR_CONTRACT = process.env.NEXT_PUBLIC_WR_CONTRACT
+    const ESCROW_CONTRACT = process.env.NEXT_PUBLIC_WR_ESCROW
     if (!RPC || !WR_CONTRACT) {
       return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
     }
@@ -97,8 +98,9 @@ export async function POST(req: Request) {
     // ======================================
     // 3️⃣ Validasi log transfer WR ke kontrak WR
     // ======================================
-    const wrContractLower = WR_CONTRACT.toLowerCase()
-    const userLower = userAddress.toLowerCase()
+    const wrContractLower = process.env.NEXT_PUBLIC_WR_CONTRACT!.toLowerCase();
+    const escrowAddrLower = process.env.NEXT_PUBLIC_WR_ESCROW!.toLowerCase();
+    const userLower = userAddress.toLowerCase();
 
     const erc20Interface = new ethers.Interface([
       'event Transfer(address indexed from, address indexed to, uint256 value)',
@@ -108,7 +110,7 @@ export async function POST(req: Request) {
     let transferredAmount: bigint | null = null
 
     for (const log of receipt.logs) {
-      if (log.address && log.address.toLowerCase() === wrContractLower) {
+      if (log.address.toLowerCase() === WR_CONTRACT) {
         try {
           const parsed = erc20Interface.parseLog(log)
           if (!parsed) continue
@@ -118,11 +120,11 @@ export async function POST(req: Request) {
           const value = BigInt(args.value)
 
           // promoter kirim WR ke kontrak WR
-        if (fromAddr === userLower && toAddr.toLowerCase() === WR_CONTRACT.toLowerCase()) {
-          foundValidTransfer = true
-          transferredAmount = value
-          break
-        }
+      if (fromAddr === userLower && toAddr === ESCROW_CONTRACT) {
+        foundValidTransfer = true;
+        transferredAmount = value;
+        break;
+      }
         } catch {
           // bukan event Transfer
         }
