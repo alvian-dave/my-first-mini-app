@@ -162,12 +162,18 @@ export async function POST(req: Request) {
         pending.mintTxHash = mintTx.hash
         await pending.save()
 
-        await Notification.create({
-          userId: session.user.id,
-          role: 'promoter',
-          type: 'topup_success',
-          message: `Top-up successful! ${wrAmount} WR has been added to your wallet. Please refresh your dashboard.`,
-        })
+await Notification.create({
+  userId: session.user.id,
+  role: 'promoter',
+  type: 'topup_success',
+  message: `Top-up successful! ${wrAmount} WR has been added to your wallet. Please refresh your dashboard.`,
+  metadata: {
+    onchainHash: onchainHash.toLowerCase(),
+    mintTxHash: mintTx.hash,
+    txLink: `${process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || 'https://worldscan.org/tx/'}${mintTx.hash}`
+  }
+})
+
 
         return NextResponse.json({
           ok: true,
