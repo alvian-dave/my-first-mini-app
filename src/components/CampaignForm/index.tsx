@@ -3,8 +3,11 @@ import { Dialog, Transition } from '@headlessui/react'
 import { Fragment, useState, useEffect } from 'react'
 import { Campaign as CampaignType } from '@/types'
 import { MiniKit } from '@worldcoin/minikit-js'
+import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
 import WRABI from '@/abi/WRCredit.json'
 import { useSession } from 'next-auth/react'
+import { createPublicClient, http } from 'viem'
+import { worldchain } from 'viem/chains'
 
 const MAX_TASKS = 3
 const SERVICE_OPTIONS = [
@@ -70,10 +73,20 @@ export const CampaignForm = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
   const [transactionId, setTransactionId] = useState<string>('')
-  const [isConfirmed, setIsConfirmed] = useState(false)
   
   const { data: session } = useSession()
   const userAddress = session?.user?.walletAddress || ''
+
+    const client = createPublicClient({
+    chain: worldchain,
+    transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
+  })
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    client,
+    appConfig: { app_id: process.env.NEXT_PUBLIC_APP_ID || '' },
+    transactionId,
+  })
 
   useEffect(() => {
     if (editingCampaign) {
@@ -276,22 +289,17 @@ const sendWRTransfer = async (): Promise<string | null> => {
   setTransactionId(txId)
   // ============================================================
   // 🧾 Step 4: Save campaign to backend
-  // ============================================================
-  
+  // ============================================================  
     useEffect(() => {
     if (!isConfirmed || !transactionId) return
 
     const saveCampaign = async () => {
-  try {
-    const res = await fetch('/api/campaigns', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...campaign,
-        depositTxHash: txId,
-        userAddress,
-      }),
-    })
+      try {
+        const res = await fetch('/api/campaigns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...campaign, depositTxHash: transactionId, userAddress }),
+        })
 
     const data = await res.json()
     if (!res.ok) {
@@ -303,10 +311,9 @@ const sendWRTransfer = async (): Promise<string | null> => {
         if (onSubmit) {
     onSubmit(data.record) // data.record = campaign baru dari backend
   }
-  
+
       setTimeout(() => {
         setPublishing(false)
-        setIsConfirmed(false)
         onClose()
       }, 1000)
     }
