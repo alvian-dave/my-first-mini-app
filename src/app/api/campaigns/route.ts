@@ -118,11 +118,11 @@ export async function POST(req: Request) {
           const value = BigInt(args.value)
 
           // promoter kirim WR ke kontrak WR
-          if (fromAddr === userLower && toAddr === wrContractLower) {
-            foundValidTransfer = true
-            transferredAmount = value
-            break
-          }
+        if (fromAddr === userLower && toAddr.toLowerCase() === WR_CONTRACT.toLowerCase()) {
+          foundValidTransfer = true
+          transferredAmount = value
+          break
+        }
         } catch {
           // bukan event Transfer
         }
