@@ -92,6 +92,8 @@ export const CampaignForm = ({
     if (editingCampaign) {
       setCampaign({
         ...editingCampaign,
+        budget: editingCampaign.budget ?? '',
+        reward: editingCampaign.reward ?? '',
         tasks: (editingCampaign.tasks ?? []).map((t) => ({
           ...t,
           isOld: true,
