@@ -113,49 +113,47 @@ export const CampaignForm = ({
     }
   }, [editingCampaign])
 
-useEffect(() => {
-  if (editingCampaign) {
-    // ❌ edit campaign → jangan tunggu transactionId
-  } else {
-    // ✅ campaign baru → tunggu transactionId
+  // ============================================================
+  // 🧾 Step 4: Save campaign to backend
+  // ============================================================
+
+    useEffect(() => {
     if (!isConfirmed || !transactionId) return
+
+    const saveCampaign = async () => {
+      try {
+        const res = await fetch('/api/campaigns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...campaign, depositTxHash: transactionId, userAddress }),
+        })
+
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('Backend error:', data)
+      setErrorMessage('Failed to publish campaign.')
+    } else {
+      setSuccessMessage('Campaign published successfully!')
+      setEditingCampaign(null)
+        if (onSubmit) {
+    onSubmit(data.record) // data.record = campaign baru dari backend
   }
 
-  const saveCampaign = async () => {
-    try {
-      const res = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: campaign.title,
-          description: campaign.description,
-          tasks: campaign.tasks,  // selalu kirim tasks
-          budget: campaign.budget,
-          reward: campaign.reward,
-          status: campaign.status,
-          depositTxHash: editingCampaign ? undefined : transactionId,
-          userAddress,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        setErrorMessage(editingCampaign ? 'Failed to update campaign.' : 'Failed to publish campaign.')
-      } else {
-        setSuccessMessage(editingCampaign ? 'Campaign updated successfully!' : 'Campaign published successfully!')
-        setEditingCampaign(null)
-        if (onSubmit) onSubmit(data.record)
-      }
-    } catch (err) {
-      setErrorMessage(editingCampaign ? 'Failed to update campaign. Please try again.' : 'Failed to publish campaign. Please try again.')
-    } finally {
-      setPublishing(false)
-      onClose()
+      setTimeout(() => {
+        setPublishing(false)
+        onClose()
+      }, 1000)
     }
+  } catch (err) {
+    console.error('publish error', err)
+    setErrorMessage('Failed to publish campaign. Please try again.')
+  } finally {
+    setPublishing(false)
   }
-
-  saveCampaign()
-}, [isConfirmed, transactionId, editingCampaign])
+}
+    saveCampaign()
+  }, [isConfirmed, transactionId]) 
+   
 
   useEffect(() => {
     if (errorMessage) {
@@ -305,10 +303,6 @@ useEffect(() => {
   // ============================================================
   // 🪙 Step 3: Transfer WR tokens using MiniKit
   // ============================================================
-  if (editingCampaign) {
-    setTransactionId('')
-    return
-  }
   const txId = await sendWRTransfer()
   if (!txId) {
     setPublishing(false)
