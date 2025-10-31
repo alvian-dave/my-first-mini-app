@@ -155,11 +155,11 @@ const handleMarkFinished = async (id: string) => {
 
   // ✅ Delete with toast confirmation
   const handleDelete = (id: string) => {
-    setLoadingId(id)
     setToast({
       message: 'Are you sure you want to delete this campaign?',
       type: 'confirm',
       onConfirm: async () => {
+        setLoadingId(id)
         try {
           await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
           setCampaigns(prev => prev.filter(p => p._id !== id))

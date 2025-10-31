@@ -320,7 +320,18 @@ try {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    // handle response...
+  const data = await res.json()
+
+  if (!res.ok) {
+    setErrorMessage(data.message || 'Failed to save campaign')
+    return
+  }
+
+  setSuccessMessage(
+    isEditing
+      ? 'Your campaign successfully updated'
+      : 'Campaign successfully published'
+  )
   } finally {
     setPublishing(false)
   }
