@@ -21,16 +21,6 @@ export interface Role {
 }
 
 // ==========================
-// Balance
-// ==========================
-export interface Balance {
-  _id?: string
-  userId: string
-  role: "hunter" | "promoter"
-  amount: number
-}
-
-// ==========================
 // Task
 // ==========================
 export interface Task {
@@ -69,6 +59,20 @@ export interface Campaign {
   remainingWR?: string     // saldo WR tersisa (wei)
   lastRescueTx?: string    // hash rescue terakhir (reward/refund)
   error?: string           // catatan error jika gagal
+
+  // 🧾 Tambahan baru: histori transaksi reward/rescue
+  transactions?: CampaignTransaction[]
+}
+
+// ==========================
+// Campaign Transaction Type
+// ==========================
+export interface CampaignTransaction {
+  type: "reward" | "rescue"
+  txHash: string
+  to: string
+  amount: string   // dalam wei
+  timestamp: string | Date
 }
 
 // ==========================
@@ -101,9 +105,8 @@ export interface SocialAccount {
   updatedAt?: string
 }
 
-// ==========================
-// Submission
-// ==========================
+export type RewardStatus = "none" | "pending_onchain" | "onchain_confirmed" | "failed"
+
 export interface SubmissionTask {
   service: "twitter" | "discord" | "telegram"
   type: string
@@ -119,6 +122,14 @@ export interface Submission {
   tasks: SubmissionTask[]
   status: "pending" | "submitted"
   rewarded?: boolean           // ✅ sinkron dengan schema
+
+  // --- On-chain reward tracking (added) ---
+  rewardStatus?: RewardStatus
+  rewardAmount?: string        // wei as string
+  rewardTxHash?: string
+  rewardOnchainAt?: string     // ISO datetime string
+  rewardError?: string
+
   createdAt?: string
   updatedAt?: string
 }

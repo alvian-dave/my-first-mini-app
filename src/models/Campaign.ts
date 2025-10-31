@@ -28,6 +28,22 @@ const TaskSchema = new Schema(
   { _id: false }
 )
 
+// 🧾 Schema untuk menyimpan histori transaksi reward/rescue
+const TransactionSchema = new Schema(
+  {
+    type: {
+      type: String,
+      enum: ['reward', 'rescue'],
+      required: true,
+    },
+    txHash: { type: String, required: true },
+    to: { type: String, required: true },
+    amount: { type: String, required: true }, // dalam wei (string)
+    timestamp: { type: Date, default: Date.now },
+  },
+  { _id: false }
+)
+
 const CampaignSchema = new Schema(
   {
     title: { type: String, required: true },
@@ -60,7 +76,7 @@ const CampaignSchema = new Schema(
     // ✅ Simpan ID hunter yang sudah selesai
     participants: [{ type: String }],
 
-        // 🧾 Bukti deposit campaign (on-chain)
+    // 🧾 Bukti deposit campaign (on-chain)
     depositTxHash: { type: String, required: true }, // dari Worldcoin MiniKit (transaction_id)
     onchainHash: { type: String, required: true },   // tx hash on blockchain
 
@@ -71,7 +87,13 @@ const CampaignSchema = new Schema(
     // 🔐 Alamat wallet promoter yang buat campaign
     promoterAddress: { type: String, required: true },
 
-    // 📦 Hash transaksi refund / reward terakhir (optional, untuk log)
+    // 🧾 Log semua transaksi reward & rescue (on-chain)
+    transactions: {
+      type: [TransactionSchema],
+      default: [],
+    },
+
+    // 📦 Hash transaksi refund / reward terakhir (optional, untuk log cepat)
     lastRescueTx: { type: String },
 
     // 🧩 Tambahan optional:

@@ -1,11 +1,10 @@
-// /src/app/api/submissions/route.ts
 import { NextResponse } from "next/server"
 import dbConnect from "@/lib/mongodb"
 import Submission from "@/models/Submission"
 import { Campaign } from "@/models/Campaign"
-import Balance from "@/models/Balance"
 import { Notification } from "@/models/Notification"
 import { auth } from "@/auth"
+import { rewardHunter } from "@/lib/rewardHunter" // sesuaikan path kalau beda
 
 // ✅ definisi Task biar gak implicit any
 type Task = { service: string; type: string; url: string; done?: boolean; verifiedAt?: Date }
@@ -85,11 +84,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "campaignId required" }, { status: 400 })
   }
 
-  // ambil submission hunter
+  // ambil submission hunter (mutable document)
   const submission = await Submission.findOne({
     userId: session.user.id,
     campaignId,
   })
+
   if (!submission) {
     return NextResponse.json(
       { error: "No submission found. Please verify tasks first." },
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     )
   }
 
-  // kalau belum semua task done → error
+  // kalau belum semua task done → error (sama seperti sebelumnya)
   if (submission.status !== "submitted") {
     return NextResponse.json(
       { error: "Not all tasks verified yet" },
@@ -105,15 +105,16 @@ export async function POST(req: Request) {
     )
   }
 
-  // ambil campaign
-  const campaign = await Campaign.findOneAndUpdate(
-    { _id: campaignId, status: "active" },
-    {
-      $addToSet: { participants: session.user.id }, // tambahkan participant unik
-    },
-    { new: true }
-  )
+  // cek apakah sudah pernah diberi reward
+  if ((submission as any).rewarded) {
+    return NextResponse.json(
+      { error: "Submission already rewarded" },
+      { status: 400 }
+    )
+  }
 
+  // ambil campaign yang aktif
+  const campaign = await Campaign.findOne({ _id: campaignId, status: "active" })
   if (!campaign) {
     return NextResponse.json(
       { error: "Campaign not found or inactive" },
@@ -121,50 +122,107 @@ export async function POST(req: Request) {
     )
   }
 
-  // hitung ulang contributors
-  campaign.contributors = campaign.participants.length
-  await campaign.save()
+  // cek minimal remaining di campaign (helper juga akan handle rescue jika kurang)
+  const rewardWei = BigInt(campaign.reward)
+  const remainingWei = BigInt(campaign.remainingWR || "0")
+
+  if (remainingWei === 0n) {
+    return NextResponse.json(
+      { error: "Campaign has insufficient remaining funds" },
+      { status: 400 }
+    )
+  }
+
+  // update participants/contributors only once per hunter
+  if (!campaign.participants.includes(session.user.id)) {
+    campaign.participants.push(session.user.id)
+    campaign.contributors = campaign.participants.length
+    await campaign.save()
+  }
+
+  // =========================
+  // Reserve / mark pending
+  // =========================
+  submission.rewardStatus = "pending_onchain"
+  submission.rewardAmount = campaign.reward
+  await submission.save()
 
   let rewarded = false
-  // update balance hunter → cuma sekali
-  let hunterBalance = await Balance.findOne({ userId: session.user.id })
-  if (!hunterBalance) {
-    // ✅ tambahkan role: "hunter" sesuai schema
-    hunterBalance = await Balance.create({
-      userId: session.user.id,
-      role: "hunter",
-      amount: 0,
-    })
-  }
-  if (!(submission as any).rewarded) {
-    hunterBalance.amount += Number(campaign.reward)
-    await hunterBalance.save()
-    rewarded = true
-    ;(submission as any).rewarded = true
+  let txHash: string | undefined = undefined
+
+  try {
+    // call on-chain helper (this will await tx.wait() per your helper)
+    await rewardHunter(session.user.walletAddress, campaign)
+    // rewardHunter in your helper updates & saves the campaign.transactions and remainingWR
+
+    // fetch latest campaign (already updated by helper but reload to be safe)
+    const updatedCampaign = await Campaign.findById(campaignId)
+
+    // get last reward tx for this payout (helper pushes transactions array)
+    const lastTx = (updatedCampaign?.transactions || []).slice(-1)[0]
+    txHash = lastTx?.txHash
+
+    // mark submission rewarded
+    submission.rewarded = true
+    submission.rewardStatus = "onchain_confirmed"
+    submission.rewardTxHash = txHash
+    submission.rewardOnchainAt = new Date()
     await submission.save()
 
-    // ✅ Notifikasi untuk Hunter
-    await Notification.create({
-      userId: session.user.id,
-      role: "hunter",
-      type: "submission_completed",
-      message: `You have successfully completed the campaign "${campaign.title}" and earned ${campaign.reward} tokens.`,
-    })
+    rewarded = true
 
-    // ✅ Notifikasi untuk Promoter
-    await Notification.create({
-      userId: campaign.createdBy,
-      role: "promoter",
-      type: "submission_completed",
-      message: `Hunter "${session.user.username || session.user.id}" has successfully completed your campaign "${campaign.title}".`,
+    // Notifications
+// build txLink from env + txHash (adjust key name if needed)
+const explorerBase = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || 'https://worldscan.org/tx/'
+const txLink = `${explorerBase}${txHash}`
+
+// Notification untuk Hunter (penerima)
+await Notification.create({
+  userId: session.user.id,
+  role: "hunter",
+  type: "submission_completed",
+  message: `You have successfully completed the campaign "${campaign.title}" and earned ${campaign.reward} WR Credit.`,
+  metadata: {
+    txHash: txHash,
+    txLink,
+    campaignId: campaign._id?.toString(),
+  },
+})
+
+// Notification untuk Promoter (pemilik campaign)
+await Notification.create({
+  userId: campaign.createdBy,
+  role: "promoter",
+  type: "submission_completed",
+  message: `Hunter "${session.user.username || session.user.id}" has successfully completed your campaign "${campaign.title}".`,
+  metadata: {
+    txHash: txHash,
+    txLink,
+    campaignId: campaign._id?.toString(),
+    hunterId: session.user.id,
+  },
+})
+
+    return NextResponse.json({
+      success: true,
+      submission: submission.toObject(),
+      campaign: updatedCampaign ? updatedCampaign.toObject() : campaign.toObject(),
+      txHash,
+      alreadyRewarded: !rewarded,
     })
+  } catch (err: any) {
+    // on error, mark failed and store error message
+    submission.rewardStatus = "failed"
+    submission.rewardError = err?.message || String(err)
+    await submission.save()
+
+    // optionally append campaign.error
+    campaign.error = err?.message || String(err)
+    await campaign.save()
+
+    return NextResponse.json(
+      { error: "Failed to execute on-chain reward", detail: err?.message || String(err) },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({
-    success: true,
-    submission: submission.toObject(),
-    campaign: campaign.toObject(),
-    newBalance: hunterBalance.amount,
-    alreadyRewarded: !rewarded, // frontend bisa pakai ini untuk toast message
-  })
 }

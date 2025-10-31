@@ -8,11 +8,11 @@ const submissionSchema = new Schema(
     // progress tiap task
     tasks: [
       {
-        service: { type: String, required: true },   // twitter / discord / telegram
-        type: { type: String, required: true },      // follow / join / retweet
-        url: { type: String, required: true },       // target link
-        done: { type: Boolean, default: false },     // hasil verifikasi
-        verifiedAt: { type: Date },                  // kapan diverifikasi
+        service: { type: String, required: true }, // twitter / discord / telegram
+        type: { type: String, required: true }, // follow / join / retweet
+        url: { type: String, required: true }, // target link
+        done: { type: Boolean, default: false }, // hasil verifikasi
+        verifiedAt: { type: Date }, // kapan diverifikasi
       },
     ],
 
@@ -28,6 +28,30 @@ const submissionSchema = new Schema(
       type: Boolean,
       default: false,
     },
+
+    // --- On-chain reward tracking fields (added) ---
+    // rewardStatus:
+    // - "none" = belum dicoba
+    // - "pending_onchain" = tx dikirim dan sedang menunggu konfirmasi
+    // - "onchain_confirmed" = tx sudah dikonfirmasi on-chain
+    // - "failed" = percobaan on-chain gagal
+    rewardStatus: {
+      type: String,
+      enum: ["none", "pending_onchain", "onchain_confirmed", "failed"],
+      default: "none",
+    },
+
+    // reward amount in wei (string)
+    rewardAmount: { type: String },
+
+    // tx hash dari reward transaction (string)
+    rewardTxHash: { type: String },
+
+    // waktu konfirmasi on-chain
+    rewardOnchainAt: { type: Date },
+
+    // error message bila payout gagal
+    rewardError: { type: String },
   },
   { timestamps: true }
 )

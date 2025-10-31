@@ -40,7 +40,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
               Platform.
             </p>
             <ul className="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1">
-              <li>Promoters acquire WR by depositing WLD (1 WLD = 100 WR).</li>
+              <li>Promoters acquire WR by depositing USDC.e (1 USDC = 200 WR).</li>
               <li>WR is used to create campaigns and reward Hunters.</li>
               <li>Hunters earn WR by completing campaign tasks successfully.</li>
               <li>
@@ -57,7 +57,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
               <li>Transparent on-chain campaign system</li>
               <li>Automatic reward distribution</li>
               <li>Fair and efficient connection between Promoters and Hunters</li>
-              <li>Backed by WLD deposits to ensure campaign value</li>
+              <li>Backed by USDC deposits to ensure campaign value</li>
             </ul>
           </section>
         </div>
