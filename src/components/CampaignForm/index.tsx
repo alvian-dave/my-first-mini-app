@@ -8,6 +8,7 @@ import WRABI from '@/abi/WRCredit.json'
 import { useSession } from 'next-auth/react'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
+import { parseUnits } from "ethers"
 
 const MAX_TASKS = 3
 const SERVICE_OPTIONS = [
@@ -340,19 +341,19 @@ try {
 } catch (err) {
   console.error('Failed to save campaign', err)
   setErrorMessage('An unexpected error occurred.')
-  
+
   } finally {
     setPublishing(false)
   }
 }
-  // ============================================================
+// ============================================================
 // 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
 // ============================================================
 const sendWRTransfer = async (): Promise<string | null> => {
   try {
     const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
     const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! // sementara ke kontrak WR juga
-    const amount = (Number(campaign.budget) * 1e18).toString()
+    const amount = parseUnits(campaign.budget.toString(), 18).toString()
 
     const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
       transaction: [
