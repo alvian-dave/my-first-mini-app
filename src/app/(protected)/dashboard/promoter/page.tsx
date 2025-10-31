@@ -44,6 +44,8 @@ export default function PromoterDashboard() {
   // ✅ Toast state (bisa confirm atau normal)
   const [toast, setToast] = useState<ToastState | null>(null)
 
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
@@ -114,6 +116,7 @@ useEffect(() => {
   }
 
 const handleMarkFinished = async (id: string) => {
+  setLoadingId(id)
   try {
     // send action: "finish" so backend triggers rescueCampaignFunds
     const resp = await fetch(`/api/campaigns/${id}`, {
@@ -145,6 +148,8 @@ const handleMarkFinished = async (id: string) => {
   } catch (err) {
     console.error('Failed to mark finished:', err)
     setToast({ message: 'Failed to mark finished', type: 'error' })
+      } finally {
+    setLoadingId(null)
   }
 }
 
@@ -270,13 +275,26 @@ const handleMarkFinished = async (id: string) => {
                         Edit
                       </button>
                       {c.contributors > 0 ? (
-                        <button
-                          onClick={() => handleMarkFinished(c._id)}
-                          className="px-3 py-1 rounded font-medium"
-                          style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                        >
-                          Mark Finished
-                        </button>
+                      <button
+                        onClick={() => handleMarkFinished(c._id)}
+                        className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                        style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                        disabled={loadingId === c._id}
+                        aria-busy={loadingId === c._id}
+                      >
+                        {loadingId === c._id ? (
+                          // simple spinner + text
+                          <>
+                            <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                              <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+                            </svg>
+                            Processing...
+                          </>
+                        ) : (
+                          'Mark Finished'
+                        )}
+                      </button>
                       ) : (
                         <button
                           onClick={() => handleDelete(c._id)}
