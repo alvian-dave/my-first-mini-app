@@ -113,23 +113,40 @@ useEffect(() => {
     }
   }
 
-  const handleMarkFinished = async (id: string) => {
-    try {
-      await fetch(`/api/campaigns/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'finished' }),
-      })
-      const res = await fetch('/api/campaigns')
-      const data = await res.json()
-      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
-      setCampaigns(filtered)
-      setToast({ message: 'Campaign marked as finished', type: 'success' })
-    } catch (err) {
-      console.error('Failed to mark finished:', err)
-      setToast({ message: 'Failed to mark finished', type: 'error' })
+const handleMarkFinished = async (id: string) => {
+  try {
+    // send action: "finish" so backend triggers rescueCampaignFunds
+    const resp = await fetch(`/api/campaigns/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'finish' }),
+    })
+    const result = await resp.json()
+
+    if (!resp.ok) {
+      console.error('Mark finished failed:', result)
+      setToast({ message: result?.error || 'Failed to mark finished', type: 'error' })
+      return
     }
+
+    // refresh campaigns list
+    const res = await fetch('/api/campaigns')
+    const data = await res.json()
+    const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
+    setCampaigns(filtered)
+
+    // show proper message depending on rescue result
+    if (result.txLink) {
+      setToast({ message: 'Campaign finished — remaining funds rescued. View tx', type: 'success' })
+      // optionally open result.txLink or show in UI
+    } else {
+      setToast({ message: result?.message || 'Campaign marked as finished', type: 'success' })
+    }
+  } catch (err) {
+    console.error('Failed to mark finished:', err)
+    setToast({ message: 'Failed to mark finished', type: 'error' })
   }
+}
 
   // ✅ Delete with toast confirmation
   const handleDelete = (id: string) => {

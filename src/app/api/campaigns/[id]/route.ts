@@ -54,7 +54,7 @@ export async function PUT(
             userId: campaign.createdBy,
             role: "promoter",
             type: "campaign_finished",
-            message: `Your campaign "${campaign.title}" has been finished and ${result.amountRescued} WR has been returned to your wallet.`,
+            message: `Your campaign "${campaign.title}" has been finished and remaining WR has been returned to your wallet.`,
             metadata: {
               txHash,
               txLink,
@@ -256,7 +256,7 @@ export async function DELETE(
             userId: campaign.createdBy,
             role: "promoter",
             type: "campaign_deleted",
-            message: `Your campaign "${campaign.title}" has been deleted and remaining ${result.amountRescued} WR was returned to your wallet.`,
+            message: `Your campaign "${campaign.title}" has been deleted and remaining ${campaign.reward} WR was returned to your wallet.`,
             metadata: {
               txHash,
               txLink,
