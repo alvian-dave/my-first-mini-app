@@ -1,45 +1,25 @@
-import { NextResponse } from 'next/server'
-
-const BOT_AUTH_TOKEN = process.env.TWITTER_BOT_AUTH_TOKEN!
-const BOT_CSRF = process.env.TWITTER_BOT_CSRF!
-const BOT_BEARER = process.env.BOT_BEARER!
-
-function botHeaders() {
-  return {
-    Authorization: `Bearer ${BOT_BEARER}`,
-    Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
-    'x-csrf-token': BOT_CSRF,
-    'User-Agent': 'Mozilla/5.0 (compatible; WorldAppBot/1.0; +https://worldapp.ai)',
-  }
-}
+// /api/connect/twitter/verifyUrl/route.ts
+import { NextResponse } from "next/server"
+import { resolveTwitterUserId } from "@/lib/twitter"
 
 export async function POST(req: Request) {
+  const body = await req.json().catch(() => null)
+  if (!body?.url) return NextResponse.json({ error: "Missing URL" }, { status: 400 })
+
+  let usernameToCheck: string
   try {
-    const { url } = await req.json()
-
-    if (!/^https:\/\/(x|twitter)\.com\//.test(url)) {
-      return NextResponse.json({ valid: false, reason: 'invalid_format' }, { status: 400 })
+    const u = new URL(body.url)
+    if (!u.hostname.includes("twitter.com") && !u.hostname.includes("x.com")) {
+      throw new Error("Invalid domain")
     }
-
-    // 🔎 Gunakan GET karena Twitter sering block HEAD
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: botHeaders(),
-      redirect: 'manual', // jangan auto-follow redirect
-    })
-
-    // ✅ 2xx → valid
-    if (res.ok) {
-      return NextResponse.json({ valid: true })
-    }
-
-    // ❌ Kalau 3xx, 4xx, 5xx → invalid
-    return NextResponse.json(
-      { valid: false, reason: `status_${res.status}` },
-      { status: res.status }
-    )
+    usernameToCheck = u.pathname.replace(/^\/+/, "").split(/[/?]/)[0].replace(/^@/, "")
+    if (!usernameToCheck) throw new Error("Empty username")
   } catch (err) {
-    console.error('verifyUrl error:', err)
-    return NextResponse.json({ valid: false, reason: 'fetch_failed' }, { status: 500 })
+    return NextResponse.json({ error: "Invalid Twitter URL", details: String(err) }, { status: 400 })
   }
+
+  const userId = await resolveTwitterUserId(usernameToCheck)
+  if (!userId) return NextResponse.json({ error: "Twitter user not found" }, { status: 404 })
+
+  return NextResponse.json({ username: usernameToCheck, userId })
 }

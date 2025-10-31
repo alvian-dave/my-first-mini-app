@@ -233,42 +233,51 @@ export const CampaignForm = ({
   }  
 
     setPublishing(true)
+    
 
-// ✅ Validasi Twitter URL
-for (const [index, t] of campaign.tasks.entries()) {
-  if (t.service === 'twitter') {
-    // 1️⃣ Pastikan format URL valid
-    if (!/^https:\/\/(x|twitter)\.com\//.test(t.url)) {
-      setErrorMessage(`Task #${index + 1}: Twitter URL must start with https://x.com/ or https://twitter.com/`)
-      setPublishing(false)
-      return
+
+    for (const t of campaign.tasks) {
+
+    // ✅ cek url twitter
+
+      if (t.service === 'twitter') {
+  try {
+    const u = new URL(t.url)
+
+    if (!u.hostname.includes('twitter.com') && !u.hostname.includes('x.com')) {
+      throw new Error('Invalid domain')
     }
 
-    // 2️⃣ Cek validitas via backend
-    try {
-      const res = await fetch('/api/connect/twitter/verifyUrl', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: t.url }),
-      })
-      const data = await res.json()
-
-      if (!res.ok || !data.valid) {
-        setErrorMessage(`Task #${index + 1}: Twitter URL not found or invalid.`)
-        setPublishing(false)
-        return
-      }
-    } catch (err) {
-      console.error('Twitter URL validation error:', err)
-      setErrorMessage(`Task #${index + 1}: Failed to verify Twitter URL.`)
-      setPublishing(false)
-      return
+    if (t.type === 'follow') {
+  try {
+    const res = await fetch("/api/connect/twitter/verifyUrl", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: t.url }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || "Invalid Twitter profile")
+    t.targetId = data.userId // simpan targetId di campaign task
+  } catch (err) {
+    setErrorMessage(`⚠️ Invalid Twitter profile URL for task "${t.type}": ${String(err)}`)
+    setPublishing(false)
+    return
+  }
+}
+    if (t.type === 'retweet' || t.type === 'like') {
+      const parts = u.pathname.split('/')
+      const tweetId = parts.find((p) => /^\d+$/.test(p))
+      if (!tweetId) throw new Error('No tweet ID in URL')
     }
+
+  } catch (err) {
+    setErrorMessage(`⚠️ Invalid Twitter/X URL for task "${t.type}" — ${String(err)}`)
+    setPublishing(false)
+    return
   }
 }
 
-    // ✅ Check Telegram tasks verification (unchanged)
-    for (const t of campaign.tasks) {
+      // ✅ Check Telegram tasks verification (unchanged)
       if (t.service === 'telegram' && (t.type === 'join_group' || t.type === 'join_channel')) {
         try {
           const res = await fetch('/api/connect/telegram/verifyGroup', {
@@ -317,6 +326,7 @@ for (const [index, t] of campaign.tasks.entries()) {
         }
       }
     }
+    
 
     const rewardPerTask = parseFloat(campaign.reward || '0')
     const totalBudget = parseFloat(campaign.budget || '0')
