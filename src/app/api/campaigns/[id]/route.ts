@@ -5,10 +5,16 @@ import Submission from "@/models/Submission"
 import { Notification } from "@/models/Notification"
 import { Types } from "mongoose"
 import { auth } from "@/auth"
+import { rescueCampaignFunds } from "@/lib/rescue"
 
 type ParamsPromise = Promise<{ id: string }>
 
-// ✅ PUT: update campaign by ID (Promoter only)
+const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || "https://worldscan.org/tx/"
+
+// ==========================
+// PUT: update campaign by ID (Promoter only)
+// Supports normal updates via body, or action: "finish" to trigger rescue
+// ==========================
 export async function PUT(
   req: Request,
   { params }: { params: ParamsPromise }
@@ -26,6 +32,72 @@ export async function PUT(
   try {
     const body = await req.json()
 
+    // If action === "finish", perform rescue of remaining funds and mark finished
+    if (body?.action === "finish") {
+      const campaign = await Campaign.findById(id)
+      if (!campaign) {
+        return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 })
+      }
+
+      if (campaign.createdBy !== session.user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+
+      try {
+        const result = await rescueCampaignFunds(campaign)
+
+        if (result.rescued) {
+          const txHash = result.txHash
+          const txLink = `${EXPLORER_BASE}/${txHash}`
+
+          await Notification.create({
+            userId: campaign.createdBy,
+            role: "promoter",
+            type: "campaign_finished",
+            message: `Your campaign "${campaign.title}" has been finished and ${result.amountRescued} WR has been returned to your wallet.`,
+            metadata: {
+              txHash,
+              txLink,
+              campaignId: campaign._id?.toString(),
+            },
+          })
+
+          return NextResponse.json({
+            success: true,
+            message: "Campaign finished and funds rescued",
+            txHash,
+            txLink,
+            campaign: campaign.toObject(),
+          })
+        } else {
+          // nothing to rescue, still mark finished
+          campaign.status = "finished"
+          await campaign.save()
+          await Notification.create({
+            userId: campaign.createdBy,
+            role: "promoter",
+            type: "campaign_finished",
+            message: `Your campaign "${campaign.title}" has been finished. No remaining WR to rescue.`,
+            metadata: { campaignId: campaign._id?.toString() },
+          })
+          return NextResponse.json({
+            success: true,
+            message: "Campaign finished, no remaining funds",
+            campaign: campaign.toObject(),
+          })
+        }
+      } catch (err: any) {
+        campaign.error = err?.message || String(err)
+        await campaign.save()
+        console.error("Failed to rescue funds:", err)
+        return NextResponse.json(
+          { error: "Failed to rescue funds", detail: err?.message || String(err) },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Default: normal update (only promoter or admin)
     const updated = await Campaign.findOneAndUpdate(
       { _id: id, createdBy: session.user.id },
       { $set: body },
@@ -39,7 +111,6 @@ export async function PUT(
       )
     }
 
-    // ✅ Notification for promoter
     await Notification.create({
       userId: session.user.id,
       role: "promoter",
@@ -54,7 +125,9 @@ export async function PUT(
   }
 }
 
-// ✅ PATCH: hunter submit task → create/update submission (NO REWARD YET)
+// ==========================
+// PATCH: hunter submit task → create/update submission (NO REWARD YET)
+// ==========================
 export async function PATCH(
   req: Request,
   { params }: { params: ParamsPromise }
@@ -131,7 +204,11 @@ export async function PATCH(
   }
 }
 
-// ✅ DELETE: delete campaign by ID
+// ==========================
+// DELETE: delete campaign by ID
+// If campaign has contributors: cannot delete
+// If remainingWR > 0: rescue then soft-delete (mark finished + deleted_by_promoter) and notify promoter with tx link
+// ==========================
 export async function DELETE(
   _req: Request,
   { params }: { params: ParamsPromise }
@@ -160,9 +237,56 @@ export async function DELETE(
       )
     }
 
-    await Campaign.findByIdAndDelete(id)
+    // if there are remaining funds, rescue them first
+    const remaining = BigInt(campaign.remainingWR || "0")
+    if (remaining > 0n) {
+      try {
+        const result = await rescueCampaignFunds(campaign)
+        if (result.rescued) {
+          const txHash = result.txHash
+          const txLink = `${EXPLORER_BASE}/${txHash}`
 
-    // ✅ Notification for promoter
+          // soft-delete: mark finished and deleted_by_promoter
+          campaign.status = "finished"
+          campaign.error = campaign.error || "deleted_by_promoter"
+          await campaign.save()
+
+          // notify promoter with tx link
+          await Notification.create({
+            userId: campaign.createdBy,
+            role: "promoter",
+            type: "campaign_deleted",
+            message: `Your campaign "${campaign.title}" has been deleted and remaining ${result.amountRescued} WR was returned to your wallet.`,
+            metadata: {
+              txHash,
+              txLink,
+              campaignId: campaign._id?.toString(),
+            },
+          })
+
+          return NextResponse.json({ success: true, txHash, txLink })
+        } else {
+          // nothing to rescue -> proceed to delete
+          await Campaign.findByIdAndDelete(id)
+          await Notification.create({
+            userId: campaign.createdBy,
+            role: "promoter",
+            type: "campaign_deleted",
+            message: `Your campaign "${campaign.title}" has been deleted. No remaining WR to rescue.`,
+            metadata: { campaignId: campaign._id?.toString() },
+          })
+          return NextResponse.json({ success: true })
+        }
+      } catch (err: any) {
+        campaign.error = err?.message || String(err)
+        await campaign.save()
+        console.error("Failed to rescue funds during delete:", err)
+        return NextResponse.json({ error: "Failed to rescue funds", detail: err?.message || String(err) }, { status: 500 })
+      }
+    }
+
+    // no remaining funds -> safe to delete
+    await Campaign.findByIdAndDelete(id)
     await Notification.create({
       userId: session.user.id,
       role: "promoter",
