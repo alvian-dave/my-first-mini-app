@@ -9,6 +9,27 @@ export async function rewardHunter(hunterAddress: string, campaign: any) {
   const provider = new ethers.JsonRpcProvider(RPC)
   const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, provider)
 
+    // ambil decimals token secara dinamis (fallback ke 18 kalau gagal)
+  let decimals = 18
+  try {
+    const tokenContract = new ethers.Contract(
+      WR_TOKEN,
+      ["function decimals() view returns (uint8)"],
+      provider
+    )
+    decimals = Number(await tokenContract.decimals())
+  } catch (e) {
+    // kalau gagal, biarkan default 18
+    console.warn("Failed to read token decimals, defaulting to 18:", e)
+  }
+
+  // campaign.reward diasumsikan berupa jumlah token (mis. "10" atau 10)
+  // konversi ke smallest unit menggunakan parseUnits
+  // parseUnits mengembalikan BigInt-like BigNumber di ethers v6
+  const rewardBN = ethers.parseUnits(String(campaign.reward), decimals) // BigInt (ethers v6 returns bigint)
+  // jika kamu butuh BigInt explicitly:
+  const reward = BigInt(rewardBN.toString())
+
   const escrow = new ethers.Contract(
     ESCROW_CONTRACT,
     [
@@ -18,7 +39,6 @@ export async function rewardHunter(hunterAddress: string, campaign: any) {
     wallet
   )
 
-  const reward = BigInt(campaign.reward)
   let remaining = BigInt(campaign.remainingWR)
 
   // =====================
