@@ -301,41 +301,33 @@ export const CampaignForm = ({
 
 
   // ============================================================
-  // 🪙 Step 3: Transfer WR tokens using MiniKit
+  // 🪙 Step 3: Transfer WR tokens using MiniKit jika create campaign
   // ============================================================
   if (!isEditing) {
+try {
+  await onSubmit(campaign)
+  } catch (err) {
+      console.error('onSubmit (edit) error:', err)
+      setErrorMessage('Failed to update campaign. Please try again.')
+    } finally {
+      setPublishing(false)
+    }
+    return
+  }
+  try {
   const txId = await sendWRTransfer()
   if (!txId) {
     setPublishing(false)
     return
   }
   setTransactionId(txId)
-}
-try {
-    const endpoint = isEditing ? `/api/campaigns/${campaign._id}` : '/api/campaigns'
-    const method = isEditing ? 'PUT' : 'POST'
-    const body: any = { ...campaign }
-    const res = await fetch(endpoint, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  const data = await res.json()
-
-  if (!res.ok) {
-    setErrorMessage(data.message || 'Failed to save campaign')
-    return
-  }
-
-  setSuccessMessage(
-    isEditing
-      ? 'Your campaign successfully updated'
-      : 'Campaign successfully published'
-  )
-  } finally {
+} catch (err) {
+    console.error('sendWRTransfer error:', err)
+    setErrorMessage('Failed to send WR transaction.')
     setPublishing(false)
   }
 }
+
   // ============================================================
 // 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
 // ============================================================
