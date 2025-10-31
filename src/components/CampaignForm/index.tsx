@@ -234,33 +234,38 @@ export const CampaignForm = ({
 
     setPublishing(true)
 
-      // ✅ Validasi Twitter URL
-  for (const [index, t] of campaign.tasks.entries()) {
-    if (t.service === 'twitter') {
-      // 1️⃣ Pastikan format URL valid
-      if (!/^https:\/\/(x|twitter)\.com\//.test(t.url)) {
-        setErrorMessage(`Task #${index + 1}: Twitter URL must start with https://x.com/ or https://twitter.com/`)
-        setPublishing(false)
-        return
-      }
+// ✅ Validasi Twitter URL
+for (const [index, t] of campaign.tasks.entries()) {
+  if (t.service === 'twitter') {
+    // 1️⃣ Pastikan format URL valid
+    if (!/^https:\/\/(x|twitter)\.com\//.test(t.url)) {
+      setErrorMessage(`Task #${index + 1}: Twitter URL must start with https://x.com/ or https://twitter.com/`)
+      setPublishing(false)
+      return
+    }
 
-      // 2️⃣ Pastikan URL tidak 404 (halaman ditemukan)
-      try {
-        const res = await fetch(t.url, { method: 'HEAD' })
-        if (!res.ok) {
-          setErrorMessage(`Task #${index + 1}: Twitter URL not found (404). Please check the link.`)
-          setPublishing(false)
-          return
-        }
-      } catch (err) {
-        console.error('Twitter URL validation error:', err)
-        setErrorMessage(`Task #${index + 1}: Failed to verify Twitter URL.`)
+    // 2️⃣ Cek validitas via backend
+    try {
+      const res = await fetch('/api/connect/twitter/verifyUrl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: t.url }),
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.valid) {
+        setErrorMessage(`Task #${index + 1}: Twitter URL not found or invalid.`)
         setPublishing(false)
         return
       }
+    } catch (err) {
+      console.error('Twitter URL validation error:', err)
+      setErrorMessage(`Task #${index + 1}: Failed to verify Twitter URL.`)
+      setPublishing(false)
+      return
     }
   }
-
+}
 
     // ✅ Check Telegram tasks verification (unchanged)
     for (const t of campaign.tasks) {
