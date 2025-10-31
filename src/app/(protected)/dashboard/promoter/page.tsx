@@ -155,6 +155,7 @@ const handleMarkFinished = async (id: string) => {
 
   // ✅ Delete with toast confirmation
   const handleDelete = (id: string) => {
+    setLoadingId(id)
     setToast({
       message: 'Are you sure you want to delete this campaign?',
       type: 'confirm',
@@ -166,6 +167,8 @@ const handleMarkFinished = async (id: string) => {
         } catch (err) {
           console.error('Failed to delete campaign:', err)
           setToast({ message: 'Failed to delete campaign', type: 'error' })
+          } finally {
+          setLoadingId(null)
         }
       },
       onCancel: () => setToast(null),
@@ -296,13 +299,26 @@ const handleMarkFinished = async (id: string) => {
                         )}
                       </button>
                       ) : (
-                        <button
-                          onClick={() => handleDelete(c._id)}
-                          className="px-3 py-1 rounded font-medium"
-                          style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                        >
-                          Delete
-                        </button>
+                      <button
+                        onClick={() => handleDelete(c._id)}
+                        className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                        style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                        disabled={loadingId === c._id}
+                        aria-busy={loadingId === c._id}
+                      >
+                        {loadingId === c._id ? (
+                          // simple spinner + text
+                          <>
+                            <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                              <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+                            </svg>
+                            Processing...
+                          </>
+                        ) : (
+                          'Delete'
+                        )}
+                      </button>
                       )}
                     </>
                   )}

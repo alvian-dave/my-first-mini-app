@@ -256,7 +256,7 @@ export async function DELETE(
             userId: campaign.createdBy,
             role: "promoter",
             type: "campaign_deleted",
-            message: `Your campaign "${campaign.title}" has been deleted and remaining ${campaign.reward} WR was returned to your wallet.`,
+            message: `Your campaign "${campaign.title}" has been deleted and remaining ${campaign.budget} WR was returned to your wallet.`,
             metadata: {
               txHash,
               txLink,
