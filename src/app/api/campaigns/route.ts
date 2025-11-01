@@ -176,9 +176,7 @@ export async function POST(req: Request) {
       ok: true,
       message: 'Campaign created and verified successfully',
       campaign: newCampaign,
-    },
-  { status: 201 }
-  )
+    })
   } catch (err: any) {
     console.error('❌ Error /api/campaign:', err)
     return NextResponse.json({ ok: false, error: err.message || String(err) }, { status: 500 })

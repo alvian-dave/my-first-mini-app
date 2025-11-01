@@ -344,51 +344,37 @@ export const CampaignForm = ({
     }
 
 
+try {
   // ============================================================
   // 🪙 Step 3: Transfer WR tokens using MiniKit
   // ============================================================
   if (!isEditing) {
-  const txId = await sendWRTransfer()
-  if (!txId) {
-    setPublishing(false)
-    return
-  }
-  setTransactionId(txId)
-}
-try {
-    const endpoint = isEditing ? `/api/campaigns/${campaign._id}` : '/api/campaigns'
-    const method = isEditing ? 'PUT' : 'POST'
-    const body: any = { ...campaign }
-    const res = await fetch(endpoint, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  const data = await res.json()
-
-  if (!res.ok && !data.ok) {
-    setErrorMessage(data.message || 'Failed to save campaign')
-    return
+    const txId = await sendWRTransfer()
+    if (!txId) {
+      setPublishing(false)
+      return
+    }
+    setTransactionId(txId)
   }
 
+  // ✅ biarkan parent yang melakukan fetch / save campaign
+  if (onSubmit) {
+    await onSubmit(campaign)
+  }
+
+  // ✅ tampilkan toast sukses di sini
   setSuccessMessage(
     isEditing
       ? 'Your campaign successfully updated'
       : 'Campaign successfully published'
   )
-
-    if (onSubmit) {
-    await onSubmit(data)
-  }
-
 } catch (err) {
   console.error('Failed to save campaign', err)
   setErrorMessage('An unexpected error occurred.')
-
-  } finally {
-    setPublishing(false)
-  }
+} finally {
+  setPublishing(false)
 }
+
 // ============================================================
 // 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
 // ============================================================
