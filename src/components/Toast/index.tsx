@@ -17,15 +17,15 @@ export default function Toast({ message, type = 'success', onClose }: ToastProps
     return () => clearTimeout(timer)
   }, [onClose])
 
-  return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
-      <div
-        className={`px-4 py-2 rounded shadow-md text-white ${
-          type === 'success' ? 'bg-green-600' : 'bg-red-600'
-        }`}
-      >
-        {message}
-      </div>
+return (
+  <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex justify-center w-full px-4">
+    <div
+      className={`inline-block max-w-md px-6 py-3 rounded-lg shadow-lg text-white text-center whitespace-nowrap ${
+        type === 'success' ? 'bg-green-600' : 'bg-red-600'
+      }`}
+    >
+      {message}
     </div>
-  )
+  </div>
+)
 }
