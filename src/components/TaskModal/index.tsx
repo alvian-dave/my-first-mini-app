@@ -263,7 +263,6 @@ export default function TaskModal({
   <p className="text-gray-300 whitespace-pre-line">{description}</p>
 </div>
 
-
           <div className="space-y-3 mb-4">
             {taskStates.map((task, i) => (
               <div key={i} className="flex items-center justify-between bg-gray-700 p-3 rounded">

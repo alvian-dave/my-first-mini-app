@@ -121,8 +121,9 @@ const fetchBalance = async () => {
 
 const [currentPage, setCurrentPage] = useState(1)
 const itemsPerPage = 5
-const totalPages = Math.ceil(filtered.length / itemsPerPage)
-const paginatedCampaigns = filtered.slice(
+const safeFiltered = Array.isArray(filtered) ? filtered : []
+const totalPages = Math.ceil(safeFiltered.length / itemsPerPage)
+const paginatedCampaigns = safeFiltered.slice(
   (currentPage - 1) * itemsPerPage,
   currentPage * itemsPerPage
 )
@@ -169,7 +170,7 @@ const toggleReadMore = (id: string) => {
 
 
 {/* Task Cards + Pagination */}
-{filtered.length === 0 ? (
+{safeFiltered.length === 0 ? (
   <p className="text-center text-gray-400">No tasks in this tab.</p>
 ) : (
   <>
