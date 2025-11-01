@@ -4,7 +4,12 @@ import { Session } from 'next-auth';
 import { SessionProvider, useSession } from 'next-auth/react';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 
+const ErudaProvider = dynamic(
+  () => import('@/providers/Eruda').then((c) => c.ErudaProvider),
+  { ssr: false },
+);
 
 interface ClientProvidersProps {
   children: ReactNode;
@@ -44,11 +49,13 @@ export default function ClientProviders({
   session,
 }: ClientProvidersProps) {
   return (
+    <ErudaProvider>
     <MiniKitProvider>
       <SessionProvider session={session}>
         <SessionPersist /> {/* ✅ Tambahin persist logic */}
         {children}
       </SessionProvider>
     </MiniKitProvider>
+    </ErudaProvider>
   );
 }
