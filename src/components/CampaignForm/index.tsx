@@ -210,6 +210,41 @@ export const CampaignForm = ({
         )}&permissions=${encodeURIComponent(DISCORD_PERMISSIONS)}&scope=bot`
       : '#'
 
+// ============================================================
+// 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
+// ============================================================
+const sendWRTransfer = async (): Promise<string | null> => {
+  try {
+    const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
+    const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! // sementara ke kontrak WR juga
+    const amount = parseUnits(campaign.budget.toString(), 18).toString()
+
+    const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      transaction: [
+        {
+          address: wrAddress,
+          abi: WRABI,
+          functionName: 'transfer',
+          args: [campaignContract, amount],
+        },
+      ],
+    })
+
+    if (finalPayload.status === 'error') {
+      console.error('Transfer failed:', finalPayload)
+      setErrorMessage('Transaction failed. Please try again.')
+      return null
+    }
+
+    console.log('✅ WR transferred successfully:', finalPayload.transaction_id)
+    return finalPayload.transaction_id
+  } catch (err) {
+    console.error('Error sending WR:', err)
+    setErrorMessage('Failed to send WR transaction.')
+    return null
+  }
+}
+
   const handleSubmit = async () => {
     if (!campaign.title.trim()) {
       setErrorMessage('Title is required')
@@ -375,40 +410,6 @@ try {
   setPublishing(false)
 }
 
-// ============================================================
-// 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
-// ============================================================
-const sendWRTransfer = async (): Promise<string | null> => {
-  try {
-    const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
-    const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! // sementara ke kontrak WR juga
-    const amount = parseUnits(campaign.budget.toString(), 18).toString()
-
-    const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-      transaction: [
-        {
-          address: wrAddress,
-          abi: WRABI,
-          functionName: 'transfer',
-          args: [campaignContract, amount],
-        },
-      ],
-    })
-
-    if (finalPayload.status === 'error') {
-      console.error('Transfer failed:', finalPayload)
-      setErrorMessage('Transaction failed. Please try again.')
-      return null
-    }
-
-    console.log('✅ WR transferred successfully:', finalPayload.transaction_id)
-    return finalPayload.transaction_id
-  } catch (err) {
-    console.error('Error sending WR:', err)
-    setErrorMessage('Failed to send WR transaction.')
-    return null
-  }
-}
 
   return (
     <>
