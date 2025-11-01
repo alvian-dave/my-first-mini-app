@@ -192,8 +192,9 @@ const toggleReadMore = (id: string) => {
 }
 
 // Pagination logic
-const totalPages = Math.ceil(current.length / itemsPerPage)
-const paginatedCampaigns = current.slice(
+const safeCurrent = Array.isArray(current) ? current : []
+const totalPages = Math.ceil(safeCurrent.length / itemsPerPage)
+const paginatedCampaigns = safeCurrent.slice(
   (currentPage - 1) * itemsPerPage,
   currentPage * itemsPerPage
 )
@@ -236,7 +237,7 @@ const paginatedCampaigns = current.slice(
         </div>
 
         {/* Campaign list */}
-{current.length === 0 ? (
+{safeCurrent.length === 0 ? (
   <p className="text-center text-gray-400">No campaigns in this tab.</p>
 ) : (
   <>
