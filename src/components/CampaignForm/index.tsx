@@ -367,15 +367,8 @@ try {
   const data = await res.json()
 
   if (!res.ok) {
-    setErrorMessage(data.message || 'Failed to save campaign')
     return
   }
-
-  setSuccessMessage(
-    isEditing
-      ? 'Your campaign successfully updated'
-      : 'Campaign successfully published'
-  )
 
     if (onSubmit) {
     await onSubmit(data)
@@ -383,7 +376,6 @@ try {
 
 } catch (err) {
   console.error('Failed to save campaign', err)
-  setErrorMessage('An unexpected error occurred.')
 
   } finally {
     setPublishing(false)
