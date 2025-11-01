@@ -366,7 +366,7 @@ try {
     })
   const data = await res.json()
 
-  if (!res.ok) {
+  if (!res.ok && !data.ok) {
     setErrorMessage(data.message || 'Failed to save campaign')
     return
   }
