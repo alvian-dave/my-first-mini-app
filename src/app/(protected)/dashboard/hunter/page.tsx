@@ -120,7 +120,7 @@ const fetchBalance = async () => {
   if (!session?.user) return null
 
 const [currentPage, setCurrentPage] = useState(1)
-const itemsPerPage = 6
+const itemsPerPage = 5
 const totalPages = Math.ceil(filtered.length / itemsPerPage)
 const paginatedCampaigns = filtered.slice(
   (currentPage - 1) * itemsPerPage,
