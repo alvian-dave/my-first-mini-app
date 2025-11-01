@@ -409,7 +409,7 @@ try {
 } finally {
   setPublishing(false)
 }
-
+  }
 
   return (
     <>
