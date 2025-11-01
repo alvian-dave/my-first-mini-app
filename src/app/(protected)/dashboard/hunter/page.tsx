@@ -170,7 +170,8 @@ const toggleReadMore = (id: string) => {
 
 
 {/* Task Cards + Pagination */}
-{safeFiltered.length === 0 ? (
+{session?.user && (
+  safeFiltered.length === 0 ? (
   <p className="text-center text-gray-400">No tasks in this tab.</p>
 ) : (
   <>
@@ -302,6 +303,7 @@ const toggleReadMore = (id: string) => {
       </div>
     )}
   </>
+)
 )}
       </div>
 
