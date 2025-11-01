@@ -136,6 +136,17 @@ export const CampaignForm = ({
     } else {
       setSuccessMessage('Campaign published successfully!')
       setEditingCampaign(null)
+
+        setCampaign({
+          id: Date.now(),
+          title: '',
+          description: '',
+          budget: '',
+          reward: '',
+          status: 'active',
+          tasks: [],
+        })
+              
         if (onSubmit) {
     onSubmit(data.record) // data.record = campaign baru dari backend
   }
