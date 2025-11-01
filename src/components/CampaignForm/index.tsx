@@ -210,41 +210,6 @@ export const CampaignForm = ({
         )}&permissions=${encodeURIComponent(DISCORD_PERMISSIONS)}&scope=bot`
       : '#'
 
-// ============================================================
-// 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
-// ============================================================
-const sendWRTransfer = async (): Promise<string | null> => {
-  try {
-    const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
-    const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! // sementara ke kontrak WR juga
-    const amount = parseUnits(campaign.budget.toString(), 18).toString()
-
-    const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-      transaction: [
-        {
-          address: wrAddress,
-          abi: WRABI,
-          functionName: 'transfer',
-          args: [campaignContract, amount],
-        },
-      ],
-    })
-
-    if (finalPayload.status === 'error') {
-      console.error('Transfer failed:', finalPayload)
-      setErrorMessage('Transaction failed. Please try again.')
-      return null
-    }
-
-    console.log('✅ WR transferred successfully:', finalPayload.transaction_id)
-    return finalPayload.transaction_id
-  } catch (err) {
-    console.error('Error sending WR:', err)
-    setErrorMessage('Failed to send WR transaction.')
-    return null
-  }
-}
-
   const handleSubmit = async () => {
     if (!campaign.title.trim()) {
       setErrorMessage('Title is required')
@@ -379,37 +344,85 @@ const sendWRTransfer = async (): Promise<string | null> => {
     }
 
 
-try {
   // ============================================================
   // 🪙 Step 3: Transfer WR tokens using MiniKit
   // ============================================================
   if (!isEditing) {
-    const txId = await sendWRTransfer()
-    if (!txId) {
-      setPublishing(false)
-      return
-    }
-    setTransactionId(txId)
+  const txId = await sendWRTransfer()
+  if (!txId) {
+    setPublishing(false)
+    return
+  }
+  setTransactionId(txId)
+}
+try {
+    const endpoint = isEditing ? `/api/campaigns/${campaign._id}` : '/api/campaigns'
+    const method = isEditing ? 'PUT' : 'POST'
+    const body: any = { ...campaign }
+    const res = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  const data = await res.json()
+
+  if (!res.ok) {
+    setErrorMessage(data.message || 'Failed to save campaign')
+    return
   }
 
-  // ✅ biarkan parent yang melakukan fetch / save campaign
-  if (onSubmit) {
-    await onSubmit(campaign)
-  }
-
-  // ✅ tampilkan toast sukses di sini
   setSuccessMessage(
     isEditing
       ? 'Your campaign successfully updated'
       : 'Campaign successfully published'
   )
+
+    if (onSubmit) {
+    await onSubmit(data)
+  }
+
 } catch (err) {
   console.error('Failed to save campaign', err)
   setErrorMessage('An unexpected error occurred.')
-} finally {
-  setPublishing(false)
-}
+
+  } finally {
+    setPublishing(false)
   }
+}
+// ============================================================
+// 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
+// ============================================================
+const sendWRTransfer = async (): Promise<string | null> => {
+  try {
+    const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
+    const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! // sementara ke kontrak WR juga
+    const amount = parseUnits(campaign.budget.toString(), 18).toString()
+
+    const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      transaction: [
+        {
+          address: wrAddress,
+          abi: WRABI,
+          functionName: 'transfer',
+          args: [campaignContract, amount],
+        },
+      ],
+    })
+
+    if (finalPayload.status === 'error') {
+      console.error('Transfer failed:', finalPayload)
+      setErrorMessage('Transaction failed. Please try again.')
+      return null
+    }
+
+    console.log('✅ WR transferred successfully:', finalPayload.transaction_id)
+    return finalPayload.transaction_id
+  } catch (err) {
+    console.error('Error sending WR:', err)
+    setErrorMessage('Failed to send WR transaction.')
+    return null
+  }
+}
 
   return (
     <>
