@@ -668,7 +668,7 @@ const sendWRTransfer = async (): Promise<string | null> => {
         leaveFrom="translate-y-0 opacity-100"
         leaveTo="translate-y-4 opacity-0"
       >
-        <div className="fixed top-4 flex justify-center w-full px-4 z-[100]">
+        <div className="fixed top-4 flex justify-center w-full z-[100]">
           <div className="bg-red-600 text-white px-4 py-2 rounded shadow-lg">
             {errorMessage}
           </div>
@@ -686,7 +686,7 @@ const sendWRTransfer = async (): Promise<string | null> => {
         leaveFrom="translate-y-0 opacity-100"
         leaveTo="translate-y-4 opacity-0"
       >
-        <div className="fixed top-4 flex justify-center w-full px-4 z-[100]">
+        <div className="fixed top-4 flex justify-center w-full z-[100]">
           <div className="bg-green-600 text-white px-4 py-2 rounded shadow-lg">
             {successMessage}
           </div>
