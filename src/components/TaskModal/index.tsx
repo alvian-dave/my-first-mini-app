@@ -254,70 +254,66 @@ export default function TaskModal({
     }
   }
 
-return (
-  <Dialog open={true} onClose={onClose} className="relative z-50">
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      {/* Gunakan max-h-screen agar tidak keluar layar */}
-      <Dialog.Panel className="bg-gray-800 text-white rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        
-        {/* Header (sticky di atas) */}
-        <div className="p-6 border-b border-gray-700 sticky top-0 bg-gray-800 z-10">
-          <Dialog.Title className="text-lg font-bold mb-2">{title}</Dialog.Title>
-          <p className="text-gray-300">{description}</p>
-        </div>
+  return (
+    <Dialog open={true} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <Dialog.Panel className="bg-gray-800 text-white rounded-xl p-6 w-full max-w-lg">
+          <Dialog.Title className="text-lg font-bold mb-4">{title}</Dialog.Title>
+          <div className="mb-4 max-h-40 overflow-y-auto rounded border border-gray-700 p-2">
+  <p className="text-gray-300 whitespace-pre-line">{description}</p>
+</div>
 
-        {/* Konten bisa di-scroll */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-3">
-          {taskStates.map((task, i) => (
-            <div key={i} className="flex items-center justify-between bg-gray-700 p-3 rounded">
-              <a
-                href={
-                  task.service === 'telegram'
-                    ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${session.user.id}`
-                    : task.url
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center gap-2"
-              >
-                <span>
-                  {task.service.toUpperCase()} — {task.type}
-                </span>
-                <ExternalLink className="w-4 h-4" />
-              </a>
 
-              {task.done ? (
-                <span className="ml-3 text-green-400 text-sm">✅ Verified</span>
-              ) : (
-                <button
-                  onClick={() => handleVerify(i, task)}
-                  disabled={verifying === i}
-                  className="ml-3 px-3 py-1 text-sm rounded bg-green-600 hover:bg-green-700 flex items-center gap-2"
+          <div className="space-y-3 mb-4">
+            {taskStates.map((task, i) => (
+              <div key={i} className="flex items-center justify-between bg-gray-700 p-3 rounded">
+                <a
+                  href={
+                    task.service === 'telegram'
+                      ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${session.user.id}`
+                      : task.url
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center gap-2"
                 >
-                  {verifying === i ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : task.service === 'twitter' && !twitterConnected ? (
-                    'Connect Twitter'
-                  ) : task.service === 'telegram' && !task.connected ? (
-                    'Connect Telegram'
-                  ) : task.service === 'discord' && !discordConnected ? (
-                    'Connect Discord'
-                  ) : (
-                    'Verify'
-                  )}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+                  <span>
+                    {task.service.toUpperCase()} — {task.type}
+                  </span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
 
-        {/* Footer (sticky di bawah) */}
-        <div className="p-4 border-t border-gray-700 sticky bottom-0 bg-gray-800 z-10">
+                {task.done ? (
+                  <span className="ml-3 text-green-400 text-sm">✅ Verified</span>
+                ) : (
+                  <button
+                    onClick={() => handleVerify(i, task)}
+                    disabled={verifying === i}
+                    className="ml-3 px-3 py-1 text-sm rounded bg-green-600 hover:bg-green-700 flex items-center gap-2"
+                  >
+                    {verifying === i ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : task.service === 'twitter' && !twitterConnected ? (
+                      'Connect Twitter'
+                    ) : task.service === 'telegram' && !task.connected ? (
+                      'Connect Telegram'
+                    ) : task.service === 'discord' && !discordConnected ? (
+                      'Connect Discord'
+                    ) : (
+                      'Verify'
+                    )}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
           <button
-            className="w-full py-2 rounded font-semibold flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700"
+            className="w-full py-2 rounded font-semibold mt-4 flex items-center justify-center gap-2"
+            style={{ backgroundColor: '#16a34a' }}
             onClick={handleConfirm}
             disabled={submitting}
           >
@@ -330,14 +326,16 @@ return (
               'Confirm & Submit'
             )}
           </button>
-        </div>
 
-        {/* Toast */}
-        {toast && (
-          <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-        )}
-      </Dialog.Panel>
-    </div>
-  </Dialog>
-)
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          )}
+        </Dialog.Panel>
+      </div>
+    </Dialog>
+  )
 }
