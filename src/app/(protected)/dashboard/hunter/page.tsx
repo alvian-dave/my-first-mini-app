@@ -119,6 +119,21 @@ const fetchBalance = async () => {
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
+const [currentPage, setCurrentPage] = useState(1)
+const itemsPerPage = 6
+const totalPages = Math.ceil(filtered.length / itemsPerPage)
+const paginatedCampaigns = filtered.slice(
+  (currentPage - 1) * itemsPerPage,
+  currentPage * itemsPerPage
+)
+const [expandedIds, setExpandedIds] = useState<string[]>([])
+
+const toggleReadMore = (id: string) => {
+  setExpandedIds((prev) =>
+    prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+  )
+}
+
   return (
     <div className="min-h-screen bg-gray-900 text-white w-full">
       <Topbar />
@@ -152,85 +167,141 @@ const fetchBalance = async () => {
           </p>
         </div>
 
-        {/* Task Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {filtered.length === 0 ? (
-            <p className="text-center text-gray-400 col-span-2">No tasks in this tab.</p>
-          ) : (
-            filtered.map((c) => (
-              <div
-                key={c._id}
-                className="bg-gray-800 p-5 rounded-lg shadow hover:shadow-lg transition"
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
-                  {activeTab === 'completed' && (
-                    <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
-                      Submitted
+
+{/* Task Cards + Pagination */}
+{filtered.length === 0 ? (
+  <p className="text-center text-gray-400">No tasks in this tab.</p>
+) : (
+  <>
+    <div className="grid md:grid-cols-2 gap-6">
+      {paginatedCampaigns.map((c) => {
+        const isExpanded = expandedIds.includes(c._id)
+        const shortDesc =
+          c.description.length > 100 && !isExpanded
+            ? c.description.slice(0, 100) + '...'
+            : c.description
+
+        return (
+          <div
+            key={c._id}
+            className="bg-gray-800 p-5 rounded-lg shadow hover:shadow-lg transition"
+          >
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
+              {activeTab === 'completed' && (
+                <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
+                  Submitted
+                </span>
+              )}
+            </div>
+
+            {/* deskripsi bisa Read more / Show less */}
+            <p className="text-gray-300 whitespace-pre-wrap mb-2">
+              {shortDesc}{' '}
+              {c.description.length > 100 && (
+                <button
+                  onClick={() => toggleReadMore(c._id)}
+                  className="text-blue-400 text-sm ml-1 hover:underline"
+                >
+                  {isExpanded ? 'Show less' : 'Read more'}
+                </button>
+              )}
+            </p>
+
+            <p className="text-sm text-gray-400 mb-2">
+              Reward:{' '}
+              <span className="text-green-400 font-semibold">{c.reward}</span>
+            </p>
+
+            {/* daftar task */}
+            {Array.isArray(c.tasks) && c.tasks.length > 0 && (
+              <ul className="text-sm text-gray-300 space-y-1 mt-2">
+                {c.tasks.map((t, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
+                      {t.service}
                     </span>
-                  )}
-                </div>
+                    <span className="text-gray-200">{t.type}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-                <p className="text-gray-300 mb-2">{c.description}</p>
+            {/* tombol submit */}
+            {activeTab === 'active' && (
+              <button
+                className="mt-3 w-full py-2 rounded font-semibold text-white"
+                style={{ backgroundColor: '#16a34a' }}
+                onClick={() => setSelectedCampaign(c)}
+              >
+                {isLoading(c._id) ? 'Loading...' : 'Submit Task'}
+              </button>
+            )}
 
-                <p className="text-sm text-gray-400 mb-2">
-                  Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
-                </p>
+            {/* status untuk completed */}
+            {activeTab === 'completed' && (
+              <p className="mt-3 text-sm text-green-400 font-medium">
+                Task Submitted — Status:{' '}
+                <span
+                  className={
+                    c.status === 'finished'
+                      ? 'text-blue-400'
+                      : 'text-green-400'
+                  }
+                >
+                  {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                </span>
+              </p>
+            )}
+          </div>
+        )
+      })}
+    </div>
 
-                {/* Active Campaigns */}
-                {activeTab === 'active' ? (
-                  <div className="mt-3">
-                    <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
-                    {c.tasks && c.tasks.length > 0 && (
-                      <ul className="text-sm text-gray-300 space-y-1">
-                        {c.tasks.map((t, i) => (
-                          <li key={i} className="flex items-center gap-2">
-                            <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
-                              {t.service}
-                            </span>
-                            <span className="text-gray-200">{t.type}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <button
-                      className="mt-3 w-full py-2 rounded font-semibold text-white"
-                      style={{ backgroundColor: '#16a34a' }}
-                      onClick={() => setSelectedCampaign(c)}
-                    >
-                      {isLoading(c._id) ? 'Loading...' : 'Submit Task'}
-                    </button>
-                  </div>
-                ) : activeTab === 'completed' ? (
-                  <div className="mt-3">
-                    <p className="text-green-400 font-medium mb-2">
-                      Task Submitted — Status:{' '}
-                      <span
-                        className={
-                          c.status === 'finished' ? 'text-blue-400' : 'text-green-400'
-                        }
-                      >
-                        {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
-                      </span>
-                    </p>
-                    {c.tasks && c.tasks.length > 0 && (
-                      <ul className="text-sm text-gray-300 space-y-1">
-                        {c.tasks.map((t, i) => (
-                          <li key={i} className="flex items-center gap-2">
-                            <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-green-400">
-                              {t.service}
-                            </span>
-                            <span className="text-gray-200">{t.type}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            ))
-          )}
+    {/* Pagination controls */}
+    {totalPages > 1 && (
+      <div className="flex flex-col items-center gap-3 mt-6">
+        <div className="flex gap-2 items-center">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+            className="px-3 py-1 bg-gray-700 rounded disabled:opacity-40"
+          >
+            Prev
+          </button>
+
+          <div className="flex gap-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 rounded ${
+                  currentPage === page
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+            className="px-3 py-1 bg-gray-700 rounded disabled:opacity-40"
+          >
+            Next
+          </button>
         </div>
+
+        <span className="text-sm text-gray-400">
+          Page {currentPage} of {totalPages}
+        </span>
+      </div>
+    )}
+  </>
+)}
       </div>
 
       {/* Modal Task */}
