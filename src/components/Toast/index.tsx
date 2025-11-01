@@ -18,7 +18,7 @@ export default function Toast({ message, type = 'success', onClose }: ToastProps
   }, [onClose])
 
   return (
-    <div className="fixed top-4 center-0 z-50">
+    <div className="fixed top-4 flex justify-center w-full px-4 z-50">
       <div
         className={`px-4 py-2 rounded shadow-md text-white ${
           type === 'success' ? 'bg-green-600' : 'bg-red-600'
