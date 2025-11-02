@@ -337,53 +337,65 @@ export default function PromoterDashboard() {
           </div>
         )}
 
-        {/* Pagination */}
-        {current.length > pageSize && (
-          <div className="flex flex-col items-center mt-6 gap-2">
-            <div className="flex flex-wrap gap-1">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className="px-3 py-1 rounded font-medium"
-                style={{ backgroundColor: '#facc15', color: '#000' }}
-                disabled={currentPage === 1}
-              >
-                Prev
-              </button>
+{/* Pagination */}
+{current.length > pageSize && (
+  <div className="flex flex-col items-center mt-6 gap-2">
+    <div className="flex flex-wrap gap-1">
+      {/* Prev */}
+      <button
+        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+        disabled={currentPage === 1}
+        className={`px-3 py-1 rounded font-medium ${
+          currentPage === 1
+            ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+            : 'bg-yellow-500 text-black hover:bg-yellow-400'
+        }`}
+      >
+        Prev
+      </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(
-                  page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2
-                )
-                .map((page, idx, arr) => {
-                  if (idx > 0 && page - arr[idx - 1] > 1) {
-                    return <span key={page} className="px-2">..</span>
-                  }
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded font-medium ${page === currentPage ? 'bg-yellow-500 text-black' : ''}`}
-                      style={{ backgroundColor: '#facc15', color: '#000' }}
-                    >
-                      {page}
-                    </button>
-                  )
-                })}
+      {/* Page numbers */}
+      {Array.from({ length: totalPages }, (_, i) => i + 1)
+        .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2)
+        .map((page, idx, arr) => {
+          if (idx > 0 && page - arr[idx - 1] > 1) {
+            return <span key={page} className="px-2 text-gray-400">..</span>
+          }
+          return (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-3 py-1 rounded font-medium ${
+                page === currentPage
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {page}
+            </button>
+          )
+        })}
 
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className="px-3 py-1 rounded font-medium"
-                style={{ backgroundColor: '#facc15', color: '#000' }}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-            </div>
-            <div className="text-gray-400 text-sm">
-              Page {currentPage} of {totalPages}
-            </div>
-          </div>
-        )}
+      {/* Next */}
+      <button
+        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+        disabled={currentPage === totalPages}
+        className={`px-3 py-1 rounded font-medium ${
+          currentPage === totalPages
+            ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+            : 'bg-yellow-500 text-black hover:bg-yellow-400'
+        }`}
+      >
+        Next
+      </button>
+    </div>
+
+    {/* Status page */}
+    <div className="text-gray-400 text-sm">
+      Page {currentPage} of {totalPages}
+    </div>
+  </div>
+)}
 
         {/* Modal form */}
         <CampaignForm
