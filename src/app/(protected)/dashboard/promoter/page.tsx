@@ -339,17 +339,20 @@ export default function PromoterDashboard() {
 
 {/* Pagination */}
 {current.length > pageSize && (
-  <div className="flex flex-col items-center mt-6 gap-2">
-    <div className="flex flex-wrap gap-1">
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24, gap: 8 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
       {/* Prev */}
       <button
         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
         disabled={currentPage === 1}
-        className={`px-3 py-1 rounded font-medium ${
-          currentPage === 1
-            ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-            : 'bg-yellow-500 text-black hover:bg-yellow-400'
-        }`}
+        style={{
+          padding: '4px 12px',
+          borderRadius: 6,
+          fontWeight: 500,
+          backgroundColor: currentPage === 1 ? '#374151' : '#facc15',
+          color: currentPage === 1 ? '#9ca3af' : '#000',
+          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+        }}
       >
         Prev
       </button>
@@ -359,17 +362,20 @@ export default function PromoterDashboard() {
         .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2)
         .map((page, idx, arr) => {
           if (idx > 0 && page - arr[idx - 1] > 1) {
-            return <span key={page} className="px-2 text-gray-400">..</span>
+            return <span key={page} style={{ padding: '0 8px', color: '#9ca3af' }}>..</span>
           }
           return (
             <button
               key={page}
               onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1 rounded font-medium ${
-                page === currentPage
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+              style={{
+                padding: '4px 12px',
+                borderRadius: 6,
+                fontWeight: 500,
+                backgroundColor: page === currentPage ? '#3b82f6' : '#374151',
+                color: page === currentPage ? '#fff' : '#d1d5db',
+                cursor: 'pointer',
+              }}
             >
               {page}
             </button>
@@ -380,18 +386,21 @@ export default function PromoterDashboard() {
       <button
         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
         disabled={currentPage === totalPages}
-        className={`px-3 py-1 rounded font-medium ${
-          currentPage === totalPages
-            ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-            : 'bg-yellow-500 text-black hover:bg-yellow-400'
-        }`}
+        style={{
+          padding: '4px 12px',
+          borderRadius: 6,
+          fontWeight: 500,
+          backgroundColor: currentPage === totalPages ? '#374151' : '#facc15',
+          color: currentPage === totalPages ? '#9ca3af' : '#000',
+          cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+        }}
       >
         Next
       </button>
     </div>
 
     {/* Status page */}
-    <div className="text-gray-400 text-sm">
+    <div style={{ color: '#9ca3af', fontSize: 12 }}>
       Page {currentPage} of {totalPages}
     </div>
   </div>
