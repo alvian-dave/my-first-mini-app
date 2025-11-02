@@ -1,8 +1,8 @@
 'use client'
 
+import React, { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
@@ -12,24 +12,31 @@ import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
+/**
+ * Note:
+ * - Saya mempertahankan semua logika dan UI seperti file JSX Anda.
+ * - TypeScript guards ditambahkan supaya tidak terjadi akses ke `session.user` saat `session` null.
+ * - Jika ada tipe props yang berbeda pada komponen internal Anda (CampaignForm, Toast, dll),
+ *   file ini masih kompatibel karena penggunaan tipe umum (BaseCampaign / any casting pada props yang diperlukan).
+ */
 
 // UI Campaign type (tambahkan tasks)
 type UICampaign = BaseCampaign & {
   _id: string
-  contributors: number
+  contributors?: number
   createdBy?: string
   participants?: string[]
   tasks?: { service: string; type: string; url: string }[]
 }
 
-type ToastState =
-  | { message: string; type?: 'success' | 'error' }
-  | { message: string; type: 'confirm'; onConfirm: () => void; onCancel?: () => void }
+type ToastNormal = { message: string; type?: 'success' | 'error' }
+type ToastConfirm = { message: string; type: 'confirm'; onConfirm: () => void; onCancel?: () => void }
+type ToastState = ToastNormal | ToastConfirm | null
 
 const PAGE_SIZE = 5
 const DESCRIPTION_PREVIEW_LENGTH = 140
 
-export default function PromoterDashboard() {
+const PromoterDashboard: React.FC = () => {
   const { data: session, status } = useSession()
   const router = useRouter()
 
@@ -37,60 +44,86 @@ export default function PromoterDashboard() {
   const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'rejected'>('active')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
-  const [balance, setBalance] = useState(0)
+  const [balance, setBalance] = useState<number>(0)
   const [showChat, setShowChat] = useState(false)
 
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
 
-  // ✅ Toast state (bisa confirm atau normal)
-  const [toast, setToast] = useState<ToastState | null>(null)
+  // Toast state (bisa confirm atau normal)
+  const [toast, setToast] = useState<ToastState>(null)
 
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   // pagination state per tab
-  const [pages, setPages] = useState({ active: 1, finished: 1, rejected: 1 })
+  const [pages, setPages] = useState<{ active: number; finished: number; rejected: number }>({
+    active: 1,
+    finished: 1,
+    rejected: 1,
+  })
 
   // which campaign descriptions are expanded
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
+  // Redirect if unauthenticated — guard sudah ada
   useEffect(() => {
-    if (status === 'unauthenticated') router.replace('/home')
-  }, [status, router])
+    if (status === 'unauthenticated') {
+      // replace to avoid backnav to protected page
+      router.replace('/home')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]) // don't put router in deps to avoid double-run in some setups
 
+  // fetch on-chain balance when walletAddress available
   useEffect(() => {
     if (!session?.user?.walletAddress) return
 
+    let mounted = true
     const fetchOnChainBalance = async () => {
       try {
         const onChainBal = await getWRCreditBalance(session.user.walletAddress)
-        setBalance(Number(onChainBal))
+        if (!mounted) return
+        // cast to number defensively
+        setBalance(Number(onChainBal ?? 0))
       } catch (err) {
         console.error('Failed to fetch on-chain balance:', err)
       }
     }
 
     fetchOnChainBalance()
-  }, [session])
+    return () => {
+      mounted = false
+    }
+  }, [session?.user?.walletAddress])
 
+  // load campaigns created by this user
   useEffect(() => {
-    if (!session?.user) return
+    if (!session?.user?.id) return
+
+    let mounted = true
     const loadCampaigns = async () => {
       try {
         const res = await fetch('/api/campaigns')
-        const data = await res.json()
-        const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
+        if (!res.ok) {
+          console.error('Failed to fetch campaigns, status:', res.status)
+          return
+        }
+        const data = (await res.json()) as UICampaign[]
+        if (!mounted) return
+        const filtered = data.filter((c) => c.createdBy === session.user.id)
         setCampaigns(filtered)
-
         // reset pagination when campaigns change: ensure current page is valid
-        setPages(prev => ({ ...prev, active: 1, finished: 1, rejected: 1 }))
+        setPages({ active: 1, finished: 1, rejected: 1 })
       } catch (err) {
         console.error('Failed to load campaigns:', err)
       }
     }
     loadCampaigns()
-  }, [session])
+    return () => {
+      mounted = false
+    }
+  }, [session?.user?.id])
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
@@ -114,10 +147,15 @@ export default function PromoterDashboard() {
         setToast({ message: 'Campaign created successfully', type: 'success' })
       }
 
+      // refresh list
       const res = await fetch('/api/campaigns')
-      const data = await res.json()
-      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
-      setCampaigns(filtered)
+      if (res.ok) {
+        const data = (await res.json()) as UICampaign[]
+        const filtered = data.filter((c) => c.createdBy === session.user.id)
+        setCampaigns(filtered)
+      } else {
+        console.warn('Failed to refresh campaigns after submit, status:', res.status)
+      }
 
       setIsModalOpen(false)
       setEditingCampaign(null)
@@ -130,7 +168,6 @@ export default function PromoterDashboard() {
   const handleMarkFinished = async (id: string) => {
     setLoadingId(id)
     try {
-      // send action: "finish" so backend triggers rescueCampaignFunds
       const resp = await fetch(`/api/campaigns/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -146,12 +183,14 @@ export default function PromoterDashboard() {
 
       // refresh campaigns list
       const res = await fetch('/api/campaigns')
-      const data = await res.json()
-      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
-      setCampaigns(filtered)
+      if (res.ok) {
+        const data = (await res.json()) as UICampaign[]
+        const filtered = data.filter((c) => c.createdBy === session.user.id)
+        setCampaigns(filtered)
+      }
 
       // show proper message depending on rescue result
-      if (result.txLink) {
+      if (result?.txLink) {
         setToast({ message: 'Campaign finished — remaining funds rescued. View tx', type: 'success' })
         // optionally open result.txLink or show in UI
       } else {
@@ -165,7 +204,7 @@ export default function PromoterDashboard() {
     }
   }
 
-  // ✅ Delete with toast confirmation
+  // Delete with toast confirmation
   const handleDelete = (id: string) => {
     setToast({
       message: 'Are you sure you want to delete this campaign?',
@@ -174,7 +213,7 @@ export default function PromoterDashboard() {
         setLoadingId(id)
         try {
           await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
-          setCampaigns(prev => prev.filter(p => p._id !== id))
+          setCampaigns((prev) => prev.filter((p) => p._id !== id))
           setToast({ message: 'Campaign deleted successfully', type: 'success' })
         } catch (err) {
           console.error('Failed to delete campaign:', err)
@@ -184,15 +223,18 @@ export default function PromoterDashboard() {
         }
       },
       onCancel: () => setToast(null),
-    })
+    } as ToastConfirm)
   }
 
   // derive per-tab campaigns and pagination
-  const campaignsByTab = useMemo(() => ({
-    active: campaigns.filter(c => (c.status || 'active') === 'active'),
-    finished: campaigns.filter(c => (c.status || 'active') === 'finished'),
-    rejected: campaigns.filter(c => (c.status || 'active') === 'rejected'),
-  }), [campaigns])
+  const campaignsByTab = useMemo(
+    () => ({
+      active: campaigns.filter((c) => (c.status ?? 'active') === 'active'),
+      finished: campaigns.filter((c) => (c.status ?? 'active') === 'finished'),
+      rejected: campaigns.filter((c) => (c.status ?? 'active') === 'rejected'),
+    }),
+    [campaigns]
+  )
 
   const totalPagesFor = (tab: keyof typeof campaignsByTab) => {
     return Math.max(1, Math.ceil(campaignsByTab[tab].length / PAGE_SIZE))
@@ -201,7 +243,7 @@ export default function PromoterDashboard() {
   const currentPageFor = (tab: keyof typeof campaignsByTab) => pages[tab]
 
   const setPageFor = (tab: keyof typeof campaignsByTab, page: number) => {
-    setPages(prev => ({ ...prev, [tab]: page }))
+    setPages((prev) => ({ ...prev, [tab]: page }))
   }
 
   const paginatedFor = (tab: keyof typeof campaignsByTab) => {
@@ -212,7 +254,7 @@ export default function PromoterDashboard() {
   }
 
   const toggleExpand = (id: string) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   // Current campaigns displayed
@@ -257,7 +299,7 @@ export default function PromoterDashboard() {
             setActiveTab={(t) => {
               setActiveTab(t)
               // reset page for newly selected tab
-              setPages(prev => ({ ...prev, [t]: 1 }))
+              setPages((prev) => ({ ...prev, [t]: 1 }))
             }}
           />
         </div>
@@ -267,7 +309,7 @@ export default function PromoterDashboard() {
           <p className="text-center text-gray-400">No campaigns in this tab.</p>
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
-            {paginatedFor(activeTab).map(c => (
+            {paginatedFor(activeTab).map((c) => (
               <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
                 <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
 
@@ -344,13 +386,13 @@ export default function PromoterDashboard() {
                         >
                           Edit
                         </button>
-                        {c.contributors > 0 ? (
+                        { (c.contributors ?? 0) > 0 ? (
                           <button
                             onClick={() => handleMarkFinished(c._id)}
                             className="px-3 py-1 rounded font-medium flex items-center justify-center"
                             style={{ backgroundColor: '#2563eb', color: '#fff' }}
                             disabled={loadingId === c._id}
-                            aria-busy={loadingId === c._id}
+                            aria-busy={loadingId === c._id ? true : undefined}
                           >
                             {loadingId === c._id ? (
                               <>
@@ -370,7 +412,7 @@ export default function PromoterDashboard() {
                             className="px-3 py-1 rounded font-medium flex items-center justify-center"
                             style={{ backgroundColor: '#dc2626', color: '#fff' }}
                             disabled={loadingId === c._id}
-                            aria-busy={loadingId === c._id}
+                            aria-busy={loadingId === c._id ? true : undefined}
                           >
                             {loadingId === c._id ? (
                               <>
@@ -458,7 +500,7 @@ export default function PromoterDashboard() {
                 <p className="text-gray-400">No participants yet.</p>
               ) : (
                 <ul className="list-disc list-inside space-y-1">
-                  {participants.map(p => (
+                  {participants.map((p) => (
                     <li key={p} className="text-sm text-gray-200">{p}</li>
                   ))}
                 </ul>
@@ -477,9 +519,7 @@ export default function PromoterDashboard() {
       </main>
 
       {/* Topup Modal */}
-      {showTopup && (
-        <USDCTransferModal onClose={() => setShowTopup(false)} />
-      )}
+      {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
 
       {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">
@@ -507,15 +547,15 @@ export default function PromoterDashboard() {
 
       {/* Toast */}
       {toast && toast.type !== 'confirm' && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+        <Toast message={(toast as ToastNormal).message} type={(toast as ToastNormal).type} onClose={() => setToast(null)} />
       )}
       {toast && toast.type === 'confirm' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="bg-gray-800 px-6 py-4 rounded shadow-md flex flex-col gap-4 max-w-sm w-full">
-            <p className="text-white text-center">{toast.message}</p>
+            <p className="text-white text-center">{(toast as ToastConfirm).message}</p>
             <div className="flex justify-center gap-4">
-              <button onClick={() => { toast?.onConfirm(); setToast(null); }} className="px-4 py-2 bg-red-600 text-white rounded">Yes</button>
-              <button onClick={() => { toast?.onCancel?.(); setToast(null); }} className="px-4 py-2 bg-gray-500 text-white rounded">No</button>
+              <button onClick={() => { (toast as ToastConfirm).onConfirm(); setToast(null); }} className="px-4 py-2 bg-red-600 text-white rounded">Yes</button>
+              <button onClick={() => { (toast as ToastConfirm).onCancel?.(); setToast(null); }} className="px-4 py-2 bg-gray-500 text-white rounded">No</button>
             </div>
           </div>
         </div>
@@ -523,3 +563,5 @@ export default function PromoterDashboard() {
     </div>
   )
 }
+
+export default PromoterDashboard
