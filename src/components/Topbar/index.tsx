@@ -158,7 +158,7 @@ const fetchBalance = async () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center">
+      <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-end items-center">
 
         {status === 'authenticated' && (
           <div className="relative">
