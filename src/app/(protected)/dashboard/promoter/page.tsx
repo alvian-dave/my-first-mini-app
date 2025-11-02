@@ -174,10 +174,39 @@ const handleMarkFinished = async (id: string) => {
       onCancel: () => setToast(null),
     })
   }
-
+  
   const current = campaigns
     .filter(c => (c.status || 'active') === activeTab)
     .sort((a, b) => (a._id > b._id ? -1 : 1))
+
+
+
+useEffect(() => {
+  if (!session?.user) {
+
+    setCurrentPage(1)
+    setExpandedIds([])
+}
+}, [session?.user])
+
+// Pagination state
+const [currentPage, setCurrentPage] = useState(1)
+const itemsPerPage = 5
+
+// Read more toggle
+const [expandedIds, setExpandedIds] = useState<string[]>([])
+const toggleReadMore = (id: string) => {
+  setExpandedIds(prev =>
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  )
+}
+
+// Pagination logic
+const totalPages = Math.ceil(current.length / itemsPerPage)
+const paginatedCampaigns = current.slice(
+  (currentPage - 1) * itemsPerPage,
+  currentPage * itemsPerPage
+)
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -217,116 +246,178 @@ const handleMarkFinished = async (id: string) => {
         </div>
 
         {/* Campaign list */}
-        {current.length === 0 ? (
-          <p className="text-center text-gray-400">No campaigns in this tab.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {current.map(c => (
-              <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
-                <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
-                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
+{current.length === 0 ? (
+  <p className="text-center text-gray-400">No campaigns in this tab.</p>
+) : (
+  <>
+    <div className="grid md:grid-cols-2 gap-6">
+      {paginatedCampaigns.map(c => {
+        const isExpanded = expandedIds.includes(c._id)
+        const shortDesc =
+          c.description.length > 100 && !isExpanded
+            ? c.description.slice(0, 100) + '...'
+            : c.description
 
-                {/* Task List */}
-                {Array.isArray(c.tasks) && c.tasks.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {c.tasks.map((t, i) => {
-                      const serviceIcon =
-                        t.service.toLowerCase().includes('twitter') ? '🐦' :
-                        t.service.toLowerCase().includes('discord') ? '💬' :
-                        t.service.toLowerCase().includes('telegram') ? '📨' :
-                        '🔗'
+        const showControls = activeTab === 'active'
 
-                      return (
-                        <div
-                          key={i}
-                          className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
-                        >
-                          <span className="mr-2">{serviceIcon}</span>
-                          <span className="text-yellow-300">{t.service}</span>
-                          <span className="mx-1 text-gray-400">•</span>
-                          <span className="text-gray-200">{t.type}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
+        return (
+          <div
+            key={c._id}
+            className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition"
+          >
+            <h3 className="text-lg font-bold text-blue-400 mb-2">{c.title}</h3>
+
+            {/* Deskripsi hanya tampil di active tab */}
+            {activeTab === 'active' && (
+              <p className="text-gray-300 whitespace-pre-wrap mb-2">
+                {shortDesc}{' '}
+                {c.description.length > 100 && (
+                  <button
+                    onClick={() => toggleReadMore(c._id)}
+                    className="text-blue-400 text-sm ml-1 hover:underline"
+                  >
+                    {isExpanded ? 'Show less' : 'Read more'}
+                  </button>
                 )}
+              </p>
+            )}
 
-                <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
-                <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
+            {/* Task list */}
+            {Array.isArray(c.tasks) && c.tasks.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {c.tasks.map((t, i) => {
+                  const serviceIcon =
+                    t.service.toLowerCase().includes('twitter')
+                      ? '🐦'
+                      : t.service.toLowerCase().includes('discord')
+                      ? '💬'
+                      : t.service.toLowerCase().includes('telegram')
+                      ? '📨'
+                      : '🔗'
 
-                <p
-                  className="text-sm text-gray-400 cursor-pointer hover:underline"
-                  onClick={() => {
-                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
-                    setShowParticipants(true)
-                  }}
-                >
-                  Contributors: <b>{c.contributors ?? 0}</b>
-                </p>
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
+                    >
+                      <span className="mr-2">{serviceIcon}</span>
+                      <span className="text-yellow-300">{t.service}</span>
+                      <span className="mx-1 text-gray-400">•</span>
+                      <span className="text-gray-200">{t.type}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
 
-                <div className="flex gap-2 mt-3">
-                  {c.status !== 'finished' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditingCampaign(c)
-                          setIsModalOpen(true)
-                        }}
-                        className="px-3 py-1 rounded font-medium"
-                        style={{ backgroundColor: '#facc15', color: '#000' }}
-                      >
-                        Edit
-                      </button>
-                      {c.contributors > 0 ? (
+            {/* Reward & Budget */}
+            <p className="text-sm text-green-400 font-semibold mt-2">
+              Reward: {c.reward}
+            </p>
+            <p className="text-sm text-yellow-400 font-semibold">
+              Budget: {c.budget}
+            </p>
+
+            {/* Contributors */}
+            <p
+              className="text-sm text-gray-400 cursor-pointer hover:underline"
+              onClick={() => {
+                setParticipants(Array.isArray(c.participants) ? c.participants : [])
+                setShowParticipants(true)
+              }}
+            >
+              Contributors: <b>{c.contributors ?? 0}</b>
+            </p>
+
+            {/* Tombol Edit/Delete hanya untuk active tab */}
+            {showControls && (
+              <div className="flex gap-2 mt-3">
+                {c.status !== 'finished' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditingCampaign(c)
+                        setIsModalOpen(true)
+                      }}
+                      className="px-3 py-1 rounded font-medium"
+                      style={{ backgroundColor: '#facc15', color: '#000' }}
+                    >
+                      Edit
+                    </button>
+                    {c.contributors > 0 ? (
                       <button
                         onClick={() => handleMarkFinished(c._id)}
                         className="px-3 py-1 rounded font-medium flex items-center justify-center"
                         style={{ backgroundColor: '#2563eb', color: '#fff' }}
                         disabled={loadingId === c._id}
-                        aria-busy={loadingId === c._id}
                       >
-                        {loadingId === c._id ? (
-                          // simple spinner + text
-                          <>
-                            <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                              <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                            </svg>
-                            Processing...
-                          </>
-                        ) : (
-                          'Mark Finished'
-                        )}
+                        {loadingId === c._id ? 'Processing...' : 'Mark Finished'}
                       </button>
-                      ) : (
+                    ) : (
                       <button
                         onClick={() => handleDelete(c._id)}
                         className="px-3 py-1 rounded font-medium flex items-center justify-center"
                         style={{ backgroundColor: '#dc2626', color: '#fff' }}
                         disabled={loadingId === c._id}
-                        aria-busy={loadingId === c._id}
                       >
-                        {loadingId === c._id ? (
-                          // simple spinner + text
-                          <>
-                            <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                              <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                            </svg>
-                            Processing...
-                          </>
-                        ) : (
-                          'Delete'
-                        )}
+                        {loadingId === c._id ? 'Processing...' : 'Delete'}
                       </button>
-                      )}
-                    </>
-                  )}
-                </div>
+                    )}
+                  </>
+                )}
               </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+
+    {/* Pagination controls with clickable indicators */}
+    {totalPages > 1 && (
+      <div className="flex flex-col items-center gap-3 mt-6">
+        <div className="flex gap-2 items-center">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(p => p - 1)}
+            className="px-3 py-1 bg-gray-700 rounded disabled:opacity-40"
+          >
+            Prev
+          </button>
+
+          {/* Page indicators */}
+          <div className="flex gap-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 rounded ${
+                  currentPage === page
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {page}
+              </button>
             ))}
           </div>
-        )}
+
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(p => p + 1)}
+            className="px-3 py-1 bg-gray-700 rounded disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+
+        <span className="text-sm text-gray-400">
+          Page {currentPage} of {totalPages}
+        </span>
+      </div>
+    )}
+  </>
+)}
+
 
         {/* Modal form */}
         <CampaignForm
