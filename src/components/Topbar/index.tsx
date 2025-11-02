@@ -158,7 +158,10 @@ const fetchBalance = async () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-end items-center">
+      <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center">
+        <div className="flex items-center gap-3 select-none">
+          <h1 className="text-xl font-bold tracking-wide">Dashboard</h1>
+        </div>
 
         {status === 'authenticated' && (
           <div className="relative">
