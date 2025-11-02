@@ -43,7 +43,7 @@ export default function HunterDashboard() {
   const [showChat, setShowChat] = useState(false)
   const [loadingIds, setLoadingIds] = useState<string[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set()) // ✅ untuk "Read More"
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(
     null
@@ -93,7 +93,6 @@ export default function HunterDashboard() {
     }
   }
 
-  // initial load
   useEffect(() => {
     fetchCampaigns()
     fetchCompleted()
@@ -105,7 +104,7 @@ export default function HunterDashboard() {
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // toggle deskripsi
+  // toggle deskripsi penuh
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
       const newSet = new Set(prev)
@@ -124,7 +123,7 @@ export default function HunterDashboard() {
     if (activeTab === 'completed') return completedCampaigns
     if (activeTab === 'rejected') return campaigns.filter((c) => c.status === 'rejected')
     return []
-  })().sort((a, b) => (a._id > b._id ? 1 : -1)) // ✅ ascending order (terlama dulu)
+  })().sort((a, b) => (a._id > b._id ? 1 : -1)) // ✅ ascending (terlama di atas)
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
@@ -169,10 +168,11 @@ export default function HunterDashboard() {
           ) : (
             filtered.map((c) => {
               const isExpanded = expandedIds.has(c._id)
-              const shortDesc =
-                c.description.length > 100
-                  ? c.description.slice(0, 100) + (isExpanded ? '' : '...')
-                  : c.description
+              const displayedDesc = isExpanded
+                ? c.description
+                : c.description.length > 100
+                ? c.description.slice(0, 100) + '...'
+                : c.description
 
               return (
                 <div
@@ -188,10 +188,12 @@ export default function HunterDashboard() {
                     )}
                   </div>
 
-                  {/* ✅ tampilkan deskripsi hanya di tab active */}
+                  {/* ✅ deskripsi hanya di tab active */}
                   {activeTab === 'active' && (
                     <>
-                      <p className="text-gray-300 mb-2">{shortDesc}</p>
+                      <p className="text-gray-300 mb-2 whitespace-pre-line">
+                        {displayedDesc}
+                      </p>
                       {c.description.length > 100 && (
                         <button
                           onClick={() => toggleExpand(c._id)}
@@ -199,9 +201,11 @@ export default function HunterDashboard() {
                             color: 'white',
                             backgroundColor: '#3b82f6',
                             border: 'none',
-                            padding: '4px 8px',
+                            padding: '4px 10px',
                             borderRadius: '4px',
                             fontSize: '0.8rem',
+                            display: 'block',
+                            marginTop: '4px',
                           }}
                         >
                           {isExpanded ? 'Show Less' : 'Read More'}
@@ -210,7 +214,7 @@ export default function HunterDashboard() {
                     </>
                   )}
 
-                  <p className="text-sm text-gray-400 mb-2">
+                  <p className="text-sm text-gray-400 mb-2 mt-2">
                     Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
                   </p>
 
