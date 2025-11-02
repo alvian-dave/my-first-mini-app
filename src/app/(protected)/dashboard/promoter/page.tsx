@@ -69,6 +69,10 @@ export default function PromoterDashboard() {
   const pageSize = 5
 
   useEffect(() => {
+  setCurrentPage(1)
+}, [activeTab])
+
+  useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
