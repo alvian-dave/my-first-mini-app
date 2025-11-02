@@ -186,44 +186,73 @@ export default function HunterDashboard() {
           </p>
         </div>
 
-        {/* ✅ PAGINATION BAR */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mb-4">
+{/* ✅ PAGINATION BAR (Compact + Aman untuk ribuan data) */}
+{totalPages > 1 && (
+  <div className="flex justify-center items-center gap-2 mb-4 flex-wrap">
+    {/* Prev button */}
+    <button
+      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+      disabled={currentPage === 1}
+      className={`px-3 py-1 rounded font-semibold ${
+        currentPage === 1
+          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+          : 'bg-yellow-500 text-black hover:bg-yellow-400'
+      }`}
+    >
+      Prev
+    </button>
+
+    {/* Page numbers (compact version) */}
+    {Array.from({ length: totalPages })
+      .map((_, i) => i + 1)
+      .filter((page) => {
+        // tampilkan hanya halaman awal, akhir, dan sekitar halaman aktif
+        return (
+          page === 1 ||
+          page === totalPages ||
+          (page >= currentPage - 2 && page <= currentPage + 2)
+        )
+      })
+      .map((page, idx, arr) => {
+        const prevPage = arr[idx - 1]
+        const showEllipsis = prevPage && page - prevPage > 1
+
+        return (
+          <span key={page} className="flex items-center">
+            {showEllipsis && <span className="px-1 text-gray-400">...</span>}
             <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage(page)}
+              className={`px-3 py-1 rounded ${
+                currentPage === page
+                  ? 'bg-green-600 text-white font-bold'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
             >
-              Prev
+              {page}
             </button>
+          </span>
+        )
+      })}
 
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`px-3 py-1 rounded ${
-                  currentPage === i + 1
-                    ? 'bg-green-600 text-white font-bold'
-                    : 'bg-gray-700 hover:bg-gray-600'
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
+    {/* Next button */}
+    <button
+      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+      disabled={currentPage === totalPages}
+      className={`px-3 py-1 rounded font-semibold ${
+        currentPage === totalPages
+          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+          : 'bg-yellow-500 text-black hover:bg-yellow-400'
+      }`}
+    >
+      Next
+    </button>
 
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50"
-            >
-              Next
-            </button>
-
-            <span className="ml-2 text-sm text-gray-400">
-              Page {currentPage} of {totalPages}
-            </span>
-          </div>
-        )}
+    {/* Info */}
+    <span className="ml-2 text-sm text-gray-400">
+      Page {currentPage} of {totalPages}
+    </span>
+  </div>
+)}
 
         {/* Task Cards */}
         <div className="grid md:grid-cols-2 gap-6">
