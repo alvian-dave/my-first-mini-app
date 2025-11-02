@@ -186,73 +186,87 @@ export default function HunterDashboard() {
           </p>
         </div>
 
-{/* ✅ PAGINATION BAR (Compact + Aman untuk ribuan data) */}
+{/* ✅ PAGINATION BAR (Final + Force Colors) */}
 {totalPages > 1 && (
-  <div className="flex justify-center items-center gap-2 mb-4 flex-wrap">
-    {/* Prev button */}
-    <button
-      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-      disabled={currentPage === 1}
-      className={`px-3 py-1 rounded font-semibold ${
-        currentPage === 1
-          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-          : 'bg-yellow-500 text-black hover:bg-yellow-400'
-      }`}
-    >
-      Prev
-    </button>
+  <div className="flex flex-col items-center gap-2 mb-4">
+    {/* Baris tombol pagination */}
+    <div className="flex justify-center items-center gap-2 flex-wrap">
+      {/* Prev */}
+      <button
+        onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+        disabled={currentPage === 1}
+        style={{
+          backgroundColor: currentPage === 1 ? '#374151' : '#facc15', // gray atau kuning
+          color: currentPage === 1 ? '#9ca3af' : '#000', // teks abu-abu / hitam
+          fontWeight: 'bold',
+          padding: '4px 12px',
+          borderRadius: '6px',
+          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+        }}
+      >
+        Prev
+      </button>
 
-    {/* Page numbers (compact version) */}
-    {Array.from({ length: totalPages })
-      .map((_, i) => i + 1)
-      .filter((page) => {
-        // tampilkan hanya halaman awal, akhir, dan sekitar halaman aktif
-        return (
-          page === 1 ||
-          page === totalPages ||
-          (page >= currentPage - 2 && page <= currentPage + 2)
-        )
-      })
-      .map((page, idx, arr) => {
-        const prevPage = arr[idx - 1]
-        const showEllipsis = prevPage && page - prevPage > 1
+      {/* Page numbers */}
+      {Array.from({ length: totalPages })
+        .map((_, i) => i + 1)
+        .filter((page) => {
+          return (
+            page === 1 ||
+            page === totalPages ||
+            (page >= currentPage - 2 && page <= currentPage + 2)
+          )
+        })
+        .map((page, idx, arr) => {
+          const prevPage = arr[idx - 1]
+          const showEllipsis = prevPage && page - prevPage > 1
 
-        return (
-          <span key={page} className="flex items-center">
-            {showEllipsis && <span className="px-1 text-gray-400">...</span>}
-            <button
-              onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1 rounded ${
-                currentPage === page
-                  ? 'bg-green-600 text-white font-bold'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              {page}
-            </button>
-          </span>
-        )
-      })}
+          return (
+            <span key={page} className="flex items-center">
+              {showEllipsis && (
+                <span style={{ padding: '0 4px', color: '#9ca3af' }}>...</span>
+              )}
+              <button
+                onClick={() => setCurrentPage(page)}
+                style={{
+                  backgroundColor: currentPage === page ? '#16a34a' : '#374151', // hijau / gray
+                  color: currentPage === page ? '#fff' : '#d1d5db', // putih / abu-abu terang
+                  fontWeight: currentPage === page ? 'bold' : 'normal',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                {page}
+              </button>
+            </span>
+          )
+        })}
 
-    {/* Next button */}
-    <button
-      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-      disabled={currentPage === totalPages}
-      className={`px-3 py-1 rounded font-semibold ${
-        currentPage === totalPages
-          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-          : 'bg-yellow-500 text-black hover:bg-yellow-400'
-      }`}
-    >
-      Next
-    </button>
+      {/* Next */}
+      <button
+        onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+        disabled={currentPage === totalPages}
+        style={{
+          backgroundColor: currentPage === totalPages ? '#374151' : '#facc15', // gray / kuning
+          color: currentPage === totalPages ? '#9ca3af' : '#000', // abu-abu / hitam
+          fontWeight: 'bold',
+          padding: '4px 12px',
+          borderRadius: '6px',
+          cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+        }}
+      >
+        Next
+      </button>
+    </div>
 
-    {/* Info */}
-    <span className="ml-2 text-sm text-gray-400">
+    {/* Info bar di bawah */}
+    <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
       Page {currentPage} of {totalPages}
     </span>
   </div>
 )}
+
 
         {/* Task Cards */}
         <div className="grid md:grid-cols-2 gap-6">
