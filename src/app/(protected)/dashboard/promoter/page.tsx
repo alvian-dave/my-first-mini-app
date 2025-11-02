@@ -224,33 +224,7 @@ const handleMarkFinished = async (id: string) => {
             {current.map(c => (
               <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
                 <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
-                
-                {/* Description with Read More / Show Less */}
-<p className="text-gray-300 my-2 whitespace-pre-wrap">
-  {(() => {
-    const [expanded, setExpanded] = useState(false)
-    const isLong = c.description.length > 100
-    const shownText = expanded ? c.description : c.description.slice(0, 100)
-    return (
-      <>
-        {shownText}
-        {isLong && (
-          <>
-            {!expanded && <span>...</span>}{' '}
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="font-semibold"
-              style={{ color: '#3b82f6' }} // 🔵 warna paksa biru terang
-            >
-              {expanded ? 'Show less' : 'Read more'}
-            </button>
-          </>
-        )}
-      </>
-    )
-  })()}
-</p>
-
+                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
 
                 {/* Task List */}
                 {Array.isArray(c.tasks) && c.tasks.length > 0 && (
