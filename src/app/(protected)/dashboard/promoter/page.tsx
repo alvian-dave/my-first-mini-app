@@ -13,6 +13,30 @@ import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
 
+function CampaignDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = text.length > 100
+  const shownText = expanded ? text : text.slice(0, 100)
+
+  return (
+    <p className="text-gray-300 my-2 whitespace-pre-wrap">
+      {shownText}
+      {isLong && (
+        <>
+          {!expanded && <span>...</span>}{' '}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="font-semibold"
+            style={{ color: '#3b82f6' }} // 🔵 warna paksa
+          >
+            {expanded ? 'Show less' : 'Read more'}
+          </button>
+        </>
+      )}
+    </p>
+  )
+}
+
 // UI Campaign type (tambahkan tasks)
 type UICampaign = BaseCampaign & {
   _id: string
@@ -224,7 +248,8 @@ const handleMarkFinished = async (id: string) => {
             {current.map(c => (
               <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
                 <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
-                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
+                <CampaignDescription text={c.description} />
+
 
                 {/* Task List */}
                 {Array.isArray(c.tasks) && c.tasks.length > 0 && (
