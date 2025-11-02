@@ -44,17 +44,18 @@ export default function HunterDashboard() {
   const [loadingIds, setLoadingIds] = useState<string[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(
     null
   )
 
-  // redirect jika belum login
+  // 🔐 Redirect jika belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
 
-  // fetch data
+  // =========================
+  // FETCH DATA
+  // =========================
   const fetchCampaigns = async () => {
     try {
       const res = await fetch('/api/campaigns', { cache: 'no-store' })
@@ -99,12 +100,14 @@ export default function HunterDashboard() {
     fetchBalance()
   }, [session?.user?.id])
 
+  // =========================
+  // STATE HELPERS
+  // =========================
   const setLoadingFor = (id: string, loading: boolean) => {
     setLoadingIds((prev) => (loading ? [...prev, id] : prev.filter((x) => x !== id)))
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // toggle deskripsi penuh
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
       const newSet = new Set(prev)
@@ -114,7 +117,9 @@ export default function HunterDashboard() {
     })
   }
 
-  // urutkan campaign dari yang lama ke baru
+  // =========================
+  // FILTER & SORT
+  // =========================
   const filtered = (() => {
     if (activeTab === 'active') {
       const completedIds = new Set(completedCampaigns.map((c) => c._id))
@@ -123,8 +128,27 @@ export default function HunterDashboard() {
     if (activeTab === 'completed') return completedCampaigns
     if (activeTab === 'rejected') return campaigns.filter((c) => c.status === 'rejected')
     return []
-  })().sort((a, b) => (a._id > b._id ? 1 : -1)) // ✅ ascending (terlama di atas)
+  })().sort((a, b) => (a._id > b._id ? 1 : -1))
 
+  // =========================
+  // PAGINATION (AMAN)
+  // =========================
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  // reset ke halaman pertama saat ganti tab
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab])
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const indexOfLast = currentPage * itemsPerPage
+  const indexOfFirst = indexOfLast - itemsPerPage
+  const currentCampaigns = filtered.slice(indexOfFirst, indexOfLast)
+
+  // =========================
+  // GUARD SESSION
+  // =========================
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
@@ -133,6 +157,7 @@ export default function HunterDashboard() {
       <Topbar />
 
       <div className="w-full px-6 py-8">
+        {/* Banner */}
         <div
           className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
           style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
@@ -161,12 +186,51 @@ export default function HunterDashboard() {
           </p>
         </div>
 
+        {/* ✅ PAGINATION BAR */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mb-4">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50"
+            >
+              Prev
+            </button>
+
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 rounded ${
+                  currentPage === i + 1
+                    ? 'bg-green-600 text-white font-bold'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50"
+            >
+              Next
+            </button>
+
+            <span className="ml-2 text-sm text-gray-400">
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
+        )}
+
         {/* Task Cards */}
         <div className="grid md:grid-cols-2 gap-6">
-          {filtered.length === 0 ? (
+          {currentCampaigns.length === 0 ? (
             <p className="text-center text-gray-400 col-span-2">No tasks in this tab.</p>
           ) : (
-            filtered.map((c) => {
+            currentCampaigns.map((c) => {
               const isExpanded = expandedIds.has(c._id)
               const displayedDesc = isExpanded
                 ? c.description
@@ -188,7 +252,6 @@ export default function HunterDashboard() {
                     )}
                   </div>
 
-                  {/* ✅ deskripsi hanya di tab active */}
                   {activeTab === 'active' && (
                     <>
                       <p className="text-gray-300 mb-2 whitespace-pre-line">
@@ -327,11 +390,7 @@ export default function HunterDashboard() {
 
       {/* Toast */}
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
     </div>
   )
