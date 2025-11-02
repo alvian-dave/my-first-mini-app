@@ -158,29 +158,30 @@ const fetchBalance = async () => {
 
   return (
     <>
-<header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-end items-center">
-  {status === 'authenticated' && (
-    <div className="relative">
-      <button
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-        aria-label="User menu"
-        className="p-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="currentColor"
-          className="w-6 h-6"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"
-          />
-        </svg>
-      </button>
+      <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center">
+
+        {status === 'authenticated' && (
+          <div className="relative">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="User menu"
+              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-6 h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"
+                />
+              </svg>
+            </button>
 
             {isMenuOpen && (
               <div
