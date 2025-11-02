@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
@@ -12,9 +12,8 @@ import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
-// =======================
-// Types
-// =======================
+
+// UI Campaign type (tambahkan tasks)
 type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
@@ -27,9 +26,9 @@ type ToastState =
   | { message: string; type?: 'success' | 'error' }
   | { message: string; type: 'confirm'; onConfirm: () => void; onCancel?: () => void }
 
-// =======================
-// Component
-// =======================
+const PAGE_SIZE = 5
+const DESCRIPTION_PREVIEW_LENGTH = 140
+
 export default function PromoterDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -40,29 +39,29 @@ export default function PromoterDashboard() {
   const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
+
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
+
+  // ✅ Toast state (bisa confirm atau normal)
   const [toast, setToast] = useState<ToastState | null>(null)
+
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  // Pagination + read more
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
-  const [expandedIds, setExpandedIds] = useState<string[]>([])
+  // pagination state per tab
+  const [pages, setPages] = useState({ active: 1, finished: 1, rejected: 1 })
 
-  // =======================
-  // Session guard
-  // =======================
+  // which campaign descriptions are expanded
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
-  // =======================
-  // Fetch WR Balance
-  // =======================
   useEffect(() => {
     if (!session?.user?.walletAddress) return
+
     const fetchOnChainBalance = async () => {
       try {
         const onChainBal = await getWRCreditBalance(session.user.walletAddress)
@@ -71,35 +70,32 @@ export default function PromoterDashboard() {
         console.error('Failed to fetch on-chain balance:', err)
       }
     }
-    fetchOnChainBalance()
-  }, [session?.user?.walletAddress])
 
-  // =======================
-  // Load Campaigns
-  // =======================
+    fetchOnChainBalance()
+  }, [session])
+
   useEffect(() => {
-    if (!session?.user?.id) return
+    if (!session?.user) return
     const loadCampaigns = async () => {
       try {
         const res = await fetch('/api/campaigns')
         const data = await res.json()
-        const filtered = (data as UICampaign[]).filter(
-          (c) => c.createdBy === session.user.id
-        )
+        const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
         setCampaigns(filtered)
+
+        // reset pagination when campaigns change: ensure current page is valid
+        setPages(prev => ({ ...prev, active: 1, finished: 1, rejected: 1 }))
       } catch (err) {
         console.error('Failed to load campaigns:', err)
       }
     }
     loadCampaigns()
-  }, [session?.user?.id])
+  }, [session])
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // =======================
-  // CRUD Handlers
-  // =======================
+  // create / update
   const handleSubmit = async (campaign: BaseCampaign) => {
     try {
       if (editingCampaign?._id) {
@@ -120,10 +116,9 @@ export default function PromoterDashboard() {
 
       const res = await fetch('/api/campaigns')
       const data = await res.json()
-      const filtered = (data as UICampaign[]).filter(
-        (c) => c.createdBy === session.user.id
-      )
+      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
       setCampaigns(filtered)
+
       setIsModalOpen(false)
       setEditingCampaign(null)
     } catch (err) {
@@ -135,30 +130,33 @@ export default function PromoterDashboard() {
   const handleMarkFinished = async (id: string) => {
     setLoadingId(id)
     try {
+      // send action: "finish" so backend triggers rescueCampaignFunds
       const resp = await fetch(`/api/campaigns/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'finish' }),
       })
       const result = await resp.json()
+
       if (!resp.ok) {
+        console.error('Mark finished failed:', result)
         setToast({ message: result?.error || 'Failed to mark finished', type: 'error' })
         return
       }
 
+      // refresh campaigns list
       const res = await fetch('/api/campaigns')
       const data = await res.json()
-      const filtered = (data as UICampaign[]).filter(
-        (c) => c.createdBy === session.user.id
-      )
+      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
       setCampaigns(filtered)
 
-      setToast({
-        message: result?.txLink
-          ? 'Campaign finished — remaining funds rescued. View tx'
-          : result?.message || 'Campaign marked as finished',
-        type: 'success',
-      })
+      // show proper message depending on rescue result
+      if (result.txLink) {
+        setToast({ message: 'Campaign finished — remaining funds rescued. View tx', type: 'success' })
+        // optionally open result.txLink or show in UI
+      } else {
+        setToast({ message: result?.message || 'Campaign marked as finished', type: 'success' })
+      }
     } catch (err) {
       console.error('Failed to mark finished:', err)
       setToast({ message: 'Failed to mark finished', type: 'error' })
@@ -167,6 +165,7 @@ export default function PromoterDashboard() {
     }
   }
 
+  // ✅ Delete with toast confirmation
   const handleDelete = (id: string) => {
     setToast({
       message: 'Are you sure you want to delete this campaign?',
@@ -175,7 +174,7 @@ export default function PromoterDashboard() {
         setLoadingId(id)
         try {
           await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
-          setCampaigns((prev) => prev.filter((p) => p._id !== id))
+          setCampaigns(prev => prev.filter(p => p._id !== id))
           setToast({ message: 'Campaign deleted successfully', type: 'success' })
         } catch (err) {
           console.error('Failed to delete campaign:', err)
@@ -188,38 +187,37 @@ export default function PromoterDashboard() {
     })
   }
 
-  // =======================
-  // Derived Data (memoized)
-  // =======================
-  const current = useMemo(
-    () =>
-      campaigns
-        .filter((c) => (c.status || 'active') === activeTab)
-        .sort((a, b) => (a._id > b._id ? -1 : 1)),
-    [campaigns, activeTab]
-  )
+  // derive per-tab campaigns and pagination
+  const campaignsByTab = useMemo(() => ({
+    active: campaigns.filter(c => (c.status || 'active') === 'active'),
+    finished: campaigns.filter(c => (c.status || 'active') === 'finished'),
+    rejected: campaigns.filter(c => (c.status || 'active') === 'rejected'),
+  }), [campaigns])
 
-  const totalPages = Math.max(1, Math.ceil((current?.length || 0) / itemsPerPage))
-  const paginatedCampaigns = useMemo(
-    () =>
-      current.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
-    [current, currentPage]
-  )
-
-  const toggleReadMore = (id: string) => {
-    setExpandedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
+  const totalPagesFor = (tab: keyof typeof campaignsByTab) => {
+    return Math.max(1, Math.ceil(campaignsByTab[tab].length / PAGE_SIZE))
   }
 
-  // reset current page when campaigns or tab change (keeps UX consistent)
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab, campaigns])
+  const currentPageFor = (tab: keyof typeof campaignsByTab) => pages[tab]
 
-  // =======================
-  // JSX
-  // =======================
+  const setPageFor = (tab: keyof typeof campaignsByTab, page: number) => {
+    setPages(prev => ({ ...prev, [tab]: page }))
+  }
+
+  const paginatedFor = (tab: keyof typeof campaignsByTab) => {
+    const all = campaignsByTab[tab]
+    const page = currentPageFor(tab)
+    const start = (page - 1) * PAGE_SIZE
+    return all.slice(start, start + PAGE_SIZE)
+  }
+
+  const toggleExpand = (id: string) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  // Current campaigns displayed
+  const current = paginatedFor(activeTab)
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <Topbar />
@@ -227,10 +225,7 @@ export default function PromoterDashboard() {
         {/* Balance + Topup */}
         <div className="flex justify-between items-center mb-6">
           <div className="text-lg font-medium">
-            Balance{' '}
-            <span className="text-green-400 font-bold">
-              {balance.toFixed(2)} WR
-            </span>
+            Balance <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
           </div>
           <button
             onClick={() => setShowTopup(true)}
@@ -257,187 +252,192 @@ export default function PromoterDashboard() {
 
         {/* Tabs */}
         <div className="sticky top-18 bg-gray-900 z-40 pb-3">
-          <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+          <CampaignTabs
+            activeTab={activeTab}
+            setActiveTab={(t) => {
+              setActiveTab(t)
+              // reset page for newly selected tab
+              setPages(prev => ({ ...prev, [t]: 1 }))
+            }}
+          />
         </div>
 
         {/* Campaign list */}
-        {current.length === 0 ? (
+        {paginatedFor(activeTab).length === 0 ? (
           <p className="text-center text-gray-400">No campaigns in this tab.</p>
         ) : (
-          <>
-            <div className="grid md:grid-cols-2 gap-6">
-              {paginatedCampaigns.map((c) => {
-                const isExpanded = expandedIds.includes(c._id)
-                const desc = c.description ?? ''
-                const shortDesc =
-                  desc.length > 100 && !isExpanded ? desc.slice(0, 100) + '...' : desc
+          <div className="grid md:grid-cols-2 gap-6">
+            {paginatedFor(activeTab).map(c => (
+              <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
+                <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
 
-                const showControls = activeTab === 'active'
+                {/* DESCRIPTION: show truncated preview in all tabs, with Read more only for long descriptions */}
+                {c.description && (
+                  <p className="text-gray-300 my-2 whitespace-pre-wrap">
+                    {expanded[c._id]
+                      ? c.description
+                      : c.description.length > DESCRIPTION_PREVIEW_LENGTH
+                      ? c.description.slice(0, DESCRIPTION_PREVIEW_LENGTH) + '...'
+                      : c.description}
 
-                return (
-                  <div
-                    key={c._id}
-                    className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition"
-                  >
-                    <h3 className="text-lg font-bold text-blue-400 mb-2">
-                      {c.title}
-                    </h3>
+                    {c.description.length > DESCRIPTION_PREVIEW_LENGTH && (
+                      <button
+                        className="ml-2 text-sm font-medium text-yellow-300 hover:underline"
+                        onClick={() => toggleExpand(c._id)}
+                      >
+                        {expanded[c._id] ? 'Show less' : 'Read more'}
+                      </button>
+                    )}
+                  </p>
+                )}
 
-                    {activeTab === 'active' && (
-                      <p className="text-gray-300 whitespace-pre-wrap mb-2">
-                        {shortDesc}{' '}
-                        {desc.length > 100 && (
+                {/* Task List */}
+                {Array.isArray(c.tasks) && c.tasks.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {c.tasks.map((t, i) => {
+                      const serviceIcon =
+                        t.service.toLowerCase().includes('twitter') ? '🐦' :
+                        t.service.toLowerCase().includes('discord') ? '💬' :
+                        t.service.toLowerCase().includes('telegram') ? '📨' :
+                        '🔗'
+
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
+                        >
+                          <span className="mr-2">{serviceIcon}</span>
+                          <span className="text-yellow-300">{t.service}</span>
+                          <span className="mx-1 text-gray-400">•</span>
+                          <span className="text-gray-200">{t.type}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
+                <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
+
+                <p
+                  className="text-sm text-gray-400 cursor-pointer hover:underline"
+                  onClick={() => {
+                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
+                    setShowParticipants(true)
+                  }}
+                >
+                  Contributors: <b>{c.contributors ?? 0}</b>
+                </p>
+
+                {/* ACTIONS: only show edit/delete/mark finished in 'active' tab (as requested) */}
+                {activeTab === 'active' && (
+                  <div className="flex gap-2 mt-3">
+                    {c.status !== 'finished' && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingCampaign(c)
+                            setIsModalOpen(true)
+                          }}
+                          className="px-3 py-1 rounded font-medium"
+                          style={{ backgroundColor: '#facc15', color: '#000' }}
+                        >
+                          Edit
+                        </button>
+                        {c.contributors > 0 ? (
                           <button
-                            onClick={() => toggleReadMore(c._id)}
-                            className="text-blue-400 text-sm ml-1 hover:underline"
+                            onClick={() => handleMarkFinished(c._id)}
+                            className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                            style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                            disabled={loadingId === c._id}
+                            aria-busy={loadingId === c._id}
                           >
-                            {isExpanded ? 'Show less' : 'Read more'}
+                            {loadingId === c._id ? (
+                              <>
+                                <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                                  <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+                                </svg>
+                                Processing...
+                              </>
+                            ) : (
+                              'Mark Finished'
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDelete(c._id)}
+                            className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                            style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                            disabled={loadingId === c._id}
+                            aria-busy={loadingId === c._id}
+                          >
+                            {loadingId === c._id ? (
+                              <>
+                                <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                                  <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+                                </svg>
+                                Processing...
+                              </>
+                            ) : (
+                              'Delete'
+                            )}
                           </button>
                         )}
-                      </p>
-                    )}
-
-                    {Array.isArray(c.tasks) && c.tasks.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {c.tasks.map((t, i) => {
-                          const icon = t.service.toLowerCase().includes('twitter')
-                            ? '🐦'
-                            : t.service.toLowerCase().includes('discord')
-                            ? '💬'
-                            : t.service.toLowerCase().includes('telegram')
-                            ? '📨'
-                            : '🔗'
-                          return (
-                            <div
-                              key={i}
-                              className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
-                            >
-                              <span className="mr-2">{icon}</span>
-                              <span className="text-yellow-300">{t.service}</span>
-                              <span className="mx-1 text-gray-400">•</span>
-                              <span className="text-gray-200">{t.type}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-
-                    <p className="text-sm text-green-400 font-semibold mt-2">
-                      Reward: {c.reward}
-                    </p>
-                    <p className="text-sm text-yellow-400 font-semibold">
-                      Budget: {c.budget}
-                    </p>
-
-                    <p
-                      className="text-sm text-gray-400 cursor-pointer hover:underline"
-                      onClick={() => {
-                        setParticipants(
-                          Array.isArray(c.participants) ? c.participants : []
-                        )
-                        setShowParticipants(true)
-                      }}
-                    >
-                      Contributors: <b>{c.contributors ?? 0}</b>
-                    </p>
-
-                    {showControls && (
-                      <div className="flex gap-2 mt-3">
-                        {c.status !== 'finished' && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setEditingCampaign(c)
-                                setIsModalOpen(true)
-                              }}
-                              className="px-3 py-1 rounded font-medium"
-                              style={{
-                                backgroundColor: '#facc15',
-                                color: '#000',
-                              }}
-                            >
-                              Edit
-                            </button>
-                            {c.contributors > 0 ? (
-                              <button
-                                onClick={() => handleMarkFinished(c._id)}
-                                className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                                style={{
-                                  backgroundColor: '#2563eb',
-                                  color: '#fff',
-                                }}
-                                disabled={loadingId === c._id}
-                              >
-                                {loadingId === c._id
-                                  ? 'Processing...'
-                                  : 'Mark Finished'}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleDelete(c._id)}
-                                className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                                style={{
-                                  backgroundColor: '#dc2626',
-                                  color: '#fff',
-                                }}
-                                disabled={loadingId === c._id}
-                              >
-                                {loadingId === c._id ? 'Processing...' : 'Delete'}
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
+                      </>
                     )}
                   </div>
-                )
-              })}
-            </div>
-
-            {totalPages > 1 && (
-              <div className="flex flex-col items-center gap-3 mt-6">
-                <div className="flex gap-2 items-center">
-                  <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                    className="px-3 py-1 bg-gray-700 rounded disabled:opacity-40"
-                  >
-                    Prev
-                  </button>
-                  <div className="flex gap-2">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-1 rounded ${
-                            currentPage === page
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      )
-                    )}
-                  </div>
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    className="px-3 py-1 bg-gray-700 rounded disabled:opacity-40"
-                  >
-                    Next
-                  </button>
-                </div>
-                <span className="text-sm text-gray-400">
-                  Page {currentPage} of {totalPages}
-                </span>
+                )}
               </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
 
-        {/* Campaign Form */}
+        {/* Pagination controls - shown for the currently selected tab */}
+        <div className="mt-6 flex flex-col items-center">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setPageFor(activeTab, Math.max(1, currentPageFor(activeTab) - 1))}
+              className="px-3 py-1 rounded"
+              style={{ backgroundColor: '#374151', color: '#fff' }}
+              disabled={currentPageFor(activeTab) === 1}
+            >
+              Prev
+            </button>
+
+            {/* page numbers */}
+            {Array.from({ length: totalPagesFor(activeTab) }).map((_, idx) => {
+              const pageNum = idx + 1
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPageFor(activeTab, pageNum)}
+                  className={`px-3 py-1 rounded ${currentPageFor(activeTab) === pageNum ? 'font-bold' : ''}`}
+                  style={{ backgroundColor: currentPageFor(activeTab) === pageNum ? '#111827' : '#1f2937', color: '#fff' }}
+                >
+                  {pageNum}
+                </button>
+              )
+            })}
+
+            <button
+              onClick={() => setPageFor(activeTab, Math.min(totalPagesFor(activeTab), currentPageFor(activeTab) + 1))}
+              className="px-3 py-1 rounded"
+              style={{ backgroundColor: '#374151', color: '#fff' }}
+              disabled={currentPageFor(activeTab) === totalPagesFor(activeTab)}
+            >
+              Next
+            </button>
+          </div>
+
+          {/* show status like: "page 3 of 7" when there is more than 1 page */}
+          <div className="text-sm text-gray-400 mt-2">
+            Page {currentPageFor(activeTab)} of {totalPagesFor(activeTab)}
+          </div>
+        </div>
+
+        {/* Modal form */}
         <CampaignForm
           isOpen={isModalOpen}
           onClose={() => {
@@ -446,12 +446,10 @@ export default function PromoterDashboard() {
           }}
           onSubmit={handleSubmit}
           editingCampaign={editingCampaign as unknown as BaseCampaign | null}
-          setEditingCampaign={(c) =>
-            setEditingCampaign(c as unknown as UICampaign | null)
-          }
+          setEditingCampaign={(c: BaseCampaign | null) => setEditingCampaign(c as unknown as UICampaign | null)}
         />
 
-        {/* Participants Modal */}
+        {/* Participants modal */}
         {showParticipants && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
             <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
@@ -460,10 +458,8 @@ export default function PromoterDashboard() {
                 <p className="text-gray-400">No participants yet.</p>
               ) : (
                 <ul className="list-disc list-inside space-y-1">
-                  {participants.map((p) => (
-                    <li key={p} className="text-sm text-gray-200">
-                      {p}
-                    </li>
+                  {participants.map(p => (
+                    <li key={p} className="text-sm text-gray-200">{p}</li>
                   ))}
                 </ul>
               )}
@@ -481,7 +477,9 @@ export default function PromoterDashboard() {
       </main>
 
       {/* Topup Modal */}
-      {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
+      {showTopup && (
+        <USDCTransferModal onClose={() => setShowTopup(false)} />
+      )}
 
       {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">
@@ -498,10 +496,7 @@ export default function PromoterDashboard() {
           </div>
         ) : (
           <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
-            <div
-              className="flex justify-between items-center px-4 py-2"
-              style={{ backgroundColor: '#16a34a', color: '#fff' }}
-            >
+            <div className="flex justify-between items-center px-4 py-2" style={{ backgroundColor: '#16a34a', color: '#fff' }}>
               <span className="font-semibold">Global Chat</span>
               <button onClick={() => setShowChat(false)}>✕</button>
             </div>
