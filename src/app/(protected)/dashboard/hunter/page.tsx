@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import TaskModal from '@/components/TaskModal'
-import Toast from '@/components/Toast' // ✅ import Toast
+import Toast from '@/components/Toast'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
 interface Task {
@@ -43,16 +43,18 @@ export default function HunterDashboard() {
   const [showChat, setShowChat] = useState(false)
   const [loadingIds, setLoadingIds] = useState<string[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set()) // ✅ untuk "Read More"
 
-  // ✅ Toast state
-  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(
+    null
+  )
 
-  // Redirect if not logged in
+  // redirect jika belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
 
-  // fetch helpers
+  // fetch data
   const fetchCampaigns = async () => {
     try {
       const res = await fetch('/api/campaigns', { cache: 'no-store' })
@@ -80,17 +82,16 @@ export default function HunterDashboard() {
     }
   }
 
-const fetchBalance = async () => {
-  if (!session?.user?.walletAddress) return
-
-  try {
-    const balance = await getWRCreditBalance(session.user.walletAddress)
-    setDbBalance(balance) // tampilkan langsung ke UI
-  } catch (err) {
-    console.error("Failed to fetch blockchain balance:", err)
-    setToast({ message: 'Failed to fetch WR from blockchain', type: 'error' })
+  const fetchBalance = async () => {
+    if (!session?.user?.walletAddress) return
+    try {
+      const balance = await getWRCreditBalance(session.user.walletAddress)
+      setDbBalance(balance)
+    } catch (err) {
+      console.error('Failed to fetch blockchain balance:', err)
+      setToast({ message: 'Failed to fetch WR from blockchain', type: 'error' })
+    }
   }
-}
 
   // initial load
   useEffect(() => {
@@ -99,13 +100,22 @@ const fetchBalance = async () => {
     fetchBalance()
   }, [session?.user?.id])
 
-  // helper loading
   const setLoadingFor = (id: string, loading: boolean) => {
     setLoadingIds((prev) => (loading ? [...prev, id] : prev.filter((x) => x !== id)))
   }
   const isLoading = (id: string) => loadingIds.includes(id)
 
-  // filter campaigns sesuai tab
+  // toggle deskripsi
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) newSet.delete(id)
+      else newSet.add(id)
+      return newSet
+    })
+  }
+
+  // urutkan campaign dari yang lama ke baru
   const filtered = (() => {
     if (activeTab === 'active') {
       const completedIds = new Set(completedCampaigns.map((c) => c._id))
@@ -114,7 +124,7 @@ const fetchBalance = async () => {
     if (activeTab === 'completed') return completedCampaigns
     if (activeTab === 'rejected') return campaigns.filter((c) => c.status === 'rejected')
     return []
-  })().sort((a, b) => (a._id > b._id ? -1 : 1))
+  })().sort((a, b) => (a._id > b._id ? 1 : -1)) // ✅ ascending order (terlama dulu)
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
@@ -157,78 +167,105 @@ const fetchBalance = async () => {
           {filtered.length === 0 ? (
             <p className="text-center text-gray-400 col-span-2">No tasks in this tab.</p>
           ) : (
-            filtered.map((c) => (
-              <div
-                key={c._id}
-                className="bg-gray-800 p-5 rounded-lg shadow hover:shadow-lg transition"
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
-                  {activeTab === 'completed' && (
-                    <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
-                      Submitted
-                    </span>
-                  )}
-                </div>
+            filtered.map((c) => {
+              const isExpanded = expandedIds.has(c._id)
+              const shortDesc =
+                c.description.length > 100
+                  ? c.description.slice(0, 100) + (isExpanded ? '' : '...')
+                  : c.description
 
-                <p className="text-gray-300 mb-2">{c.description}</p>
-
-                <p className="text-sm text-gray-400 mb-2">
-                  Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
-                </p>
-
-                {/* Active Campaigns */}
-                {activeTab === 'active' ? (
-                  <div className="mt-3">
-                    <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
-                    {c.tasks && c.tasks.length > 0 && (
-                      <ul className="text-sm text-gray-300 space-y-1">
-                        {c.tasks.map((t, i) => (
-                          <li key={i} className="flex items-center gap-2">
-                            <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
-                              {t.service}
-                            </span>
-                            <span className="text-gray-200">{t.type}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <button
-                      className="mt-3 w-full py-2 rounded font-semibold text-white"
-                      style={{ backgroundColor: '#16a34a' }}
-                      onClick={() => setSelectedCampaign(c)}
-                    >
-                      {isLoading(c._id) ? 'Loading...' : 'Submit Task'}
-                    </button>
-                  </div>
-                ) : activeTab === 'completed' ? (
-                  <div className="mt-3">
-                    <p className="text-green-400 font-medium mb-2">
-                      Task Submitted — Status:{' '}
-                      <span
-                        className={
-                          c.status === 'finished' ? 'text-blue-400' : 'text-green-400'
-                        }
-                      >
-                        {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+              return (
+                <div
+                  key={c._id}
+                  className="bg-gray-800 p-5 rounded-lg shadow hover:shadow-lg transition"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
+                    {activeTab === 'completed' && (
+                      <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
+                        Submitted
                       </span>
-                    </p>
-                    {c.tasks && c.tasks.length > 0 && (
-                      <ul className="text-sm text-gray-300 space-y-1">
-                        {c.tasks.map((t, i) => (
-                          <li key={i} className="flex items-center gap-2">
-                            <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-green-400">
-                              {t.service}
-                            </span>
-                            <span className="text-gray-200">{t.type}</span>
-                          </li>
-                        ))}
-                      </ul>
                     )}
                   </div>
-                ) : null}
-              </div>
-            ))
+
+                  {/* ✅ tampilkan deskripsi hanya di tab active */}
+                  {activeTab === 'active' && (
+                    <>
+                      <p className="text-gray-300 mb-2">{shortDesc}</p>
+                      {c.description.length > 100 && (
+                        <button
+                          onClick={() => toggleExpand(c._id)}
+                          style={{
+                            color: 'white',
+                            backgroundColor: '#3b82f6',
+                            border: 'none',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '0.8rem',
+                          }}
+                        >
+                          {isExpanded ? 'Show Less' : 'Read More'}
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  <p className="text-sm text-gray-400 mb-2">
+                    Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
+                  </p>
+
+                  {activeTab === 'active' ? (
+                    <div className="mt-3">
+                      <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
+                      {c.tasks && c.tasks.length > 0 && (
+                        <ul className="text-sm text-gray-300 space-y-1">
+                          {c.tasks.map((t, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
+                                {t.service}
+                              </span>
+                              <span className="text-gray-200">{t.type}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <button
+                        className="mt-3 w-full py-2 rounded font-semibold text-white"
+                        style={{ backgroundColor: '#16a34a' }}
+                        onClick={() => setSelectedCampaign(c)}
+                      >
+                        {isLoading(c._id) ? 'Loading...' : 'Submit Task'}
+                      </button>
+                    </div>
+                  ) : activeTab === 'completed' ? (
+                    <div className="mt-3">
+                      <p className="text-green-400 font-medium mb-2">
+                        Task Submitted — Status:{' '}
+                        <span
+                          className={
+                            c.status === 'finished' ? 'text-blue-400' : 'text-green-400'
+                          }
+                        >
+                          {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                        </span>
+                      </p>
+                      {c.tasks && c.tasks.length > 0 && (
+                        <ul className="text-sm text-gray-300 space-y-1">
+                          {c.tasks.map((t, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-green-400">
+                                {t.service}
+                              </span>
+                              <span className="text-gray-200">{t.type}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })
           )}
         </div>
       </div>
@@ -284,7 +321,7 @@ const fetchBalance = async () => {
         )}
       </div>
 
-      {/* ✅ Toast */}
+      {/* Toast */}
       {toast && (
         <Toast
           message={toast.message}
