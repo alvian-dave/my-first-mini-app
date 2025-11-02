@@ -220,112 +220,177 @@ const handleMarkFinished = async (id: string) => {
         {current.length === 0 ? (
           <p className="text-center text-gray-400">No campaigns in this tab.</p>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {current.map(c => (
-              <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
-                <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
-                <p className="text-gray-300 my-2 whitespace-pre-wrap">{c.description}</p>
+<div className="grid md:grid-cols-2 gap-6">
+  {current
+    // urutkan dari terbaru ke terlama (berdasarkan _id jika tidak ada createdAt)
+    .sort((a, b) => {
+      const aTime = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : parseInt(a._id.substring(0, 8), 16)
+      const bTime = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : parseInt(b._id.substring(0, 8), 16)
+      return bTime - aTime // terbaru dulu
+    })
+    .map(c => {
+      const [expanded, setExpanded] = useState(false)
+      const shortDesc =
+        c.description && c.description.length > 100
+          ? c.description.slice(0, 100) + '...'
+          : c.description || ''
 
-                {/* Task List */}
-                {Array.isArray(c.tasks) && c.tasks.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {c.tasks.map((t, i) => {
-                      const serviceIcon =
-                        t.service.toLowerCase().includes('twitter') ? '🐦' :
-                        t.service.toLowerCase().includes('discord') ? '💬' :
-                        t.service.toLowerCase().includes('telegram') ? '📨' :
-                        '🔗'
+      return (
+        <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
+          <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
 
-                      return (
-                        <div
-                          key={i}
-                          className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
-                        >
-                          <span className="mr-2">{serviceIcon}</span>
-                          <span className="text-yellow-300">{t.service}</span>
-                          <span className="mx-1 text-gray-400">•</span>
-                          <span className="text-gray-200">{t.type}</span>
-                        </div>
-                      )
-                    })}
+          {/* ✅ Deskripsi singkat + toggle */}
+          <p className="text-gray-300 my-2 whitespace-pre-wrap">
+            {expanded ? c.description : shortDesc}
+          </p>
+          {c.description && c.description.length > 100 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-sm font-semibold rounded px-2 py-1 mt-1"
+              style={{
+                color: '#fff',
+                backgroundColor: expanded ? '#2563eb' : '#16a34a', // force warna tampil
+              }}
+            >
+              {expanded ? 'Show Less' : 'Read More'}
+            </button>
+          )}
+
+          {/* Task List */}
+          {Array.isArray(c.tasks) && c.tasks.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {c.tasks.map((t, i) => {
+                const serviceIcon =
+                  t.service.toLowerCase().includes('twitter') ? '🐦' :
+                  t.service.toLowerCase().includes('discord') ? '💬' :
+                  t.service.toLowerCase().includes('telegram') ? '📨' :
+                  '🔗'
+
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
+                  >
+                    <span className="mr-2">{serviceIcon}</span>
+                    <span className="text-yellow-300">{t.service}</span>
+                    <span className="mx-1 text-gray-400">•</span>
+                    <span className="text-gray-200">{t.type}</span>
                   </div>
-                )}
+                )
+              })}
+            </div>
+          )}
 
-                <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
-                <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
+          <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
+          <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
 
-                <p
-                  className="text-sm text-gray-400 cursor-pointer hover:underline"
+          <p
+            className="text-sm text-gray-400 cursor-pointer hover:underline"
+            onClick={() => {
+              setParticipants(Array.isArray(c.participants) ? c.participants : [])
+              setShowParticipants(true)
+            }}
+          >
+            Contributors: <b>{c.contributors ?? 0}</b>
+          </p>
+
+          <div className="flex gap-2 mt-3">
+            {c.status !== 'finished' && (
+              <>
+                <button
                   onClick={() => {
-                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
-                    setShowParticipants(true)
+                    setEditingCampaign(c)
+                    setIsModalOpen(true)
                   }}
+                  className="px-3 py-1 rounded font-medium"
+                  style={{ backgroundColor: '#facc15', color: '#000' }}
                 >
-                  Contributors: <b>{c.contributors ?? 0}</b>
-                </p>
-
-                <div className="flex gap-2 mt-3">
-                  {c.status !== 'finished' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditingCampaign(c)
-                          setIsModalOpen(true)
-                        }}
-                        className="px-3 py-1 rounded font-medium"
-                        style={{ backgroundColor: '#facc15', color: '#000' }}
-                      >
-                        Edit
-                      </button>
-                      {c.contributors > 0 ? (
-                      <button
-                        onClick={() => handleMarkFinished(c._id)}
-                        className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                        style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                        disabled={loadingId === c._id}
-                        aria-busy={loadingId === c._id}
-                      >
-                        {loadingId === c._id ? (
-                          // simple spinner + text
-                          <>
-                            <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                              <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                            </svg>
-                            Processing...
-                          </>
-                        ) : (
-                          'Mark Finished'
-                        )}
-                      </button>
-                      ) : (
-                      <button
-                        onClick={() => handleDelete(c._id)}
-                        className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                        style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                        disabled={loadingId === c._id}
-                        aria-busy={loadingId === c._id}
-                      >
-                        {loadingId === c._id ? (
-                          // simple spinner + text
-                          <>
-                            <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                              <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                            </svg>
-                            Processing...
-                          </>
-                        ) : (
-                          'Delete'
-                        )}
-                      </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
+                  Edit
+                </button>
+                {c.contributors > 0 ? (
+                  <button
+                    onClick={() => handleMarkFinished(c._id)}
+                    className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                    style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                    disabled={loadingId === c._id}
+                    aria-busy={loadingId === c._id}
+                  >
+                    {loadingId === c._id ? (
+                      <>
+                        <svg
+                          className="animate-spin mr-2"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="rgba(255,255,255,0.25)"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            d="M22 12a10 10 0 00-10-10"
+                            stroke="#fff"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                          ></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      'Mark Finished'
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleDelete(c._id)}
+                    className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                    style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                    disabled={loadingId === c._id}
+                    aria-busy={loadingId === c._id}
+                  >
+                    {loadingId === c._id ? (
+                      <>
+                        <svg
+                          className="animate-spin mr-2"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="rgba(255,255,255,0.25)"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            d="M22 12a10 10 0 00-10-10"
+                            stroke="#fff"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                          ></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
+                  </button>
+                )}
+              </>
+            )}
           </div>
+        </div>
+      )
+    })}
+</div>
         )}
 
         {/* Modal form */}
