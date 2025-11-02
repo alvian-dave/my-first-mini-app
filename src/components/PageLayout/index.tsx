@@ -35,7 +35,7 @@ const Main = (props: { children: React.ReactNode; className?: string }) => {
       className={twMerge(
         clsx(
           'relative grow overflow-y-auto p-6 pt-3',
-          'bg-blue-200',
+          'bg-blue-400',
           props.className
         )
       )}
