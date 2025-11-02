@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
@@ -12,8 +12,9 @@ import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
-
-// UI Campaign type (tambahkan tasks)
+// =======================
+// Types
+// =======================
 type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
@@ -26,6 +27,9 @@ type ToastState =
   | { message: string; type?: 'success' | 'error' }
   | { message: string; type: 'confirm'; onConfirm: () => void; onCancel?: () => void }
 
+// =======================
+// Component
+// =======================
 export default function PromoterDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -36,24 +40,29 @@ export default function PromoterDashboard() {
   const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
-
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
-
-  // ✅ Toast state (bisa confirm atau normal)
   const [toast, setToast] = useState<ToastState | null>(null)
-
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
+  // Pagination + read more
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+  const [expandedIds, setExpandedIds] = useState<string[]>([])
+
+  // =======================
+  // Session guard
+  // =======================
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
+  // =======================
+  // Fetch WR Balance
+  // =======================
   useEffect(() => {
-    // hanya jalankan jika ada walletAddress
     if (!session?.user?.walletAddress) return
-
     const fetchOnChainBalance = async () => {
       try {
         const onChainBal = await getWRCreditBalance(session.user.walletAddress)
@@ -62,31 +71,35 @@ export default function PromoterDashboard() {
         console.error('Failed to fetch on-chain balance:', err)
       }
     }
-
     fetchOnChainBalance()
-  }, [session])
+  }, [session?.user?.walletAddress])
 
+  // =======================
+  // Load Campaigns
+  // =======================
   useEffect(() => {
-    if (!session?.user) return
+    if (!session?.user?.id) return
     const loadCampaigns = async () => {
       try {
         const res = await fetch('/api/campaigns')
         const data = await res.json()
-        const ownerId = session?.user?.id
-        // jika ownerId tidak ada, fallback ke array kosong (aman)
-        const filtered = ownerId ? (data as UICampaign[]).filter((c: UICampaign) => c.createdBy === ownerId) : []
+        const filtered = (data as UICampaign[]).filter(
+          (c) => c.createdBy === session.user.id
+        )
         setCampaigns(filtered)
       } catch (err) {
         console.error('Failed to load campaigns:', err)
       }
     }
     loadCampaigns()
-  }, [session])
+  }, [session?.user?.id])
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // create / update
+  // =======================
+  // CRUD Handlers
+  // =======================
   const handleSubmit = async (campaign: BaseCampaign) => {
     try {
       if (editingCampaign?._id) {
@@ -105,13 +118,12 @@ export default function PromoterDashboard() {
         setToast({ message: 'Campaign created successfully', type: 'success' })
       }
 
-      // refresh campaigns list dengan pengecekan owner yang aman
       const res = await fetch('/api/campaigns')
       const data = await res.json()
-      const ownerId = session?.user?.id
-      const filtered = ownerId ? (data as UICampaign[]).filter(c => c.createdBy === ownerId) : []
+      const filtered = (data as UICampaign[]).filter(
+        (c) => c.createdBy === session.user.id
+      )
       setCampaigns(filtered)
-
       setIsModalOpen(false)
       setEditingCampaign(null)
     } catch (err) {
@@ -123,34 +135,30 @@ export default function PromoterDashboard() {
   const handleMarkFinished = async (id: string) => {
     setLoadingId(id)
     try {
-      // send action: "finish" so backend triggers rescueCampaignFunds
       const resp = await fetch(`/api/campaigns/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'finish' }),
       })
       const result = await resp.json()
-
       if (!resp.ok) {
-        console.error('Mark finished failed:', result)
         setToast({ message: result?.error || 'Failed to mark finished', type: 'error' })
         return
       }
 
-      // refresh campaigns list (aman jika session hilang)
       const res = await fetch('/api/campaigns')
       const data = await res.json()
-      const ownerId = session?.user?.id
-      const filtered = ownerId ? (data as UICampaign[]).filter(c => c.createdBy === ownerId) : []
+      const filtered = (data as UICampaign[]).filter(
+        (c) => c.createdBy === session.user.id
+      )
       setCampaigns(filtered)
 
-      // show proper message depending on rescue result
-      if (result.txLink) {
-        setToast({ message: 'Campaign finished — remaining funds rescued. View tx', type: 'success' })
-        // optionally open result.txLink or show in UI
-      } else {
-        setToast({ message: result?.message || 'Campaign marked as finished', type: 'success' })
-      }
+      setToast({
+        message: result?.txLink
+          ? 'Campaign finished — remaining funds rescued. View tx'
+          : result?.message || 'Campaign marked as finished',
+        type: 'success',
+      })
     } catch (err) {
       console.error('Failed to mark finished:', err)
       setToast({ message: 'Failed to mark finished', type: 'error' })
@@ -159,7 +167,6 @@ export default function PromoterDashboard() {
     }
   }
 
-  // ✅ Delete with toast confirmation
   const handleDelete = (id: string) => {
     setToast({
       message: 'Are you sure you want to delete this campaign?',
@@ -168,7 +175,7 @@ export default function PromoterDashboard() {
         setLoadingId(id)
         try {
           await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
-          setCampaigns(prev => prev.filter(p => p._id !== id))
+          setCampaigns((prev) => prev.filter((p) => p._id !== id))
           setToast({ message: 'Campaign deleted successfully', type: 'success' })
         } catch (err) {
           console.error('Failed to delete campaign:', err)
@@ -181,29 +188,38 @@ export default function PromoterDashboard() {
     })
   }
 
-  const current = campaigns
-    .filter(c => (c.status || 'active') === activeTab)
-    .sort((a, b) => (a._id > b._id ? -1 : 1))
+  // =======================
+  // Derived Data (memoized)
+  // =======================
+  const current = useMemo(
+    () =>
+      campaigns
+        .filter((c) => (c.status || 'active') === activeTab)
+        .sort((a, b) => (a._id > b._id ? -1 : 1)),
+    [campaigns, activeTab]
+  )
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  const totalPages = Math.max(1, Math.ceil((current?.length || 0) / itemsPerPage))
+  const paginatedCampaigns = useMemo(
+    () =>
+      current.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
+    [current, currentPage]
+  )
 
-  // Read more toggle
-  const [expandedIds, setExpandedIds] = useState<string[]>([])
   const toggleReadMore = (id: string) => {
-    setExpandedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     )
   }
 
-  // Pagination logic
-  const totalPages = Math.ceil(current.length / itemsPerPage)
-  const paginatedCampaigns = current.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  // reset current page when campaigns or tab change (keeps UX consistent)
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, campaigns])
 
+  // =======================
+  // JSX
+  // =======================
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <Topbar />
@@ -211,7 +227,10 @@ export default function PromoterDashboard() {
         {/* Balance + Topup */}
         <div className="flex justify-between items-center mb-6">
           <div className="text-lg font-medium">
-            Balance <span className="text-green-400 font-bold">{balance.toFixed(2)} WR</span>
+            Balance{' '}
+            <span className="text-green-400 font-bold">
+              {balance.toFixed(2)} WR
+            </span>
           </div>
           <button
             onClick={() => setShowTopup(true)}
@@ -247,12 +266,11 @@ export default function PromoterDashboard() {
         ) : (
           <>
             <div className="grid md:grid-cols-2 gap-6">
-              {paginatedCampaigns.map(c => {
+              {paginatedCampaigns.map((c) => {
                 const isExpanded = expandedIds.includes(c._id)
+                const desc = c.description ?? ''
                 const shortDesc =
-                  c.description.length > 100 && !isExpanded
-                    ? c.description.slice(0, 100) + '...'
-                    : c.description
+                  desc.length > 100 && !isExpanded ? desc.slice(0, 100) + '...' : desc
 
                 const showControls = activeTab === 'active'
 
@@ -261,13 +279,14 @@ export default function PromoterDashboard() {
                     key={c._id}
                     className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition"
                   >
-                    <h3 className="text-lg font-bold text-blue-400 mb-2">{c.title}</h3>
+                    <h3 className="text-lg font-bold text-blue-400 mb-2">
+                      {c.title}
+                    </h3>
 
-                    {/* Deskripsi hanya tampil di active tab */}
                     {activeTab === 'active' && (
                       <p className="text-gray-300 whitespace-pre-wrap mb-2">
                         {shortDesc}{' '}
-                        {c.description.length > 100 && (
+                        {desc.length > 100 && (
                           <button
                             onClick={() => toggleReadMore(c._id)}
                             className="text-blue-400 text-sm ml-1 hover:underline"
@@ -278,25 +297,22 @@ export default function PromoterDashboard() {
                       </p>
                     )}
 
-                    {/* Task list */}
                     {Array.isArray(c.tasks) && c.tasks.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {c.tasks.map((t, i) => {
-                          const serviceIcon =
-                            t.service.toLowerCase().includes('twitter')
-                              ? '🐦'
-                              : t.service.toLowerCase().includes('discord')
-                              ? '💬'
-                              : t.service.toLowerCase().includes('telegram')
-                              ? '📨'
-                              : '🔗'
-
+                          const icon = t.service.toLowerCase().includes('twitter')
+                            ? '🐦'
+                            : t.service.toLowerCase().includes('discord')
+                            ? '💬'
+                            : t.service.toLowerCase().includes('telegram')
+                            ? '📨'
+                            : '🔗'
                           return (
                             <div
                               key={i}
                               className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
                             >
-                              <span className="mr-2">{serviceIcon}</span>
+                              <span className="mr-2">{icon}</span>
                               <span className="text-yellow-300">{t.service}</span>
                               <span className="mx-1 text-gray-400">•</span>
                               <span className="text-gray-200">{t.type}</span>
@@ -306,7 +322,6 @@ export default function PromoterDashboard() {
                       </div>
                     )}
 
-                    {/* Reward & Budget */}
                     <p className="text-sm text-green-400 font-semibold mt-2">
                       Reward: {c.reward}
                     </p>
@@ -314,18 +329,18 @@ export default function PromoterDashboard() {
                       Budget: {c.budget}
                     </p>
 
-                    {/* Contributors */}
                     <p
                       className="text-sm text-gray-400 cursor-pointer hover:underline"
                       onClick={() => {
-                        setParticipants(Array.isArray(c.participants) ? c.participants : [])
+                        setParticipants(
+                          Array.isArray(c.participants) ? c.participants : []
+                        )
                         setShowParticipants(true)
                       }}
                     >
                       Contributors: <b>{c.contributors ?? 0}</b>
                     </p>
 
-                    {/* Tombol Edit/Delete hanya untuk active tab */}
                     {showControls && (
                       <div className="flex gap-2 mt-3">
                         {c.status !== 'finished' && (
@@ -336,7 +351,10 @@ export default function PromoterDashboard() {
                                 setIsModalOpen(true)
                               }}
                               className="px-3 py-1 rounded font-medium"
-                              style={{ backgroundColor: '#facc15', color: '#000' }}
+                              style={{
+                                backgroundColor: '#facc15',
+                                color: '#000',
+                              }}
                             >
                               Edit
                             </button>
@@ -344,16 +362,24 @@ export default function PromoterDashboard() {
                               <button
                                 onClick={() => handleMarkFinished(c._id)}
                                 className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                                style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                                style={{
+                                  backgroundColor: '#2563eb',
+                                  color: '#fff',
+                                }}
                                 disabled={loadingId === c._id}
                               >
-                                {loadingId === c._id ? 'Processing...' : 'Mark Finished'}
+                                {loadingId === c._id
+                                  ? 'Processing...'
+                                  : 'Mark Finished'}
                               </button>
                             ) : (
                               <button
                                 onClick={() => handleDelete(c._id)}
                                 className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                                style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                                style={{
+                                  backgroundColor: '#dc2626',
+                                  color: '#fff',
+                                }}
                                 disabled={loadingId === c._id}
                               >
                                 {loadingId === c._id ? 'Processing...' : 'Delete'}
@@ -368,44 +394,41 @@ export default function PromoterDashboard() {
               })}
             </div>
 
-            {/* Pagination controls with clickable indicators */}
             {totalPages > 1 && (
               <div className="flex flex-col items-center gap-3 mt-6">
                 <div className="flex gap-2 items-center">
                   <button
                     disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
+                    onClick={() => setCurrentPage((p) => p - 1)}
                     className="px-3 py-1 bg-gray-700 rounded disabled:opacity-40"
                   >
                     Prev
                   </button>
-
-                  {/* Page indicators */}
                   <div className="flex gap-2">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-1 rounded ${
-                          currentPage === page
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1 rounded ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    )}
                   </div>
-
                   <button
                     disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
+                    onClick={() => setCurrentPage((p) => p + 1)}
                     className="px-3 py-1 bg-gray-700 rounded disabled:opacity-40"
                   >
                     Next
                   </button>
                 </div>
-
                 <span className="text-sm text-gray-400">
                   Page {currentPage} of {totalPages}
                 </span>
@@ -414,7 +437,7 @@ export default function PromoterDashboard() {
           </>
         )}
 
-        {/* Modal form */}
+        {/* Campaign Form */}
         <CampaignForm
           isOpen={isModalOpen}
           onClose={() => {
@@ -423,10 +446,12 @@ export default function PromoterDashboard() {
           }}
           onSubmit={handleSubmit}
           editingCampaign={editingCampaign as unknown as BaseCampaign | null}
-          setEditingCampaign={(c: BaseCampaign | null) => setEditingCampaign(c as unknown as UICampaign | null)}
+          setEditingCampaign={(c) =>
+            setEditingCampaign(c as unknown as UICampaign | null)
+          }
         />
 
-        {/* Participants modal */}
+        {/* Participants Modal */}
         {showParticipants && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
             <div className="bg-gray-800 text-white p-6 rounded-lg shadow-lg w-96 max-h-[70vh] overflow-y-auto">
@@ -435,8 +460,10 @@ export default function PromoterDashboard() {
                 <p className="text-gray-400">No participants yet.</p>
               ) : (
                 <ul className="list-disc list-inside space-y-1">
-                  {participants.map(p => (
-                    <li key={p} className="text-sm text-gray-200">{p}</li>
+                  {participants.map((p) => (
+                    <li key={p} className="text-sm text-gray-200">
+                      {p}
+                    </li>
                   ))}
                 </ul>
               )}
@@ -454,9 +481,7 @@ export default function PromoterDashboard() {
       </main>
 
       {/* Topup Modal */}
-      {showTopup && (
-        <USDCTransferModal onClose={() => setShowTopup(false)} />
-      )}
+      {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
 
       {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">
@@ -473,7 +498,10 @@ export default function PromoterDashboard() {
           </div>
         ) : (
           <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center px-4 py-2" style={{ backgroundColor: '#16a34a', color: '#fff' }}>
+            <div
+              className="flex justify-between items-center px-4 py-2"
+              style={{ backgroundColor: '#16a34a', color: '#fff' }}
+            >
               <span className="font-semibold">Global Chat</span>
               <button onClick={() => setShowChat(false)}>✕</button>
             </div>
