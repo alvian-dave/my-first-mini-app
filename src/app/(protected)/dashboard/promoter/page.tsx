@@ -12,7 +12,6 @@ import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
-
 function CampaignDescription({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false)
   const isLong = text.length > 100
@@ -37,7 +36,6 @@ function CampaignDescription({ text }: { text: string }) {
   )
 }
 
-// UI Campaign type (tambahkan tasks)
 type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
@@ -60,34 +58,32 @@ export default function PromoterDashboard() {
   const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
   const [balance, setBalance] = useState(0)
   const [showChat, setShowChat] = useState(false)
-
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
-
-  // ✅ Toast state (bisa confirm atau normal)
   const [toast, setToast] = useState<ToastState | null>(null)
-
   const [loadingId, setLoadingId] = useState<string | null>(null)
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 5
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
 
-useEffect(() => {
-  if (!session?.user?.walletAddress) return
-
-  const fetchOnChainBalance = async () => {
-    try {
-      const onChainBal = await getWRCreditBalance(session.user.walletAddress)
-      setBalance(Number(onChainBal))
-    } catch (err) {
-      console.error('Failed to fetch on-chain balance:', err)
+  useEffect(() => {
+    if (!session?.user?.walletAddress) return
+    const fetchOnChainBalance = async () => {
+      try {
+        const onChainBal = await getWRCreditBalance(session.user.walletAddress)
+        setBalance(Number(onChainBal))
+      } catch (err) {
+        console.error('Failed to fetch on-chain balance:', err)
+      }
     }
-  }
-
-  fetchOnChainBalance()
-}, [session])
+    fetchOnChainBalance()
+  }, [session])
 
   useEffect(() => {
     if (!session?.user) return
@@ -107,7 +103,6 @@ useEffect(() => {
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
-  // create / update
   const handleSubmit = async (campaign: BaseCampaign) => {
     try {
       if (editingCampaign?._id) {
@@ -139,45 +134,36 @@ useEffect(() => {
     }
   }
 
-const handleMarkFinished = async (id: string) => {
-  setLoadingId(id)
-  try {
-    // send action: "finish" so backend triggers rescueCampaignFunds
-    const resp = await fetch(`/api/campaigns/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'finish' }),
-    })
-    const result = await resp.json()
+  const handleMarkFinished = async (id: string) => {
+    setLoadingId(id)
+    try {
+      const resp = await fetch(`/api/campaigns/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'finish' }),
+      })
+      const result = await resp.json()
 
-    if (!resp.ok) {
-      console.error('Mark finished failed:', result)
-      setToast({ message: result?.error || 'Failed to mark finished', type: 'error' })
-      return
+      if (!resp.ok) {
+        console.error('Mark finished failed:', result)
+        setToast({ message: result?.error || 'Failed to mark finished', type: 'error' })
+        return
+      }
+
+      const res = await fetch('/api/campaigns')
+      const data = await res.json()
+      const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
+      setCampaigns(filtered)
+
+      setToast({ message: result?.txLink ? 'Campaign finished — remaining funds rescued. View tx' : 'Campaign marked as finished', type: 'success' })
+    } catch (err) {
+      console.error('Failed to mark finished:', err)
+      setToast({ message: 'Failed to mark finished', type: 'error' })
+    } finally {
+      setLoadingId(null)
     }
-
-    // refresh campaigns list
-    const res = await fetch('/api/campaigns')
-    const data = await res.json()
-    const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
-    setCampaigns(filtered)
-
-    // show proper message depending on rescue result
-    if (result.txLink) {
-      setToast({ message: 'Campaign finished — remaining funds rescued. View tx', type: 'success' })
-      // optionally open result.txLink or show in UI
-    } else {
-      setToast({ message: result?.message || 'Campaign marked as finished', type: 'success' })
-    }
-  } catch (err) {
-    console.error('Failed to mark finished:', err)
-    setToast({ message: 'Failed to mark finished', type: 'error' })
-      } finally {
-    setLoadingId(null)
   }
-}
 
-  // ✅ Delete with toast confirmation
   const handleDelete = (id: string) => {
     setToast({
       message: 'Are you sure you want to delete this campaign?',
@@ -191,7 +177,7 @@ const handleMarkFinished = async (id: string) => {
         } catch (err) {
           console.error('Failed to delete campaign:', err)
           setToast({ message: 'Failed to delete campaign', type: 'error' })
-          } finally {
+        } finally {
           setLoadingId(null)
         }
       },
@@ -202,6 +188,9 @@ const handleMarkFinished = async (id: string) => {
   const current = campaigns
     .filter(c => (c.status || 'active') === activeTab)
     .sort((a, b) => (a._id > b._id ? -1 : 1))
+
+  const totalPages = Math.ceil(current.length / pageSize)
+  const paginatedCampaigns = current.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -241,17 +230,14 @@ const handleMarkFinished = async (id: string) => {
         </div>
 
         {/* Campaign list */}
-        {current.length === 0 ? (
+        {paginatedCampaigns.length === 0 ? (
           <p className="text-center text-gray-400">No campaigns in this tab.</p>
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
-            {current.map(c => (
+            {paginatedCampaigns.map(c => (
               <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
                 <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
                 <CampaignDescription text={c.description} />
-
-
-                {/* Task List */}
                 {Array.isArray(c.tasks) && c.tasks.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {c.tasks.map((t, i) => {
@@ -303,53 +289,99 @@ const handleMarkFinished = async (id: string) => {
                         Edit
                       </button>
                       {c.contributors > 0 ? (
-                      <button
-                        onClick={() => handleMarkFinished(c._id)}
-                        className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                        style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                        disabled={loadingId === c._id}
-                        aria-busy={loadingId === c._id}
-                      >
-                        {loadingId === c._id ? (
-                          // simple spinner + text
-                          <>
-                            <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                              <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                            </svg>
-                            Processing...
-                          </>
-                        ) : (
-                          'Mark Finished'
-                        )}
-                      </button>
+                        <button
+                          onClick={() => handleMarkFinished(c._id)}
+                          className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                          style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                          disabled={loadingId === c._id}
+                          aria-busy={loadingId === c._id}
+                        >
+                          {loadingId === c._id ? (
+                            <>
+                              <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                                <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+                              </svg>
+                              Processing...
+                            </>
+                          ) : (
+                            'Mark Finished'
+                          )}
+                        </button>
                       ) : (
-                      <button
-                        onClick={() => handleDelete(c._id)}
-                        className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                        style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                        disabled={loadingId === c._id}
-                        aria-busy={loadingId === c._id}
-                      >
-                        {loadingId === c._id ? (
-                          // simple spinner + text
-                          <>
-                            <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                              <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                            </svg>
-                            Processing...
-                          </>
-                        ) : (
-                          'Delete'
-                        )}
-                      </button>
+                        <button
+                          onClick={() => handleDelete(c._id)}
+                          className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                          style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                          disabled={loadingId === c._id}
+                          aria-busy={loadingId === c._id}
+                        >
+                          {loadingId === c._id ? (
+                            <>
+                              <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                                <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+                              </svg>
+                              Processing...
+                            </>
+                          ) : (
+                            'Delete'
+                          )}
+                        </button>
                       )}
                     </>
                   )}
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {current.length > pageSize && (
+          <div className="flex flex-col items-center mt-6 gap-2">
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                className="px-3 py-1 rounded font-medium"
+                style={{ backgroundColor: '#facc15', color: '#000' }}
+                disabled={currentPage === 1}
+              >
+                Prev
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(
+                  page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2
+                )
+                .map((page, idx, arr) => {
+                  if (idx > 0 && page - arr[idx - 1] > 1) {
+                    return <span key={page} className="px-2">..</span>
+                  }
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded font-medium ${page === currentPage ? 'bg-yellow-500 text-black' : ''}`}
+                      style={{ backgroundColor: '#facc15', color: '#000' }}
+                    >
+                      {page}
+                    </button>
+                  )
+                })}
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                className="px-3 py-1 rounded font-medium"
+                style={{ backgroundColor: '#facc15', color: '#000' }}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+            <div className="text-gray-400 text-sm">
+              Page {currentPage} of {totalPages}
+            </div>
           </div>
         )}
 
@@ -393,9 +425,7 @@ const handleMarkFinished = async (id: string) => {
       </main>
 
       {/* Topup Modal */}
-{showTopup && (
-  <USDCTransferModal onClose={() => setShowTopup(false)} />
-)}
+      {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
 
       {/* Floating Chat */}
       <div className="fixed bottom-4 left-4 z-50">
