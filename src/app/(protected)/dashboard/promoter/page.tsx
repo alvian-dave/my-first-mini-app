@@ -202,8 +202,9 @@ const toggleReadMore = (id: string) => {
 }
 
 // Pagination logic
-const totalPages = Math.ceil(current.length / itemsPerPage)
-const paginatedCampaigns = current.slice(
+const safeCurrent = current || []
+const totalPages = Math.ceil(safeCurrent.length / itemsPerPage)
+const paginatedCampaigns = safeCurrent.slice(
   (currentPage - 1) * itemsPerPage,
   currentPage * itemsPerPage
 )
@@ -246,12 +247,13 @@ const paginatedCampaigns = current.slice(
         </div>
 
         {/* Campaign list */}
-{current.length === 0 ? (
+{paginatedCampaigns.length === 0 ? (
   <p className="text-center text-gray-400">No campaigns in this tab.</p>
 ) : (
   <>
     <div className="grid md:grid-cols-2 gap-6">
       {paginatedCampaigns.map(c => {
+        if (!c) return null
         const isExpanded = expandedIds.includes(c._id)
         const shortDesc =
           c.description.length > 100 && !isExpanded
