@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
-const ProfileModal = dynamic(() => import('@/components/ProfileModal'), { ssr: false })
 const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
 const ContactUsModal = dynamic(() => import('@/components/ContactUs'), { ssr: false })
 
@@ -16,7 +15,6 @@ export const Topbar = () => {
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showTopup, setShowTopup] = useState(false)
   const [showContactUs, setShowContactUs] = useState(false)
@@ -136,11 +134,6 @@ const fetchBalance = async () => {
     }
   }
 
-  const handleGoToProfile = () => {
-    setIsMenuOpen(false)
-    setShowProfile(true)
-  }
-
   const handleGoToAbout = () => {
     setIsMenuOpen(false)
     setShowAbout(true)
@@ -231,16 +224,6 @@ const fetchBalance = async () => {
                     <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
                   </li>
 
-                  {/* --- Profile --- */}
-                  <li>
-                    <button
-                      onClick={handleGoToProfile}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                    >
-                      Profile
-                    </button>
-                  </li>
-
 
                   {/* --- Notification --- */}
                   <li>
@@ -295,13 +278,6 @@ const fetchBalance = async () => {
       </header>
 
       {/* --- Modals --- */}
-      {showProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg p-4">
-            <ProfileModal onClose={() => setShowProfile(false)} />
-          </div>
-        </div>
-      )}
 
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
 
