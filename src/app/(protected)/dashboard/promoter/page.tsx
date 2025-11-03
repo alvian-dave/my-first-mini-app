@@ -92,20 +92,43 @@ export default function PromoterDashboard() {
     fetchOnChainBalance()
   }, [session])
 
-  useEffect(() => {
-    if (!session?.user) return
-    const loadCampaigns = async () => {
-      try {
-        const res = await fetch('/api/campaigns')
-        const data = await res.json()
-        const filtered = (data as UICampaign[]).filter(c => c.createdBy === session.user.id)
-        setCampaigns(filtered)
-      } catch (err) {
-        console.error('Failed to load campaigns:', err)
-      }
+useEffect(() => {
+  if (!session?.user) return
+
+  const loadCampaigns = async () => {
+    try {
+      const res = await fetch('/api/campaigns')
+      const data: UICampaign[] = await res.json()
+
+      // filter dulu sesuai promoter
+      const myCampaigns = data.filter(c => c.createdBy === session.user.id)
+
+      // ambil semua participant ID unik
+      const allIds = Array.from(new Set(myCampaigns.flatMap(c => c.participants || [])))
+
+      // panggil API user
+      const userRes = await fetch(`/api/users?ids=${allIds.join(',')}`)
+      const users: { _id: string; username?: string }[] = await userRes.json()
+
+      // bikin mapping ID → username
+      const userMap: Record<string, string> = {}
+      users.forEach(u => userMap[u._id] = u.username || '(unknown)')
+
+      // replace ID → username
+      const enriched = myCampaigns.map(c => ({
+        ...c,
+        participants: (c.participants || []).map(id => userMap[id] || '(unknown)')
+      }))
+
+      setCampaigns(enriched)
+    } catch (err) {
+      console.error('Failed to load campaigns:', err)
     }
-    loadCampaigns()
-  }, [session])
+  }
+
+  loadCampaigns()
+}, [session])
+
 
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
