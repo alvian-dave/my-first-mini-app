@@ -3,8 +3,8 @@ import dbConnect from "@/lib/mongodb"
 import { Campaign } from "@/models/Campaign"
 import User from "@/models/User"
 import { auth } from "@/auth"
+import mongoose from "mongoose"
 
-// ✅ GET: semua campaign yg sudah diikuti hunter
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) {
@@ -14,30 +14,37 @@ export async function GET() {
   await dbConnect()
 
   try {
-    // 🔹 Ambil semua campaign yg diikuti user ini
+    // 🔹 Ambil semua campaign yang diikuti user
     const campaigns = await Campaign.find({
       participants: session.user.id,
-    }).sort({ createdAt: -1 }).lean()
+    })
+      .sort({ createdAt: -1 })
+      .lean()
 
-    // 🔹 Ambil semua user yang jadi participants
-    const participantIds = [
+    // 🔹 Kumpulkan semua participant ID unik
+    const allParticipantIds = [
       ...new Set(
-        campaigns.flatMap(
-          (c) => (c.participants as string[] | undefined) || []
-        )
+        campaigns.flatMap((c) => (c.participants as string[] | undefined) || [])
       ),
     ]
 
-    const users = await User.find({
-      _id: { $in: participantIds },
-    }).lean()
+    // 🔹 Konversi ke ObjectId untuk query user
+    const objectIds = allParticipantIds
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id))
 
-    // 🔹 Buat map dari userId → username
-    const userMap: Record<string, string> = Object.fromEntries(
-      users.map((u) => [String(u._id), u.username || "Anonymous"])
-    )
+    // 🔹 Ambil user berdasarkan ObjectId
+    const users = await User.find({ _id: { $in: objectIds } })
+      .select("username _id")
+      .lean()
 
-    // 🔹 Ganti participant ID dengan username
+    // 🔹 Buat peta: stringId (hex) → username
+    const userMap: Record<string, string> = {}
+    users.forEach((u) => {
+      userMap[String(u._id)] = u.username || "Anonymous"
+    })
+
+    // 🔹 Ganti participant ID menjadi username di setiap campaign
     const campaignsWithUsernames = campaigns.map((campaign) => ({
       ...campaign,
       participants: (campaign.participants as string[]).map(
@@ -47,7 +54,7 @@ export async function GET() {
 
     return NextResponse.json(campaignsWithUsernames)
   } catch (err) {
-    console.error(err)
+    console.error("❌ Error fetching completed campaigns:", err)
     return NextResponse.json(
       { error: "Failed to fetch completed campaigns" },
       { status: 500 }
