@@ -5,6 +5,8 @@ import dbConnect from '@/lib/mongodb'
 import { Campaign } from '@/models/Campaign'
 import { Notification } from '@/models/Notification'
 import { auth } from '@/auth'
+import User, { IUser } from "@/models/User"
+import mongoose from "mongoose"
 
 // ✅ Utility: konversi string ke BigInt dengan 18 desimal (WR)
 function parseToBigInt(amount: string | number): bigint {
@@ -18,8 +20,44 @@ function parseToBigInt(amount: string | number): bigint {
 // ================================
 export async function GET() {
   await dbConnect()
-  const campaigns = await Campaign.find().lean()
-  return NextResponse.json(campaigns)
+  const campaigns = await Campaign.find().sort({ createdAt: -1 }).lean()
+
+// 🔹 Kumpulkan semua participant ID unik
+const allParticipantIds = [
+  ...new Set(
+    campaigns.flatMap((c) => (c.participants as string[] | undefined) || [])
+  ),
+];
+
+// 🔹 Konversi ke ObjectId untuk query user
+const objectIds: mongoose.Types.ObjectId[] = allParticipantIds
+  .filter((id): id is string => mongoose.Types.ObjectId.isValid(id))
+  .map((id) => new mongoose.Types.ObjectId(id));
+
+// 🔹 Ambil user berdasarkan ObjectId
+const users: IUser[] = await User.find({ _id: { $in: objectIds } })
+  .select("_id username profilePictureUrl")
+  .lean<IUser[]>();
+
+// 🔹 Buat peta: stringId (hex) → user data (bukan cuma username)
+const userMap: Record<string, { username?: string; profilePictureUrl?: string }> = {};
+users.forEach((u) => {
+  userMap[String(u._id)] = {
+    username: u.username || "Anonymous",
+    profilePictureUrl: u.profilePictureUrl || "",
+  };
+});
+
+// 🔹 Enrich campaign data dengan username
+const enriched = campaigns.map((c) => ({
+  ...c,
+  createdBy: userMap[c.createdBy]?.username || "(unknown)",
+  participants: (c.participants || []).map(
+    (id: string) => userMap[id]?.username || "(unknown)"
+  ),
+}));
+
+  return NextResponse.json(enriched)
 }
 
 // ================================

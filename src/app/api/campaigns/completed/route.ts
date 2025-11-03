@@ -33,18 +33,23 @@ export async function GET() {
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id))
 
-    // 🔹 Ambil user berdasarkan ObjectId
-    const users = await User.find({ _id: { $in: objectIds } })
+    // 🔹 Ambil user berdasarkan ID
+    const users = await User.find({
+      $or: [
+        { _id: { $in: objectIds } },
+        { _id: { $in: allParticipantIds } }, // jaga-jaga kalau bukan ObjectId
+      ],
+    })
       .select("username _id")
       .lean()
 
-    // 🔹 Buat peta: stringId (hex) → username
+    // 🔹 Buat map: userId → username
     const userMap: Record<string, string> = {}
     users.forEach((u) => {
       userMap[String(u._id)] = u.username || "Anonymous"
     })
 
-    // 🔹 Ganti participant ID menjadi username di setiap campaign
+    // 🔹 Ubah participants jadi username
     const campaignsWithUsernames = campaigns.map((campaign) => ({
       ...campaign,
       participants: (campaign.participants as string[]).map(
