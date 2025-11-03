@@ -1,4 +1,4 @@
-// /app/api/campaign/route.ts
+// /app/api/campaigns/route.ts
 import { NextResponse } from 'next/server'
 import { ethers } from 'ethers'
 import dbConnect from '@/lib/mongodb'

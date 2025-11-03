@@ -5,8 +5,6 @@ import { Campaign } from "@/models/Campaign"
 import { Notification } from "@/models/Notification"
 import { auth } from "@/auth"
 import { rewardHunter } from "@/lib/rewardHunter"
-import User from "@/models/User"
-import mongoose from "mongoose"
 
 // ✅ definisi Task biar gak implicit any
 type Task = { service: string; type: string; url: string; done?: boolean; verifiedAt?: Date }
@@ -62,37 +60,10 @@ export async function GET(req: Request) {
       mergedTasks = campaignTasks.map((ct: Task) => ({ ...ct, done: false }))
     }
 
-    let campaignWithUsernames = campaign
-
-    if ((campaign as any).participants?.length) {
-      const userIds = (campaign as any).participants.map(
-        (id: string) => new mongoose.Types.ObjectId(id)
-      )
-
-      const users = await User.find({ _id: { $in: userIds } })
-        .select("username") // ❌ tidak ambil walletAddress
-        .lean()
-
-      const usernames = users.map((u) => u.username || "")
-
-      // ganti participants di hasil response → jadi username saja
-      campaignWithUsernames = {
-        ...campaign,
-        participants: usernames,
-      }
-    } else {
-      // kalau belum ada participant
-      campaignWithUsernames = {
-        ...campaign,
-        participants: [],
-      }
-    }
-
     return NextResponse.json({
       submission: submission
         ? { ...submission, tasks: mergedTasks }
         : { userId: session.user.id, campaignId, tasks: mergedTasks, status: "pending" },
-        campaign: campaignWithUsernames,
     })
   }
 
