@@ -4,7 +4,8 @@ import Submission from "@/models/Submission"
 import { Campaign } from "@/models/Campaign"
 import { Notification } from "@/models/Notification"
 import { auth } from "@/auth"
-import { rewardHunter } from "@/lib/rewardHunter" // sesuaikan path kalau beda
+import { rewardHunter } from "@/lib/rewardHunter"
+import User from "@/models/User"
 
 // ✅ definisi Task biar gak implicit any
 type Task = { service: string; type: string; url: string; done?: boolean; verifiedAt?: Date }
@@ -26,6 +27,21 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
     }
 
+   
+const participants = await User.find({
+  walletAddress: { $in: (campaign as any).participants || [] },
+
+})
+  .select("walletAddress username")
+  .lean()
+
+const participantUsernames = participants.map((u) => u.username || u.walletAddress)
+
+const campaignWithUsernames = {
+  ...campaign,
+  participants: participantUsernames,
+}
+    
     const submission = await Submission.findOne({
       userId: session.user.id,
       campaignId,
