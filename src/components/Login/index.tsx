@@ -63,7 +63,7 @@ export const Login = () => {
             className="w-full py-2 rounded font-medium transition hover:brightness-110 disabled:opacity-50"
             style={{ backgroundColor: '#2563eb', color: '#fff' }}
           >
-            {loadingRole === 'promoter' ? 'Processing...' : 'Login as Promoter'}
+            {loadingRole === 'promoter' ? 'Processing...' : 'Promoter Dashboard'}
           </button>
         </div>
       </div>
@@ -83,7 +83,7 @@ export const Login = () => {
             className="w-full py-2 rounded font-medium transition hover:brightness-110 disabled:opacity-50"
             style={{ backgroundColor: '#16a34a', color: '#fff' }}
           >
-            {loadingRole === 'hunter' ? 'Processing...' : 'Login as Hunter'}
+            {loadingRole === 'hunter' ? 'Processing...' : 'Hunter Dashboard'}
           </button>
         </div>
       </div>
