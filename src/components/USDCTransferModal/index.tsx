@@ -22,9 +22,8 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
   const RATE = 0.0050 // 1 WR = 0.0050 USDC
 
   const { data: session } = useSession()
-    const userAddress = session?.user?.walletAddress || ''
+  const userAddress = session?.user?.walletAddress || ''
 
-  // Public client untuk monitoring transaksi
   const client = createPublicClient({
     chain: worldchain,
     transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
@@ -36,7 +35,6 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
     transactionId,
   })
 
-  // Hitung WR otomatis
   useEffect(() => {
     if (!amountUSDC) return setEstimatedWR('0.0000')
     const wr = parseFloat(amountUSDC) / RATE
@@ -73,14 +71,9 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
     }
   }
 
-    // === [3] Setelah transaksi dikonfirmasi → kirim ke backend ===
   useEffect(() => {
     if (!isConfirmed || !transactionId) return
-
-    if (!userAddress) {
-      console.warn('⚠️ Tidak ada userAddress di session, backend call dilewati.')
-      return
-    }
+    if (!userAddress) return
 
     const sendToBackend = async () => {
       try {
@@ -90,17 +83,15 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
           body: JSON.stringify({
             depositTxHash: transactionId,
             userAddress,
-            amountUSDC, // kirim string dari input
+            amountUSDC,
           }),
         })
         const data = await res.json()
-
         if (!res.ok || !data.ok) {
           console.error('❌ Topup backend error:', data)
         } else {
-          console.log('✅ Topup success & WR minted:', data)
           setToast({
-            message: `Topup successful, ${estimatedWR} WR has been added to your wallet. Please refresh your dashboard.`,
+            message: `Topup successful, ${estimatedWR} WR added. Please refresh dashboard.`,
             type: 'success',
           })
         }
@@ -108,60 +99,106 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
         console.error('Failed to call topup API:', err)
       }
     }
-
     sendToBackend()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConfirmed, transactionId])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+      }}
+    >
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
-  {toast && (
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast(null)}
-      />
-    )}
-
-      <div className="bg-gray-900 p-6 rounded-2xl shadow-lg w-full max-w-md relative">
+      <div
+        style={{
+          backgroundColor: '#1f2937',
+          padding: '24px',
+          borderRadius: '24px',
+          width: '100%',
+          maxWidth: '400px',
+          position: 'relative',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+        }}
+      >
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-white font-bold"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            color: '#d1d5db',
+            fontWeight: 'bold',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '18px',
+          }}
         >
           ✕
         </button>
 
-        <h2 className="text-white text-2xl font-bold mb-4 text-center">Topup WR with USDC</h2>
+        <h2 style={{ color: 'white', textAlign: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>
+          Topup WR with USDC
+        </h2>
 
-        <label className="text-gray-400 text-sm">USDC Amount</label>
+        <label style={{ color: '#d1d5db', fontSize: '14px' }}>USDC Amount</label>
         <input
           type="number"
           value={amountUSDC}
           onChange={(e) => setAmountUSDC(e.target.value)}
           placeholder="0.0"
-          className="w-full p-3 mt-1 mb-4 rounded-xl bg-gray-800 text-white focus:outline-none"
+          style={{
+            width: '100%',
+            padding: '12px',
+            marginTop: '4px',
+            marginBottom: '16px',
+            borderRadius: '16px',
+            backgroundColor: '#111827',
+            color: 'white',
+            border: '1px solid #374151',
+            outline: 'none',
+          }}
         />
 
-        <div className="flex justify-between text-gray-300 text-sm mb-6">
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9ca3af', fontSize: '14px', marginBottom: '24px' }}>
           <span>WR you will receive:</span>
-          <span className="text-white">{estimatedWR} WR</span>
+          <span style={{ color: 'white' }}>{estimatedWR} WR</span>
         </div>
 
         <button
           onClick={sendTransaction}
           disabled={isConfirming}
-          className={`w-full py-3 rounded-xl font-semibold text-white ${
-            isConfirming ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+          style={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: '16px',
+            fontWeight: 600,
+            color: 'white',
+            backgroundColor: isConfirming ? '#4b5563' : '#2563eb',
+            cursor: isConfirming ? 'not-allowed' : 'pointer',
+            border: 'none',
+          }}
         >
           {isConfirming ? 'Waiting for confirmation...' : 'Send USDC'}
         </button>
 
         {transactionId && (
-          <div className="mt-4 text-center text-gray-300 text-sm">
+          <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '14px', color: '#d1d5db' }}>
             {isConfirming && <span>Transaction is confirming...</span>}
-            {isConfirmed && <span className="text-green-400">Transaction confirmed ✅</span>}
+            {isConfirmed && <span style={{ color: '#22c55e' }}>Transaction confirmed ✅</span>}
             {!isConfirming && !isConfirmed && <span>Transaction sent, waiting for confirmation...</span>}
           </div>
         )}
