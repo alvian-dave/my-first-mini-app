@@ -27,21 +27,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
     }
 
-   
-const participants = await User.find({
-  walletAddress: { $in: (campaign as any).participants || [] },
-
-})
-  .select("walletAddress username")
-  .lean()
-
-const participantUsernames = participants.map((u) => u.username || u.walletAddress)
-
-const campaignWithUsernames = {
-  ...campaign,
-  participants: participantUsernames,
-}
-    
     const submission = await Submission.findOne({
       userId: session.user.id,
       campaignId,
@@ -76,10 +61,35 @@ const campaignWithUsernames = {
       mergedTasks = campaignTasks.map((ct: Task) => ({ ...ct, done: false }))
     }
 
+    let campaignWithUsernames = campaign
+
+    if ((campaign as any).participants?.length) {
+      const users = await User.find({
+        _id: { $in: (campaign as any).participants },
+      })
+        .select("username") // ❌ tidak ambil walletAddress
+        .lean()
+
+      const usernames = users.map((u) => u.username || "")
+
+      // ganti participants di hasil response → jadi username saja
+      campaignWithUsernames = {
+        ...campaign,
+        participants: usernames,
+      }
+    } else {
+      // kalau belum ada participant
+      campaignWithUsernames = {
+        ...campaign,
+        participants: [],
+      }
+    }
+
     return NextResponse.json({
       submission: submission
         ? { ...submission, tasks: mergedTasks }
         : { userId: session.user.id, campaignId, tasks: mergedTasks, status: "pending" },
+        campaign: campaignWithUsernames,
     })
   }
 
