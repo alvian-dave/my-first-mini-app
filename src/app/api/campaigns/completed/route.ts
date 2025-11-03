@@ -14,38 +14,40 @@ export async function GET() {
   await dbConnect()
 
   try {
-    // 🔹 Ambil semua campaign yang diikuti oleh hunter (berdasarkan user.id)
+    // 🔹 Ambil semua campaign yg diikuti user ini
     const campaigns = await Campaign.find({
       participants: session.user.id,
-    })
-      .sort({ createdAt: -1 })
-      .lean()
+    }).sort({ createdAt: -1 }).lean()
 
-    // 🔹 Kumpulkan semua ID participant unik dari semua campaign
-    const allParticipantIds = [
-      ...new Set(campaigns.flatMap((c) => c.participants || [])),
+    // 🔹 Ambil semua user yang jadi participants
+    const participantIds = [
+      ...new Set(
+        campaigns.flatMap(
+          (c) => (c.participants as string[] | undefined) || []
+        )
+      ),
     ]
 
-    // 🔹 Ambil username dari setiap participant berdasarkan _id
-    const users = await User.find({ _id: { $in: allParticipantIds } })
-      .select("username _id")
-      .lean()
+    const users = await User.find({
+      _id: { $in: participantIds },
+    }).lean()
 
-    const userMap = Object.fromEntries(
-      users.map((u) => [u._id.toString(), u.username || "Anonymous"])
+    // 🔹 Buat map dari userId → username
+    const userMap: Record<string, string> = Object.fromEntries(
+      users.map((u) => [String(u._id), u.username || "Anonymous"])
     )
 
     // 🔹 Ganti participant ID dengan username
     const campaignsWithUsernames = campaigns.map((campaign) => ({
       ...campaign,
-      participants: (campaign.participants || []).map(
+      participants: (campaign.participants as string[]).map(
         (id) => userMap[id] || "(unknown user)"
       ),
     }))
 
     return NextResponse.json(campaignsWithUsernames)
   } catch (err) {
-    console.error("[GET /api/campaigns/completed] Error:", err)
+    console.error(err)
     return NextResponse.json(
       { error: "Failed to fetch completed campaigns" },
       { status: 500 }
