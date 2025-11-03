@@ -11,6 +11,8 @@ import USDCTransferModal from '@/components/USDCTransferModal'
 import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
+import { formatUnits } from 'ethers'
+
 
 function CampaignDescription({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false)
@@ -42,6 +44,7 @@ type UICampaign = BaseCampaign & {
   createdBy?: string
   participants?: string[]
   tasks?: { service: string; type: string; url: string }[]
+  remainingWR?: string
 }
 
 type ToastState =
@@ -234,112 +237,122 @@ export default function PromoterDashboard() {
         </div>
 
         {/* Campaign list */}
-        {paginatedCampaigns.length === 0 ? (
-          <p className="text-center text-gray-400">No campaigns in this tab.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {paginatedCampaigns.map(c => (
-              <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
-                <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
-                <CampaignDescription text={c.description} />
-                {Array.isArray(c.tasks) && c.tasks.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {c.tasks.map((t, i) => {
-                      const serviceIcon =
-                        t.service.toLowerCase().includes('twitter') ? '🐦' :
-                        t.service.toLowerCase().includes('discord') ? '💬' :
-                        t.service.toLowerCase().includes('telegram') ? '📨' :
-                        '🔗'
+{paginatedCampaigns.length === 0 ? (
+  <p className="text-center text-gray-400">No campaigns in this tab.</p>
+) : (
+  <div className="grid md:grid-cols-2 gap-6">
+    {paginatedCampaigns.map(c => {
+      // Format remainingWR dari wei ke WR
+      const remainingWRFormatted = c.remainingWR
+  ? formatUnits(c.remainingWR, 18)
+  : '0'
 
-                      return (
-                        <div
-                          key={i}
-                          className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
-                        >
-                          <span className="mr-2">{serviceIcon}</span>
-                          <span className="text-yellow-300">{t.service}</span>
-                          <span className="mx-1 text-gray-400">•</span>
-                          <span className="text-gray-200">{t.type}</span>
-                        </div>
-                      )
-                    })}
+      return (
+        <div key={c._id} className="bg-gray-800 p-5 rounded shadow hover:shadow-lg transition">
+          <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
+          <CampaignDescription text={c.description} />
+
+          {Array.isArray(c.tasks) && c.tasks.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {c.tasks.map((t, i) => {
+                const serviceIcon =
+                  t.service.toLowerCase().includes('twitter') ? '🐦' :
+                  t.service.toLowerCase().includes('discord') ? '💬' :
+                  t.service.toLowerCase().includes('telegram') ? '📨' :
+                  '🔗'
+
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center text-sm font-medium bg-gray-700 rounded-2xl px-3 py-1 shadow-sm"
+                  >
+                    <span className="mr-2">{serviceIcon}</span>
+                    <span className="text-yellow-300">{t.service}</span>
+                    <span className="mx-1 text-gray-400">•</span>
+                    <span className="text-gray-200">{t.type}</span>
                   </div>
-                )}
+                )
+              })}
+            </div>
+          )}
 
-                <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
-                <p className="text-sm text-yellow-400 font-semibold">Budget: {c.budget}</p>
+          <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
+          <p className="text-sm text-yellow-400 font-semibold">
+            Remaining budget: {remainingWRFormatted} WR
+          </p>
 
-                <p
-                  className="text-sm text-gray-400 cursor-pointer hover:underline"
+          <p
+            className="text-sm text-gray-400 cursor-pointer hover:underline"
+            onClick={() => {
+              setParticipants(Array.isArray(c.participants) ? c.participants : [])
+              setShowParticipants(true)
+            }}
+          >
+            Contributors: <b>{c.contributors ?? 0}</b>
+          </p>
+
+          <div className="flex gap-2 mt-3">
+            {c.status !== 'finished' && (
+              <>
+                <button
                   onClick={() => {
-                    setParticipants(Array.isArray(c.participants) ? c.participants : [])
-                    setShowParticipants(true)
+                    setEditingCampaign(c)
+                    setIsModalOpen(true)
                   }}
+                  className="px-3 py-1 rounded font-medium"
+                  style={{ backgroundColor: '#facc15', color: '#000' }}
                 >
-                  Contributors: <b>{c.contributors ?? 0}</b>
-                </p>
-
-                <div className="flex gap-2 mt-3">
-                  {c.status !== 'finished' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditingCampaign(c)
-                          setIsModalOpen(true)
-                        }}
-                        className="px-3 py-1 rounded font-medium"
-                        style={{ backgroundColor: '#facc15', color: '#000' }}
-                      >
-                        Edit
-                      </button>
-                      {c.contributors > 0 ? (
-                        <button
-                          onClick={() => handleMarkFinished(c._id)}
-                          className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                          style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                          disabled={loadingId === c._id}
-                          aria-busy={loadingId === c._id}
-                        >
-                          {loadingId === c._id ? (
-                            <>
-                              <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                                <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                              </svg>
-                              Processing...
-                            </>
-                          ) : (
-                            'Mark Finished'
-                          )}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleDelete(c._id)}
-                          className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                          style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                          disabled={loadingId === c._id}
-                          aria-busy={loadingId === c._id}
-                        >
-                          {loadingId === c._id ? (
-                            <>
-                              <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                                <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                              </svg>
-                              Processing...
-                            </>
-                          ) : (
-                            'Delete'
-                          )}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
+                  Edit
+                </button>
+                {c.contributors > 0 ? (
+                  <button
+                    onClick={() => handleMarkFinished(c._id)}
+                    className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                    style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                    disabled={loadingId === c._id}
+                    aria-busy={loadingId === c._id}
+                  >
+                    {loadingId === c._id ? (
+                      <>
+                        <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                          <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      'Mark Finished'
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleDelete(c._id)}
+                    className="px-3 py-1 rounded font-medium flex items-center justify-center"
+                    style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                    disabled={loadingId === c._id}
+                    aria-busy={loadingId === c._id}
+                  >
+                    {loadingId === c._id ? (
+                      <>
+                        <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                          <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
+                  </button>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
+      )
+    })}
+  </div>
+)}
 
 {/* Pagination */}
 {current.length > pageSize && (
