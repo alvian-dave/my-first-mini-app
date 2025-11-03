@@ -9,7 +9,6 @@ const ProfileModal = ({ onClose }: { onClose: () => void }) => {
   const user = session.user
   const username = user?.username || 'Anonymous'
   const userId = user?.id || 'Unknown'
-  const walletAddress = user?.walletAddress || 'Not set'
 
   const handleLogout = async () => {
     await signOut({ redirect: false })
@@ -31,7 +30,6 @@ const ProfileModal = ({ onClose }: { onClose: () => void }) => {
         <div className="mb-6 rounded bg-gray-100 dark:bg-gray-800 p-4 shadow">
           <p><strong>Username:</strong> {username}</p>
           <p><strong>User ID:</strong> {userId}</p>
-          <p><strong>Wallet Address:</strong> {walletAddress}</p>
         </div>
 
         <div className="flex justify-end">
