@@ -6,6 +6,7 @@ import { Notification } from "@/models/Notification"
 import { auth } from "@/auth"
 import { rewardHunter } from "@/lib/rewardHunter"
 import User from "@/models/User"
+import mongoose from "mongoose"
 
 // ✅ definisi Task biar gak implicit any
 type Task = { service: string; type: string; url: string; done?: boolean; verifiedAt?: Date }
@@ -64,9 +65,11 @@ export async function GET(req: Request) {
     let campaignWithUsernames = campaign
 
     if ((campaign as any).participants?.length) {
-      const users = await User.find({
-        _id: { $in: (campaign as any).participants },
-      })
+      const userIds = (campaign as any).participants.map(
+        (id: string) => new mongoose.Types.ObjectId(id)
+      )
+
+      const users = await User.find({ _id: { $in: userIds } })
         .select("username") // ❌ tidak ambil walletAddress
         .lean()
 
