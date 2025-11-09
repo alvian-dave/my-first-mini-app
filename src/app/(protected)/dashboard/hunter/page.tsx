@@ -166,7 +166,7 @@ export default function HunterDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3">
+        <div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3 px-6">
           {['active', 'completed', 'rejected'].map((tab) => (
             <button
               key={tab}
