@@ -20,7 +20,6 @@ export const Topbar = () => {
   const [showContactUs, setShowContactUs] = useState(false)
   const [role, setRole] = useState('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
-  const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(false)
 
   // --- Notification state ---
   const [notifications, setNotifications] = useState<any[]>([])
@@ -153,47 +152,9 @@ const fetchBalance = async () => {
   return (
     <>
       <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center">
-<div className="flex items-center gap-3 select-none relative">
-  <button
-    onClick={() => setIsDashboardMenuOpen(!isDashboardMenuOpen)}
-    className="flex items-center gap-1 font-bold text-xl tracking-wide hover:text-gray-300 focus:outline-none"
-  >
-    Dashboard
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={`w-5 h-5 transition-transform ${isDashboardMenuOpen ? 'rotate-180' : ''}`}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={2}
-      stroke="currentColor"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  </button>
-
-  {isDashboardMenuOpen && (
-    <div className="absolute top-full left-0 mt-1 w-48 bg-white text-gray-800 rounded-md shadow-lg z-50 overflow-hidden">
-      <ul className="divide-y divide-gray-200 text-sm">
-        <li>
-          <button
-            onClick={() => setIsDashboardMenuOpen(false)}
-            className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-          >
-            Dashboard
-          </button>
-        </li>
-        <li>
-          <button
-            onClick={() => router.push('/home')}
-            className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-          >
-            Choose role
-          </button>
-        </li>
-      </ul>
-    </div>
-  )}
-</div>
+        <div className="flex items-center gap-3 select-none">
+          <h1 className="text-xl font-bold tracking-wide">Dashboard</h1>
+        </div>
 
         {status === 'authenticated' && (
           <div className="relative">
@@ -254,6 +215,17 @@ const fetchBalance = async () => {
                           d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z"
                         />
                       </svg>
+                    </button>
+                  </li>
+
+                  {/* --- Choose Role --- */}
+
+                  <li>
+                    <button
+                      onClick={() => router.push('/home')}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                    >
+                      Choose role
                     </button>
                   </li>
 
