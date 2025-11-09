@@ -218,6 +218,12 @@ const fetchBalance = async () => {
                     </button>
                   </li>
 
+                  {/* --- Main balance --- */}
+                  <li className="flex justify-between items-center px-4 py-2">
+                    <span>Main balance</span>
+                    <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
+                  </li>
+
                   {/* --- Choose Role --- */}
 
                   <li>
@@ -227,12 +233,6 @@ const fetchBalance = async () => {
                     >
                       Choose role
                     </button>
-                  </li>
-
-                  {/* --- Main balance --- */}
-                  <li className="flex justify-between items-center px-4 py-2">
-                    <span>Main balance</span>
-                    <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
                   </li>
 
 
