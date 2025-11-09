@@ -96,6 +96,7 @@ export default function TaskModal({
       if (event.data?.type === 'TWITTER_CONNECTED') {
         setTwitterConnected(true)
         setToast({ message: 'Twitter connected successfully!', type: 'success' })
+        onClose()
       }
       if (event.data?.type === 'TWITTER_FAILED') {
         setToast({ message: 'Twitter connection failed, please try again.', type: 'error' })
@@ -105,6 +106,7 @@ export default function TaskModal({
           prev.map(t => (t.service === 'telegram' ? { ...t, connected: true } : t))
         )
         setToast({ message: 'Telegram connected successfully!', type: 'success' })
+        onClose()
       }
       if (event.data?.type === 'DISCORD_CONNECTED') {
         setDiscordConnected(true)
@@ -112,6 +114,7 @@ export default function TaskModal({
           prev.map(t => (t.service === 'discord' ? { ...t, connected: true } : t))
         )
         setToast({ message: 'Discord connected successfully!', type: 'success' })
+        onClose()
       }
       if (event.data?.type === 'DISCORD_FAILED') {
         setToast({ message: 'Discord connection failed, please try again.', type: 'error' })
