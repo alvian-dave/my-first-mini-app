@@ -102,14 +102,16 @@ const fetchBalance = async () => {
 
   // === AUTO CLOSE MENU SAAT SCROLL ===
 useEffect(() => {
-  const handleScroll = () => {
+  const container = document.getElementById('app-scroll')
+  if (!container) return
+
+  const closeMenuOnScroll = () => {
     if (isMenuOpen) setIsMenuOpen(false)
   }
 
-  window.addEventListener('scroll', handleScroll)
-  return () => window.removeEventListener('scroll', handleScroll)
+  container.addEventListener('scroll', closeMenuOnScroll)
+  return () => container.removeEventListener('scroll', closeMenuOnScroll)
 }, [isMenuOpen])
-
 
   // --- Notification mark as read ---
   const markAsRead = async (id: string) => {
