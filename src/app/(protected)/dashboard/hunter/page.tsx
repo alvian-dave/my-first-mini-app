@@ -166,7 +166,7 @@ export default function HunterDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3 px-6">
+        <div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3">
           {['active', 'completed', 'rejected'].map((tab) => (
             <button
               key={tab}
@@ -247,7 +247,7 @@ export default function HunterDashboard() {
                     <div className="mt-3">
                       <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
                       {c.tasks && c.tasks.length > 0 && (
-                        <ul className="text-sm text-gray-300 space-y-1">
+                        <ul className="text-sm text-gray-300 space-y-1 mb-3">
                           {c.tasks.map((t, i) => (
                             <li key={i} className="flex items-center gap-2">
                               <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
