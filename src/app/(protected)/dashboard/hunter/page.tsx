@@ -259,7 +259,7 @@ export default function HunterDashboard() {
                         </ul>
                       )}
                       <button
-                        className="mt-3 w-full py-2 rounded font-semibold text-white"
+                        className="mt-3 mb-4 w-full py-2 rounded font-semibold text-white"
                         style={{ backgroundColor: '#16a34a' }}
                         onClick={() => setSelectedCampaign(c)}
                       >
