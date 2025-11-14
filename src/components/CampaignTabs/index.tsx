@@ -16,7 +16,7 @@ export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
-            className="px-4 py-2 rounded-full font-medium"
+            className="px-5 py-2 rounded-full font-semibold text-white"
             style={{
               backgroundColor: isActive ? '#16a34a' : '#374151', // hijau / abu
               color: isActive ? '#ffffff' : '#d1d5db',           // putih / abu terang
