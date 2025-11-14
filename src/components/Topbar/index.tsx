@@ -100,34 +100,30 @@ const fetchBalance = async () => {
   }, [session])
 
 
-  // === AUTO CLOSE MENU SAAT SCROLL ===
+  // === AUTO CLOSE MENU ===
 useEffect(() => {
   const container = document.getElementById('app-scroll')
 
-  const closeMenu = () => {
-    if (isMenuOpen) setIsMenuOpen(false)
-  }
+  const closeMenu = () => setIsMenuOpen(false)
 
-  // 1️⃣ Scroll listener
-  if (container) {
-    container.addEventListener('scroll', closeMenu)
-  }
+  if (container) container.addEventListener('scroll', closeMenu)
 
-  // 2️⃣ Click outside listener
   const handleClickOutside = (e: MouseEvent) => {
     const menu = document.getElementById('topbar-menu')
-    if (menu && !menu.contains(e.target as Node)) {
-      closeMenu()
+    const button = document.getElementById('topbar-button')
+    if (menu && button && !menu.contains(e.target as Node) && !button.contains(e.target as Node)) {
+      setIsMenuOpen(false)
     }
   }
+
   document.addEventListener('mousedown', handleClickOutside)
 
-  // Cleanup
   return () => {
     if (container) container.removeEventListener('scroll', closeMenu)
     document.removeEventListener('mousedown', handleClickOutside)
   }
-}, [isMenuOpen])
+}, [])
+
 
   // --- Notification mark as read ---
   const markAsRead = async (id: string) => {
@@ -183,6 +179,7 @@ useEffect(() => {
         {status === 'authenticated' && (
           <div className="relative">
             <button
+              id="topbar-button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label="User menu"
               className="p-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring focus:ring-blue-500"
