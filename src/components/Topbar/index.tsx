@@ -169,6 +169,14 @@ useEffect(() => {
   setShowContactUs(true)
 }
 
+const [isNavigating, setIsNavigating] = useState(false)
+
+const handleChooseRole = () => {
+  setIsNavigating(true)
+  router.push('/home')
+  setTimeout(() => setIsNavigating(false), 2000)
+}
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-gray-900 text-white px-6 py-4 shadow flex justify-between items-center">
@@ -250,13 +258,15 @@ useEffect(() => {
 
                   <li>
                     <button
-                      onClick={() => router.push('/home')}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                      onClick={handleChooseRole}
+                      disabled={isNavigating}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 transition ${
+                        isNavigating ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
-                      Choose role
+                      {isNavigating ? 'Loading…' : 'Choose role'}
                     </button>
                   </li>
-
 
                   {/* --- Notification --- */}
                   <li>
