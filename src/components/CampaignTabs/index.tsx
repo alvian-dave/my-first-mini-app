@@ -8,7 +8,7 @@ interface Props {
 
 export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
   return (
-    <div className="flex justify-center gap-4">
+    <div className="flex justify-between items-center mb-2">
       {['active', 'finished', 'rejected'].map((tab) => {
         const isActive = activeTab === tab
         const label = tab.charAt(0).toUpperCase() + tab.slice(1) // Awal huruf besar
