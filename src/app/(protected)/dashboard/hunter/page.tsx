@@ -247,7 +247,7 @@ export default function HunterDashboard() {
                     <div className="mt-3">
                       <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
                       {c.tasks && c.tasks.length > 0 && (
-                        <ul className="text-sm text-gray-300 space-y-1 mb-3">
+                        <ul className="text-sm text-gray-300 space-y-1">
                           {c.tasks.map((t, i) => (
                             <li key={i} className="flex items-center gap-2">
                               <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
@@ -258,8 +258,10 @@ export default function HunterDashboard() {
                           ))}
                         </ul>
                       )}
+
+                      
                       <button
-                        className="mt-3 mb-4 w-full py-2 rounded font-semibold text-white"
+                        className="mt-3 w-full py-2 rounded font-semibold text-white"
                         style={{ backgroundColor: '#16a34a' }}
                         onClick={() => setSelectedCampaign(c)}
                       >
