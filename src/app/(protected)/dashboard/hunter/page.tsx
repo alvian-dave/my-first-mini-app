@@ -244,7 +244,7 @@ export default function HunterDashboard() {
                   </p>
 
                   {activeTab === 'active' ? (
-                    <div className="mt-3">
+                    <div className="mt-3 pb-4">
                       <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
                       {c.tasks && c.tasks.length > 0 && (
                         <ul className="text-sm text-gray-300 space-y-1">
@@ -259,7 +259,7 @@ export default function HunterDashboard() {
                         </ul>
                       )}
 
-                      
+
                       <button
                         className="mt-3 w-full py-2 rounded font-semibold text-white"
                         style={{ backgroundColor: '#16a34a' }}
