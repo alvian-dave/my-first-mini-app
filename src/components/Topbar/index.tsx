@@ -103,14 +103,30 @@ const fetchBalance = async () => {
   // === AUTO CLOSE MENU SAAT SCROLL ===
 useEffect(() => {
   const container = document.getElementById('app-scroll')
-  if (!container) return
 
-  const closeMenuOnScroll = () => {
+  const closeMenu = () => {
     if (isMenuOpen) setIsMenuOpen(false)
   }
 
-  container.addEventListener('scroll', closeMenuOnScroll)
-  return () => container.removeEventListener('scroll', closeMenuOnScroll)
+  // 1️⃣ Scroll listener
+  if (container) {
+    container.addEventListener('scroll', closeMenu)
+  }
+
+  // 2️⃣ Click outside listener
+  const handleClickOutside = (e: MouseEvent) => {
+    const menu = document.getElementById('topbar-menu')
+    if (menu && !menu.contains(e.target as Node)) {
+      closeMenu()
+    }
+  }
+  document.addEventListener('mousedown', handleClickOutside)
+
+  // Cleanup
+  return () => {
+    if (container) container.removeEventListener('scroll', closeMenu)
+    document.removeEventListener('mousedown', handleClickOutside)
+  }
 }, [isMenuOpen])
 
   // --- Notification mark as read ---
@@ -189,6 +205,7 @@ useEffect(() => {
 
             {isMenuOpen && (
               <div
+                id="topbar-menu"
                 className="absolute right-0 mt-3 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
                 onMouseLeave={() => setIsMenuOpen(false)}
               >
