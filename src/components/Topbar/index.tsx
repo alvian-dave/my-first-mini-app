@@ -16,7 +16,6 @@ export const Topbar = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
-  const [showTopup, setShowTopup] = useState(false)
   const [showContactUs, setShowContactUs] = useState(false)
   const [role, setRole] = useState('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
@@ -100,6 +99,18 @@ const fetchBalance = async () => {
     init()
   }, [session])
 
+
+  // === AUTO CLOSE MENU SAAT SCROLL ===
+useEffect(() => {
+  const handleScroll = () => {
+    if (isMenuOpen) setIsMenuOpen(false)
+  }
+
+  window.addEventListener('scroll', handleScroll)
+  return () => window.removeEventListener('scroll', handleScroll)
+}, [isMenuOpen])
+
+
   // --- Notification mark as read ---
   const markAsRead = async (id: string) => {
     setNotifications((prev) =>
@@ -137,11 +148,6 @@ const fetchBalance = async () => {
   const handleGoToAbout = () => {
     setIsMenuOpen(false)
     setShowAbout(true)
-  }
-
-  const handleGoToTopup = () => {
-    setIsMenuOpen(false)
-    setShowTopup(true)
   }
 
   const handleGoToContactUs = () => {
