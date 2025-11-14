@@ -225,7 +225,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <Topbar />
-      <main className="w-full px-4 md:px-12 py-6">
+      <main className="w-full px-6 md:px-12 py-6">
         {/* Balance + Topup */}
         <div className="flex justify-between items-center mb-6">
           <div className="text-lg font-medium">
