@@ -144,5 +144,4 @@ html, body {
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;  /* smooth scroll iOS */
-  overscroll-behavior: none;
 }
