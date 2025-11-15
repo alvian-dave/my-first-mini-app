@@ -10,21 +10,20 @@ export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
   const tabs = ['active', 'finished', 'rejected']
 
   return (
-    <div className="w-full px-6"> {/* Padding 24px dari kiri & kanan layar */}
-      <div className="flex justify-center gap-4 overflow-x-auto">
+    <div className="w-full px-6">
+      <div className="flex w-full gap-4 justify-center">
         {tabs.map((tab) => {
           const isActive = activeTab === tab
           const label = tab.charAt(0).toUpperCase() + tab.slice(1)
-
           return (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className="flex-shrink-0 py-2 px-6 rounded-full font-semibold text-white"
+              className="py-2 px-5 rounded-full font-semibold text-white"
               style={{
                 backgroundColor: isActive ? '#16a34a' : '#374151',
                 color: isActive ? '#ffffff' : '#d1d5db',
-                fontSize: 'clamp(14px, 2vw, 18px)', // teks menyesuaikan layar
+                fontSize: 'clamp(14px, 2vw, 18px)', // teks responsive
               }}
             >
               {label}
