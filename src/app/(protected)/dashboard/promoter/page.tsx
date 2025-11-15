@@ -323,7 +323,7 @@ useEffect(() => {
           setEditingCampaign(c)
           setIsModalOpen(true)
         }}
-        className="flex-1 py-6 rounded-xl font-semibold text-black"
+        className="py-6 rounded-xl font-semibold text-black"
         style={{ backgroundColor: '#facc15' }}
       >
         Edit
@@ -333,7 +333,7 @@ useEffect(() => {
       {c.contributors > 0 ? (
         <button
           onClick={() => handleMarkFinished(c._id)}
-          className="flex-1 py-3 rounded-xl font-semibold text-white flex items-center justify-center"
+          className="py-3 rounded-xl font-semibold text-white flex items-center justify-center"
           style={{ backgroundColor: '#2563eb' }}
           disabled={loadingId === c._id}
           aria-busy={loadingId === c._id}
@@ -353,7 +353,7 @@ useEffect(() => {
       ) : (
         <button
           onClick={() => handleDelete(c._id)}
-          className="flex-1 py-3 rounded-xl font-semibold text-white flex items-center justify-center"
+          className="py-3 rounded-xl font-semibold text-white flex items-center justify-center"
           style={{ backgroundColor: '#dc2626' }}
           disabled={loadingId === c._id}
           aria-busy={loadingId === c._id}
