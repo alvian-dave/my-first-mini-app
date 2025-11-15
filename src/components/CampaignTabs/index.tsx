@@ -41,7 +41,7 @@ export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
     >
       <div
         className="flex gap-4"
-        style={{ paddingLeft: 24, paddingRight: rightPadding }}
+        style={{ paddingLeft: 0, paddingRight: rightPadding }}
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab
@@ -53,8 +53,8 @@ export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
               onClick={() => setActiveTab(tab as any)}
               className="flex-shrink-0 py-2 rounded-full font-semibold text-white whitespace-nowrap"
               style={{
-                paddingLeft: 24,
-                paddingRight: 24,
+                paddingLeft: 0,
+                paddingRight: 0,
                 backgroundColor: isActive ? '#16a34a' : '#374151',
                 color: isActive ? '#ffffff' : '#d1d5db',
               }}
