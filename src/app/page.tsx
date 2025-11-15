@@ -49,7 +49,7 @@ export default function Home() {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        padding: '1rem',
+        padding: '1,5rem',
         background: 'linear-gradient(to bottom right, #111827, #1f2937, #000000)',
         color: 'white',
         textAlign: 'center',

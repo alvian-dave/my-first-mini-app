@@ -52,7 +52,7 @@ export const Login = () => {
       <div className="bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col justify-between transition hover:shadow-2xl">
         <div>
           <h2 className="text-xl font-bold text-blue-400">For Project Owners</h2>
-          <p className="mt-2 text-gray-300">
+          <p className="mt-3 text-gray-300">
             Launch your own campaign and distribute rewards to real humans.
           </p>
         </div>
@@ -72,7 +72,7 @@ export const Login = () => {
       <div className="bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col justify-between transition hover:shadow-2xl">
         <div>
           <h2 className="text-xl font-bold text-green-400">For Bounty Hunters</h2>
-          <p className="mt-2 text-gray-300">
+          <p className="mt-3 text-gray-300">
             Earn crypto by completing simple tasks and proving you’re human.
           </p>
         </div>

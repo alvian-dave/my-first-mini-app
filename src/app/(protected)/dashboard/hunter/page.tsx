@@ -171,7 +171,7 @@ export default function HunterDashboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className="px-5 py-2 rounded-full font-semibold text-white"
+              className="px-6 py-2 rounded-full font-semibold text-white"
               style={{ backgroundColor: activeTab === tab ? '#16a34a' : '#374151' }}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -203,9 +203,9 @@ export default function HunterDashboard() {
               return (
                 <div
                   key={c._id}
-                  className="bg-gray-800 p-5 rounded-lg shadow hover:shadow-lg transition"
+                  className="bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition"
                 >
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex justify-between items-center mb-3">
                     <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
                     {activeTab === 'completed' && (
                       <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
@@ -216,7 +216,7 @@ export default function HunterDashboard() {
 
                   {activeTab === 'active' && (
                     <>
-                      <p className="text-gray-300 mb-2 whitespace-pre-line">
+                      <p className="text-gray-300 mb-3 whitespace-pre-line">
                         {displayedDesc}
                       </p>
                       {c.description.length > 100 && (
@@ -239,15 +239,15 @@ export default function HunterDashboard() {
                     </>
                   )}
 
-                  <p className="text-sm text-gray-400 mb-2 mt-2">
+                  <p className="text-sm text-gray-400 mb-2 mt-3">
                     Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
                   </p>
 
                   {activeTab === 'active' ? (
                     <div className="mt-3">
-                      <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
+                      <p className="text-yellow-400 font-medium mb-3">Task In Progress</p>
                       {c.tasks && c.tasks.length > 0 && (
-                        <ul className="text-sm text-gray-300 space-y-1">
+                        <ul className="text-sm text-gray-300 space-y-2">
                           {c.tasks.map((t, i) => (
                             <li key={i} className="flex items-center gap-2 last:mb-3">
                               <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
@@ -406,7 +406,7 @@ export default function HunterDashboard() {
       )}
 
       {/* Floating Chat */}
-      <div className="fixed bottom-4 left-4 z-50">
+      <div className="fixed bottom-6 left-4 z-50">
         {!showChat ? (
           <div className="text-center">
             <button
