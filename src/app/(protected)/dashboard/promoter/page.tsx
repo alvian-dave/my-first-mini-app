@@ -314,63 +314,67 @@ useEffect(() => {
             Contributors: <b>{c.contributors ?? 0}</b>
           </p>
 
-          <div className="flex gap-4 mt-3">
-            {c.status !== 'finished' && (
-              <>
-                <button
-                  onClick={() => {
-                    setEditingCampaign(c)
-                    setIsModalOpen(true)
-                  }}
-                  className="px-3 py-1 rounded font-medium"
-                  style={{ backgroundColor: '#facc15', color: '#000' }}
-                >
-                  Edit
-                </button>
-                {c.contributors > 0 ? (
-                  <button
-                    onClick={() => handleMarkFinished(c._id)}
-                    className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                    style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                    disabled={loadingId === c._id}
-                    aria-busy={loadingId === c._id}
-                  >
-                    {loadingId === c._id ? (
-                      <>
-                        <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                          <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                        </svg>
-                        Processing...
-                      </>
-                    ) : (
-                      'Mark Finished'
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleDelete(c._id)}
-                    className="px-3 py-1 rounded font-medium flex items-center justify-center"
-                    style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                    disabled={loadingId === c._id}
-                    aria-busy={loadingId === c._id}
-                  >
-                    {loadingId === c._id ? (
-                      <>
-                        <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                          <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                        </svg>
-                        Processing...
-                      </>
-                    ) : (
-                      'Delete'
-                    )}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+<div className="mt-4 px-6 flex justify-center gap-4">
+  {c.status !== 'finished' && (
+    <>
+      {/* Edit button */}
+      <button
+        onClick={() => {
+          setEditingCampaign(c)
+          setIsModalOpen(true)
+        }}
+        className="flex-1 py-3 rounded-xl font-semibold text-black"
+        style={{ backgroundColor: '#facc15' }}
+      >
+        Edit
+      </button>
+
+      {/* Mark Finished / Delete button */}
+      {c.contributors > 0 ? (
+        <button
+          onClick={() => handleMarkFinished(c._id)}
+          className="flex-1 py-3 rounded-xl font-semibold text-white flex items-center justify-center"
+          style={{ backgroundColor: '#2563eb' }}
+          disabled={loadingId === c._id}
+          aria-busy={loadingId === c._id}
+        >
+          {loadingId === c._id ? (
+            <>
+              <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+              </svg>
+              Processing...
+            </>
+          ) : (
+            'Mark Finished'
+          )}
+        </button>
+      ) : (
+        <button
+          onClick={() => handleDelete(c._id)}
+          className="flex-1 py-3 rounded-xl font-semibold text-white flex items-center justify-center"
+          style={{ backgroundColor: '#dc2626' }}
+          disabled={loadingId === c._id}
+          aria-busy={loadingId === c._id}
+        >
+          {loadingId === c._id ? (
+            <>
+              <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
+                <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
+              </svg>
+              Processing...
+            </>
+          ) : (
+            'Delete'
+          )}
+        </button>
+      )}
+    </>
+  )}
+</div>
+
         </div>
       )
     })}
@@ -513,20 +517,32 @@ useEffect(() => {
       </div>
 
       {/* Toast */}
-      {toast && toast.type !== 'confirm' && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-      )}
-      {toast && toast.type === 'confirm' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="bg-gray-800 px-6 py-4 rounded shadow-md flex flex-col gap-4 max-w-sm w-full">
-            <p className="text-white text-center">{toast.message}</p>
-            <div className="flex justify-center gap-4">
-              <button onClick={() => { toast?.onConfirm(); setToast(null); }} className="px-4 py-2 bg-red-600 text-white rounded">Yes</button>
-              <button onClick={() => { toast?.onCancel?.(); setToast(null); }} className="px-4 py-2 bg-gray-500 text-white rounded">No</button>
-            </div>
-          </div>
-        </div>
-      )}
+{toast && toast.type === 'confirm' && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="bg-gray-800 px-6 py-6 rounded-lg shadow-md flex flex-col gap-6 max-w-sm w-full">
+      <p className="text-white text-center">{toast.message}</p>
+
+      <div className="flex justify-center gap-4">
+        <button
+          onClick={() => { toast?.onConfirm(); setToast(null); }}
+          style={{ backgroundColor: '#16a34a', padding: '12px 24px', color: 'white', borderRadius: '8px', fontSize: '18px', fontWeight: 600 }}
+          className="text-center"
+        >
+          Yes
+        </button>
+
+        <button
+          onClick={() => { toast?.onCancel?.(); setToast(null); }}
+          style={{ backgroundColor: '#dc2626', padding: '12px 24px', color: 'white', borderRadius: '8px', fontSize: '18px', fontWeight: 600 }}
+          className="text-center"
+        >
+          No
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   )
 }
