@@ -507,14 +507,27 @@ useEffect(() => {
           </div>
         ) : (
           <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center px-4 py-2" style={{ backgroundColor: '#16a34a', color: '#fff' }}>
+            {/* Header hijau tetap statis dengan tinggi fix */}
+            <div
+              className="flex justify-between items-center px-4"
+              style={{
+                backgroundColor: '#16a34a',
+                color: '#fff',
+                height: '48px', // ✅ FIX: beri tinggi tetap supaya tidak tersundul keyboard
+              }}
+            >
               <span className="font-semibold">Global Chat</span>
               <button onClick={() => setShowChat(false)}>✕</button>
             </div>
-            <GlobalChatRoom />
+
+            {/* Chat scrollable */}
+            <div className="flex-1 min-h-0">
+              <GlobalChatRoom />
+            </div>
           </div>
         )}
       </div>
+
 
       {/* Toast */}
 {toast && toast.type === 'confirm' && (
