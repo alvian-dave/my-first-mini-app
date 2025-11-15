@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   activeTab: 'active' | 'finished' | 'rejected'
@@ -9,29 +9,46 @@ interface Props {
 export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const activeButtonRef = useRef<HTMLButtonElement>(null)
-
-  // Scroll otomatis ke tombol Active saat load
-  useEffect(() => {
-    if (activeButtonRef.current && containerRef.current) {
-      activeButtonRef.current.scrollIntoView({
-        behavior: 'auto', // langsung, bisa diganti 'smooth' kalau mau animasi
-        inline: 'start',  // pastikan tombol Active di posisi paling kiri container
-      })
-    }
-  }, [])
+  const [isAtStart, setIsAtStart] = useState(true)
+  const [isAtEnd, setIsAtEnd] = useState(false)
 
   const tabs = ['active', 'finished', 'rejected']
 
+  // scroll ke tombol Active saat load
+  useEffect(() => {
+    if (activeButtonRef.current && containerRef.current) {
+      activeButtonRef.current.scrollIntoView({ behavior: 'auto', inline: 'start' })
+    }
+  }, [])
+
+  // update state scroll untuk padding kanan/kanan dinamis
+  const handleScroll = () => {
+    if (!containerRef.current) return
+    const { scrollLeft, scrollWidth, clientWidth } = containerRef.current
+    setIsAtStart(scrollLeft === 0)
+    setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - 1)
+  }
+
   return (
-    <div className="w-full overflow-x-auto" ref={containerRef}>
-      <div className="inline-flex gap-4 px-6">
+    <div
+      ref={containerRef}
+      className="w-full overflow-x-auto scrollbar-hide"
+      onScroll={handleScroll}
+      style={{
+        scrollPaddingLeft: '24px', // px-6 = 1.5rem = 24px
+        scrollPaddingRight: '24px',
+      }}
+    >
+      <div
+        className={`inline-flex gap-4 ${isAtStart ? 'pl-6' : 'pl-0'} ${isAtEnd ? 'pr-6' : 'pr-0'}`}
+      >
         {tabs.map((tab) => {
           const isActive = activeTab === tab
           const label = tab.charAt(0).toUpperCase() + tab.slice(1)
           return (
             <button
               key={tab}
-              ref={isActive ? activeButtonRef : null} // simpan tombol Active
+              ref={isActive ? activeButtonRef : null}
               onClick={() => setActiveTab(tab as any)}
               className="px-6 py-2 rounded-full font-semibold text-white whitespace-nowrap"
               style={{
