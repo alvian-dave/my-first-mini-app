@@ -1,5 +1,7 @@
+// components/CampaignTabs.tsx
 'use client'
-import { useEffect, useRef, useState } from 'react'
+
+import { useRef, useEffect } from 'react'
 
 interface Props {
   activeTab: 'active' | 'finished' | 'rejected'
@@ -8,62 +10,45 @@ interface Props {
 
 export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const activeButtonRef = useRef<HTMLButtonElement>(null)
-  const [rightPadding, setRightPadding] = useState(0) // padding kanan dinamis
 
-  const tabs = ['active', 'finished', 'rejected']
-
-  // scroll otomatis ke tombol Active saat load
+  // Optional: otomatis scroll ke tab aktif saat render
   useEffect(() => {
-    if (activeButtonRef.current && containerRef.current) {
-      // scroll tombol Active ke posisi start dengan jarak 24px
-      const offsetLeft = activeButtonRef.current.offsetLeft
-      containerRef.current.scrollLeft = offsetLeft - 0
+    const container = containerRef.current
+    const activeButton = container?.querySelector('.active-tab') as HTMLElement
+    if (container && activeButton) {
+      const offsetLeft = activeButton.offsetLeft
+      const containerWidth = container.offsetWidth
+      const buttonWidth = activeButton.offsetWidth
+      const scrollPos = offsetLeft - (containerWidth - buttonWidth) / 2
+      container.scrollTo({ left: scrollPos, behavior: 'smooth' })
     }
-  }, [])
-
-  // update padding kanan agar tombol terakhir berhenti 24px dari tepi
-  const handleScroll = () => {
-    if (!containerRef.current) return
-    const { scrollLeft, scrollWidth, clientWidth } = containerRef.current
-    const maxScroll = scrollWidth - clientWidth
-    const remaining = maxScroll - scrollLeft
-    // jika sudah dekat akhir, beri padding kanan agar tombol terakhir berhenti 24px dari kanan
-    setRightPadding(remaining < 24 ? 24 - remaining : 0)
-  }
+  }, [activeTab])
 
   return (
     <div
       ref={containerRef}
-      className="w-full overflow-x-auto"
-      onScroll={handleScroll}
-      style={{ scrollBehavior: 'smooth' }}
+      className="flex gap-4 overflow-x-auto"
     >
-      <div
-        className="flex gap-4"
-        style={{ paddingLeft: 0, paddingRight: rightPadding }}
-      >
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab
-          const label = tab.charAt(0).toUpperCase() + tab.slice(1)
-          return (
-            <button
-              key={tab}
-              ref={isActive ? activeButtonRef : null}
-              onClick={() => setActiveTab(tab as any)}
-              className="flex-shrink-0 py-2 rounded-full font-semibold text-white whitespace-nowrap"
-              style={{
-                paddingLeft: 24,
-                paddingRight: 24,
-                backgroundColor: isActive ? '#16a34a' : '#374151',
-                color: isActive ? '#ffffff' : '#d1d5db',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
+      {['active', 'finished', 'rejected'].map((tab) => {
+        const isActive = activeTab === tab
+        const label = tab.charAt(0).toUpperCase() + tab.slice(1)
+        return (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab as any)}
+            className={`px-6 py-2 rounded-full font-semibold ${
+              isActive ? 'active-tab' : ''
+            }`}
+            style={{
+              backgroundColor: isActive ? '#16a34a' : '#374151',
+              color: isActive ? '#ffffff' : '#d1d5db',
+              flex: '0 0 auto', // agar tombol tidak mengecil
+            }}
+          >
+            {label}
+          </button>
+        )
+      })}
     </div>
   )
 }
