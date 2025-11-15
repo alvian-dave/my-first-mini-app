@@ -171,7 +171,7 @@ export default function HunterDashboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className="px-5 py-2 rounded-full font-semibold text-white"
+              className="px-4 py-2 rounded-full font-semibold text-white"
               style={{
                 backgroundColor: activeTab === tab ? '#16a34a' : '#374151',
                 fontSize: 'clamp(14px, 2vw, 18px)', // teks responsive

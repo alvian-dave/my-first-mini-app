@@ -313,7 +313,7 @@ useEffect(() => {
           >
             Contributors: <b>{c.contributors ?? 0}</b>
           </p>
-
+          
 <div className="mt-4 px-6 flex justify-center gap-4">
   {c.status !== 'finished' && (
     <>
@@ -323,8 +323,13 @@ useEffect(() => {
           setEditingCampaign(c)
           setIsModalOpen(true)
         }}
-        className="py-6 rounded-xl font-semibold text-black"
-        style={{ backgroundColor: '#facc15' }}
+        className="flex-1 py-6 rounded-xl font-semibold text-black"
+        style={{
+          backgroundColor: '#facc15',
+          fontSize: 'clamp(14px, 2vw, 18px)', // teks responsive
+          minWidth: '120px', // tombol tidak menciut
+          maxWidth: '200px', // tombol tidak terlalu lebar
+        }}
       >
         Edit
       </button>
@@ -333,8 +338,13 @@ useEffect(() => {
       {c.contributors > 0 ? (
         <button
           onClick={() => handleMarkFinished(c._id)}
-          className="py-3 rounded-xl font-semibold text-white flex items-center justify-center"
-          style={{ backgroundColor: '#2563eb' }}
+          className="flex-1 py-3 rounded-xl font-semibold text-white flex items-center justify-center"
+          style={{
+            backgroundColor: '#2563eb',
+            fontSize: 'clamp(14px, 2vw, 18px)',
+            minWidth: '120px',
+            maxWidth: '200px',
+          }}
           disabled={loadingId === c._id}
           aria-busy={loadingId === c._id}
         >
@@ -353,8 +363,13 @@ useEffect(() => {
       ) : (
         <button
           onClick={() => handleDelete(c._id)}
-          className="py-3 rounded-xl font-semibold text-white flex items-center justify-center"
-          style={{ backgroundColor: '#dc2626' }}
+          className="flex-1 py-3 rounded-xl font-semibold text-white flex items-center justify-center"
+          style={{
+            backgroundColor: '#dc2626',
+            fontSize: 'clamp(14px, 2vw, 18px)',
+            minWidth: '120px',
+            maxWidth: '200px',
+          }}
           disabled={loadingId === c._id}
           aria-busy={loadingId === c._id}
         >
