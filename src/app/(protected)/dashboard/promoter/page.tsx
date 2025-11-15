@@ -323,7 +323,7 @@ useEffect(() => {
           setEditingCampaign(c)
           setIsModalOpen(true)
         }}
-        className="flex-1 py-4 rounded-xl font-semibold text-black"
+        className="flex-1 py-6 rounded-xl font-semibold text-black"
         style={{ backgroundColor: '#facc15' }}
       >
         Edit
