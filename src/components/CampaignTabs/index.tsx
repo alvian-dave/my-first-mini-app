@@ -11,7 +11,7 @@ export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
   const buttonWidth = 100 // lebar tombol tetap, misal 100px
 
   return (
-    <div className="px-6 w-full">
+    <div className="w-full">
       <div
         className="flex w-full"
         style={{
