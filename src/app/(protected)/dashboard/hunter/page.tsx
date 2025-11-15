@@ -216,7 +216,7 @@ export default function HunterDashboard() {
 
                   {activeTab === 'active' && (
                     <>
-                      <p className="text-gray-300 mb-2 whitespace-pre-line">
+                      <p className="text-gray-300 mb-3 whitespace-pre-line">
                         {displayedDesc}
                       </p>
                       {c.description.length > 100 && (
