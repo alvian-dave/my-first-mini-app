@@ -53,8 +53,8 @@ export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
               onClick={() => setActiveTab(tab as any)}
               className="flex-shrink-0 py-2 rounded-full font-semibold text-white whitespace-nowrap"
               style={{
-                paddingLeft: 0,
-                paddingRight: 0,
+                paddingLeft: 24,
+                paddingRight: 24,
                 backgroundColor: isActive ? '#16a34a' : '#374151',
                 color: isActive ? '#ffffff' : '#d1d5db',
               }}
