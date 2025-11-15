@@ -145,7 +145,3 @@ html, body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;  /* smooth scroll iOS */
 }
-
-.safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), 24px);
-}
