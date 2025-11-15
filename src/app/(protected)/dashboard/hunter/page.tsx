@@ -203,7 +203,7 @@ export default function HunterDashboard() {
               return (
                 <div
                   key={c._id}
-                  className="bg-gray-800 p-5 rounded-lg shadow hover:shadow-lg transition"
+                  className="bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition"
                 >
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
@@ -216,7 +216,7 @@ export default function HunterDashboard() {
 
                   {activeTab === 'active' && (
                     <>
-                      <p className="text-gray-300 mb-4 whitespace-pre-line">
+                      <p className="text-gray-300 mb-2 whitespace-pre-line">
                         {displayedDesc}
                       </p>
                       {c.description.length > 100 && (
@@ -239,17 +239,17 @@ export default function HunterDashboard() {
                     </>
                   )}
 
-                  <p className="text-sm text-gray-400 mb-2 mt-3">
+                  <p className="text-sm text-gray-400 mb-2 mt-2">
                     Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
                   </p>
 
                   {activeTab === 'active' ? (
                     <div className="mt-3">
-                      <p className="text-yellow-400 font-medium mb-3">Task In Progress</p>
+                      <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
                       {c.tasks && c.tasks.length > 0 && (
                         <ul className="text-sm text-gray-300 space-y-1">
                           {c.tasks.map((t, i) => (
-                            <li key={i} className="flex items-center gap-2 last:mb-4">
+                            <li key={i} className="flex items-center gap-2 last:mb-3">
                               <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
                                 {t.service}
                               </span>

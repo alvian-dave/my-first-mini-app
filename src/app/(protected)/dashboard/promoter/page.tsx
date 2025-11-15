@@ -271,7 +271,7 @@ useEffect(() => {
   : '0'
 
       return (
-        <div key={c._id} className="bg-gray-800 p-5 rounded-lg shadow hover:shadow-lg transition">
+        <div key={c._id} className="bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition">
           <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
           <CampaignDescription text={c.description} />
 
