@@ -18,7 +18,7 @@ export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
     if (activeButtonRef.current && containerRef.current) {
       // scroll tombol Active ke posisi start dengan jarak 24px
       const offsetLeft = activeButtonRef.current.offsetLeft
-      containerRef.current.scrollLeft = offsetLeft - 24
+      containerRef.current.scrollLeft = offsetLeft - 0
     }
   }, [])
 
