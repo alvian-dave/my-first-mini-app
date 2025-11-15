@@ -272,7 +272,7 @@ useEffect(() => {
 
       return (
         <div key={c._id} className="bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition">
-          <h3 className="text-lg font-bold text-blue-400">{c.title}</h3>
+          <h3 className="text-lg font-bold text-blue-400 mb-3">{c.title}</h3>
           <CampaignDescription text={c.description} />
 
           {Array.isArray(c.tasks) && c.tasks.length > 0 && (
@@ -299,7 +299,7 @@ useEffect(() => {
             </div>
           )}
 
-          <p className="text-sm text-green-400 font-semibold mt-2">Reward: {c.reward}</p>
+          <p className="text-sm text-green-400 font-semibold mt-3">Reward: {c.reward}</p>
           <p className="text-sm text-yellow-400 font-semibold">
             Remaining budget: {remainingWRFormatted} WR
           </p>
@@ -314,7 +314,7 @@ useEffect(() => {
             Contributors: <b>{c.contributors ?? 0}</b>
           </p>
 
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-4 mt-3">
             {c.status !== 'finished' && (
               <>
                 <button
