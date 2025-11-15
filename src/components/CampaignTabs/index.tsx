@@ -1,5 +1,5 @@
-// components/CampaignTabs.tsx
 'use client'
+import { useEffect, useRef } from 'react'
 
 interface Props {
   activeTab: 'active' | 'finished' | 'rejected'
@@ -7,28 +7,43 @@ interface Props {
 }
 
 export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
-  return (
-<div className="w-full overflow-x-auto">
-  <div className="flex justify-center gap-4 max-w-full px-6">
-    {['active', 'finished', 'rejected'].map((tab) => {
-      const isActive = activeTab === tab
-      const label = tab.charAt(0).toUpperCase() + tab.slice(1)
-      return (
-        <button
-          key={tab}
-          onClick={() => setActiveTab(tab as any)}
-          className="px-6 py-2 rounded-full font-semibold text-white whitespace-nowrap"
-          style={{
-            backgroundColor: isActive ? '#16a34a' : '#374151',
-            color: isActive ? '#ffffff' : '#d1d5db',
-          }}
-        >
-          {label}
-        </button>
-      )
-    })}
-  </div>
-</div>
+  const containerRef = useRef<HTMLDivElement>(null)
+  const activeButtonRef = useRef<HTMLButtonElement>(null)
 
+  // Scroll otomatis ke tombol Active saat load
+  useEffect(() => {
+    if (activeButtonRef.current && containerRef.current) {
+      activeButtonRef.current.scrollIntoView({
+        behavior: 'auto', // langsung, bisa diganti 'smooth' kalau mau animasi
+        inline: 'start',  // pastikan tombol Active di posisi paling kiri container
+      })
+    }
+  }, [])
+
+  const tabs = ['active', 'finished', 'rejected']
+
+  return (
+    <div className="w-full overflow-x-auto" ref={containerRef}>
+      <div className="inline-flex gap-4 px-6">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab
+          const label = tab.charAt(0).toUpperCase() + tab.slice(1)
+          return (
+            <button
+              key={tab}
+              ref={isActive ? activeButtonRef : null} // simpan tombol Active
+              onClick={() => setActiveTab(tab as any)}
+              className="px-6 py-2 rounded-full font-semibold text-white whitespace-nowrap"
+              style={{
+                backgroundColor: isActive ? '#16a34a' : '#374151',
+                color: isActive ? '#ffffff' : '#d1d5db',
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
