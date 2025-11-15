@@ -216,7 +216,7 @@ export default function HunterDashboard() {
 
                   {activeTab === 'active' && (
                     <>
-                      <p className="text-gray-300 mb-3 whitespace-pre-line">
+                      <p className="text-gray-300 mb-4 whitespace-pre-line">
                         {displayedDesc}
                       </p>
                       {c.description.length > 100 && (
@@ -239,17 +239,17 @@ export default function HunterDashboard() {
                     </>
                   )}
 
-                  <p className="text-sm text-gray-400 mb-2 mt-2">
+                  <p className="text-sm text-gray-400 mb-2 mt-3">
                     Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
                   </p>
 
                   {activeTab === 'active' ? (
                     <div className="mt-3">
-                      <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
+                      <p className="text-yellow-400 font-medium mb-3">Task In Progress</p>
                       {c.tasks && c.tasks.length > 0 && (
                         <ul className="text-sm text-gray-300 space-y-1">
                           {c.tasks.map((t, i) => (
-                            <li key={i} className="flex items-center gap-2 last:mb-3">
+                            <li key={i} className="flex items-center gap-2 last:mb-4">
                               <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
                                 {t.service}
                               </span>

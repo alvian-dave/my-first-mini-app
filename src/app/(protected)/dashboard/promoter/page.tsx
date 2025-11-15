@@ -255,7 +255,7 @@ useEffect(() => {
         </div>
 
         {/* Tabs */}
-        <div className="sticky top-16 bg-gray-900 z-40 py-3">
+        <div className="sticky top-16 bg-gray-900 z-40 py-3 mb-6">
           <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
 
