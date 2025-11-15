@@ -19,11 +19,10 @@ export const CampaignTabs = ({ activeTab, setActiveTab }: Props) => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className="py-2 px-6 rounded-full font-semibold text-white"
+              className="py-2 rounded-full font-semibold text-white"
               style={{
                 backgroundColor: isActive ? '#16a34a' : '#374151',
                 color: isActive ? '#ffffff' : '#d1d5db',
-                width: 'clamp(80px, 20vw, 160px)', // tombol responsive
                 fontSize: 'clamp(14px, 2vw, 18px)', // teks responsive
               }}
             >
