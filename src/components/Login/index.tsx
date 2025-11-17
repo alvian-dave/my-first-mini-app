@@ -51,7 +51,7 @@ export const Login = () => {
       {/* CLIENT CARD */}
       <div className="bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col justify-between transition hover:shadow-2xl">
         <div>
-          <h2 className="text-xl font-bold text-blue-400">For Project Owners</h2>
+          <h2 className="text-xl font-bold text-blue-400 mb-3">For Project Owners</h2>
           <p className="mt-3 text-gray-300">
             Launch your own campaign and distribute rewards to real humans.
           </p>
@@ -71,7 +71,7 @@ export const Login = () => {
       {/* HUNTER CARD */}
       <div className="bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col justify-between transition hover:shadow-2xl">
         <div>
-          <h2 className="text-xl font-bold text-green-400">For Bounty Hunters</h2>
+          <h2 className="text-xl font-bold text-green-400 mb-3">For Bounty Hunters</h2>
           <p className="mt-3 text-gray-300">
             Earn crypto by completing simple tasks and proving you’re human.
           </p>
