@@ -13,6 +13,7 @@ function botHeaders() {
     Authorization: `Bearer ${BOT_BEARER}`,
     Cookie: `auth_token=${BOT_AUTH_TOKEN}; ct0=${BOT_CSRF}`,
     "x-csrf-token": BOT_CSRF,
+    "User-Agent": "Mozilla/5.0",
   }
 }
 
