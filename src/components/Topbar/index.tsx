@@ -189,7 +189,6 @@ export const Topbar = () => {
         {/* LEFT: Home (icon + optional label on larger screens) */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push('/dashboard')}
             aria-label="Home"
             className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
             title="Home"
@@ -286,7 +285,7 @@ export const Topbar = () => {
             {isMenuOpen && (
               <div
                 id="topbar-menu"
-                className="absolute right-0 mt-3 w-72 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden z-50"
+                className="absolute right-0 mt-3 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
                 onMouseLeave={() => setIsMenuOpen(false)}
               >
                 <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
@@ -294,86 +293,52 @@ export const Topbar = () => {
                   <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
                 </div>
 
-                <ul className="divide-y divide-gray-200 text-sm bg-white">
-                  {/* Refresh button */}
+                <ul className="divide-y divide-gray-200 text-sm">
+                  {/* --- Refresh button --- */}
                   <li className="px-4 py-2">
                     <button
-                      onClick={async () => { await handleRefresh(); }}
+                      onClick={handleRefresh}
                       disabled={!canRefresh}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md hover:bg-gray-50 transition ${!canRefresh ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 transition ${
+                        !canRefresh ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
                       {refreshing && <span className="animate-spin">⏳</span>}
                       Refresh
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z"
+                        />
                       </svg>
                     </button>
                   </li>
 
-                  {/* Main balance */}
+                  {/* --- Main balance --- */}
                   <li className="flex justify-between items-center px-4 py-2">
                     <span>Main balance</span>
                     <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
                   </li>
 
-                  {/* Choose role (with two-arrows icon) */}
+                  {/* --- Choose Role --- */}
+
                   <li>
                     <button
                       onClick={handleChooseRole}
                       disabled={isNavigating}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition flex items-center gap-2 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 transition ${
+                        isNavigating ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
-                      {/* chevrons left-right */}
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7l-3 3 3 3M17 7l3 3-3 3M10 12h4" />
-                      </svg>
                       {isNavigating ? 'Loading…' : 'Choose role'}
-                    </button>
-                  </li>
-
-                  {/* Notification (entry also available here but icon triggers main modal) */}
-                  <li>
-                    <button
-                      onClick={() => { setIsMenuOpen(false); setShowNotificationsModal(true) }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 transition flex justify-between items-center"
-                    >
-                      Notification
-                      {unreadCount > 0 && (
-                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-
-                  {/* Contact us */}
-                  <li>
-                    <button
-                      onClick={handleGoToContactUs}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 transition"
-                    >
-                      Contact us
-                    </button>
-                  </li>
-
-                  {/* About */}
-                  <li>
-                    <button
-                      onClick={handleGoToAbout}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 transition"
-                    >
-                      About
-                    </button>
-                  </li>
-
-                  {/* Logout */}
-                  <li className="px-4 py-2">
-                    <button
-                      onClick={handleLogout}
-                      disabled={isLoggingOut}
-                      className={`w-full text-left font-medium text-red-600 hover:text-red-700 transition ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {isLoggingOut ? 'Logging out…' : 'Logout'}
                     </button>
                   </li>
                 </ul>
