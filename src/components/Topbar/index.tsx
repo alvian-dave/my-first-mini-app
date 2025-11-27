@@ -14,7 +14,8 @@ export const Topbar = () => {
   const router = useRouter()
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  // reuse isMenuOpen as PROFILE dropdown open state (keeps original variable usage)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showContactUs, setShowContactUs] = useState(false)
   const [role, setRole] = useState('')
@@ -99,29 +100,26 @@ export const Topbar = () => {
     init()
   }, [session])
 
-  // --- Close dropdowns when click outside or scroll ---
+  // === AUTO CLOSE MENU ===
   useEffect(() => {
     const container = document.getElementById('app-scroll')
 
-    const closeAll = () => {
-      setShowProfileMenu(false)
-    }
+    const closeProfile = () => setIsMenuOpen(false)
 
-    if (container) container.addEventListener('scroll', closeAll)
+    if (container) container.addEventListener('scroll', closeProfile)
 
     const handleClickOutside = (e: MouseEvent) => {
-      const profile = document.getElementById('topbar-profile-menu')
-      const profileBtn = document.getElementById('topbar-profile-btn')
-      // if click outside profile menu & profile button -> close profile menu
-      if (profile && profileBtn && !profile.contains(e.target as Node) && !profileBtn.contains(e.target as Node)) {
-        setShowProfileMenu(false)
+      const menu = document.getElementById('topbar-menu')
+      const button = document.getElementById('topbar-button')
+      if (menu && button && !menu.contains(e.target as Node) && !button.contains(e.target as Node)) {
+        setIsMenuOpen(false)
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
 
     return () => {
-      if (container) container.removeEventListener('scroll', closeAll)
+      if (container) container.removeEventListener('scroll', closeProfile)
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
@@ -161,13 +159,13 @@ export const Topbar = () => {
   }
 
   const handleGoToAbout = () => {
-    // close any open menus first
-    setShowProfileMenu(false)
+    // close dropdown first
+    setIsMenuOpen(false)
     setShowAbout(true)
   }
 
   const handleGoToContactUs = () => {
-    setShowProfileMenu(false)
+    setIsMenuOpen(false)
     setShowContactUs(true)
   }
 
@@ -176,95 +174,104 @@ export const Topbar = () => {
   const handleChooseRole = () => {
     setIsNavigating(true)
     router.push('/home')
-    // keep same behavior as before
     setTimeout(() => setIsNavigating(false), 2000)
   }
 
-  // Ensure opening one modal closes others (prevent tabrakan)
+  // helper: open notifications modal (close profile dropdown first)
   const openNotifications = () => {
-    setShowProfileMenu(false)
+    setIsMenuOpen(false)
     setShowNotificationsModal(true)
-  }
-
-  const openProfileMenu = () => {
-    // close notifications modal if open
-    setShowNotificationsModal(false)
-    setShowProfileMenu((prev) => !prev)
   }
 
   return (
     <>
-      {/* Topbar: left = home, center = (spare), right = profile */}
-      <header className="sticky top-0 z-50 bg-gray-900 text-white px-4 py-3 shadow flex items-center justify-between gap-2">
-        {/* LEFT: Home */}
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="sticky top-0 z-50 bg-gray-900 text-white px-4 py-3 shadow flex items-center justify-between">
+        {/* LEFT: Home (icon + optional label on larger screens) */}
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/dashboard')}
             aria-label="Home"
             className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+            title="Home"
           >
+            {/* home svg */}
             <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75l9-7.5 9 7.5M4.5 10.5v9.75h5.25V15h4.5v5.25H19.5V10.5" />
             </svg>
-            {/* title only shown on larger screens to save space on mobile */}
             <span className="hidden sm:inline text-lg font-semibold tracking-wide">Dashboard</span>
           </button>
         </div>
 
-        {/* CENTER: placeholders for future icons (kept minimal, won't render if none) */}
-        <nav className="flex-1 flex items-center justify-center">
-          <div className="flex items-center gap-6">
-            {/* keep empty — avoids accidental assumptions like 'campaign' or 'chat' */}
-            {/* If in future you want icons, add here. */}
-          </div>
-        </nav>
+        {/* CENTER: keep empty so layout stays single-line and balanced */}
+        <div className="flex-1" />
 
-        {/* RIGHT: Profile + quick-info */}
+        {/* RIGHT: Icons + profile */}
         {status === 'authenticated' && (
           <div className="relative flex items-center gap-2">
-            {/* Quick refresh + notifications icons (compact, mobile-friendly) */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleRefresh}
-                disabled={!canRefresh}
-                className={`p-2 rounded-md hover:bg-gray-800 focus:outline-none ${!canRefresh ? 'opacity-50 cursor-not-allowed' : ''}`}
-                aria-label="Refresh"
-                title="Refresh"
-              >
-                {refreshing ? (
-                  <span className="animate-spin">⏳</span>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z" />
-                  </svg>
-                )}
-              </button>
-
-              <button
-                onClick={openNotifications}
-                className="relative p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-                aria-label="Notifications"
-                title="Notifications"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* PROFILE BUTTON */}
+            {/* LOGOUT ICON (to the left of profile) */}
             <button
-              id="topbar-profile-btn"
-              onClick={openProfileMenu}
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="Logout"
+            >
+              {/* logout svg */}
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+              </svg>
+            </button>
+
+            {/* NOTIFICATION ICON (single) */}
+            <button
+              onClick={openNotifications}
+              className="relative p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="Notifications"
+            >
+              {/* bell svg */}
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* CONTACT US ICON */}
+            <button
+              onClick={() => { setShowContactUs(true); setIsMenuOpen(false) }}
+              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="Contact us"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 6-9 11-9 11s-9-5-9-11a9 9 0 1118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 10h.01" />
+              </svg>
+            </button>
+
+            {/* ABOUT ICON */}
+            <button
+              onClick={() => { setShowAbout(true); setIsMenuOpen(false) }}
+              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="About"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+              </svg>
+            </button>
+
+            {/* PROFILE BUTTON (id kept as topbar-button to match original click-outside logic) */}
+            <button
+              id="topbar-button"
+              onClick={() => {
+                // toggle profile dropdown and ensure notifications modal closed
+                setShowNotificationsModal(false)
+                setIsMenuOpen((s) => !s)
+              }}
+              aria-label="User menu"
               className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              aria-haspopup="true"
-              aria-expanded={showProfileMenu}
+              title="Profile"
             >
               <div className="hidden sm:flex flex-col text-right leading-tight">
                 <span className="text-sm font-semibold truncate max-w-[140px]">{username}</span>
@@ -275,44 +282,59 @@ export const Topbar = () => {
               </div>
             </button>
 
-            {/* PROFILE DROPDOWN */}
-            {showProfileMenu && (
+            {/* PROFILE DROPDOWN (id kept topbar-menu to match original click-outside logic) */}
+            {isMenuOpen && (
               <div
-                id="topbar-profile-menu"
+                id="topbar-menu"
                 className="absolute right-0 mt-3 w-72 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden z-50"
-                role="menu"
-                aria-label="Profile menu"
+                onMouseLeave={() => setIsMenuOpen(false)}
               >
-                <div className="px-4 py-3 bg-gray-100 border-b">
-                  <p className="text-sm font-semibold truncate">{username}</p>
+                <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
                   <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
                 </div>
 
                 <ul className="divide-y divide-gray-200 text-sm bg-white">
+                  {/* Refresh button */}
+                  <li className="px-4 py-2">
+                    <button
+                      onClick={async () => { await handleRefresh(); }}
+                      disabled={!canRefresh}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md hover:bg-gray-50 transition ${!canRefresh ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {refreshing && <span className="animate-spin">⏳</span>}
+                      Refresh
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6" />
+                      </svg>
+                    </button>
+                  </li>
+
                   {/* Main balance */}
                   <li className="flex justify-between items-center px-4 py-2">
                     <span>Main balance</span>
                     <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
                   </li>
 
-                  {/* Choose role */}
+                  {/* Choose role (with two-arrows icon) */}
                   <li>
                     <button
                       onClick={handleChooseRole}
                       disabled={isNavigating}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition flex items-center gap-2 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
+                      {/* chevrons left-right */}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7l-3 3 3 3M17 7l3 3-3 3M10 12h4" />
+                      </svg>
                       {isNavigating ? 'Loading…' : 'Choose role'}
                     </button>
                   </li>
 
-                  {/* Notifications */}
+                  {/* Notification (entry also available here but icon triggers main modal) */}
                   <li>
                     <button
-                      onClick={() => {
-                        setShowProfileMenu(false)
-                        setShowNotificationsModal(true)
-                      }}
+                      onClick={() => { setIsMenuOpen(false); setShowNotificationsModal(true) }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 transition flex justify-between items-center"
                     >
                       Notification
@@ -324,13 +346,24 @@ export const Topbar = () => {
                     </button>
                   </li>
 
-                  {/* Contact & About */}
+                  {/* Contact us */}
                   <li>
-                    <button onClick={handleGoToContactUs} className="w-full text-left px-4 py-2 hover:bg-gray-50 transition">Contact us</button>
+                    <button
+                      onClick={handleGoToContactUs}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 transition"
+                    >
+                      Contact us
+                    </button>
                   </li>
 
+                  {/* About */}
                   <li>
-                    <button onClick={handleGoToAbout} className="w-full text-left px-4 py-2 hover:bg-gray-50 transition">About</button>
+                    <button
+                      onClick={handleGoToAbout}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 transition"
+                    >
+                      About
+                    </button>
                   </li>
 
                   {/* Logout */}
@@ -351,27 +384,22 @@ export const Topbar = () => {
       </header>
 
       {/* --- Modals --- */}
-
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
 
       {showContactUs && <ContactUsModal onClose={() => setShowContactUs(false)} />}
 
-      {/* Notifications Modal (full modal, closes profile dropdown first when opened) */}
+      {/* Notifications Modal (same behavior as original) */}
       {showNotificationsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
             <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
               <h2 className="text-lg font-semibold">Notifications</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setShowNotificationsModal(false)
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                onClick={() => setShowNotificationsModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
             </div>
 
             <div className="overflow-y-auto flex-1">
@@ -390,7 +418,7 @@ export const Topbar = () => {
                         href={n.metadata.txLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()} // prevent closing/marking when clicking link
+                        onClick={(e) => e.stopPropagation()}
                         className="text-blue-600 text-xs underline mt-1 block hover:text-blue-800"
                       >
                         View on Explorer 🔗
