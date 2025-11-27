@@ -243,10 +243,11 @@ export const Topbar = () => {
               className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
               title="Contact us"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 6-9 11-9 11s-9-5-9-11a9 9 0 1118 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 10h.01" />
-              </svg>
+<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
+  viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+  <path strokeLinecap="round" strokeLinejoin="round"
+    d="M18 13v3a3 3 0 01-3 3h-1M6 13v3a3 3 0 003 3h1m8-6a8 8 0 10-16 0m16 0v2m-16-2v2m5-7h2a2 2 0 012 2v3a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3a2 2 0 012-2z" />
+</svg>
             </button>
 
             {/* ABOUT ICON */}
@@ -283,11 +284,11 @@ export const Topbar = () => {
 
             {/* PROFILE DROPDOWN (id kept topbar-menu to match original click-outside logic) */}
             {isMenuOpen && (
-              <div
-                id="topbar-menu"
-                className="absolute right-0 mt-3 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
-                onMouseLeave={() => setIsMenuOpen(false)}
-              >
+                <div
+                  id="topbar-menu"
+                  className="absolute right-0 top-full mt-2 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
+                  onMouseLeave={() => setIsMenuOpen(false)}
+                >
                 <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
                   <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
                   <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
