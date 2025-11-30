@@ -144,7 +144,7 @@ export default function TaskModal({
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [campaignId])
+  }, [campaignId, onClose]) // onClose ditambahkan ke dependency array
 
   // ✅ Verifikasi task
   const handleVerify = async (idx: number, task: Task) => {
@@ -160,6 +160,7 @@ export default function TaskModal({
 
       if (task.service === 'telegram') {
         if (!task.connected) {
+          // Menggunakan window.open untuk menghindari redirect pada modal yang sedang terbuka
           window.open(
             `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${session.user.id}`,
             '_blank'
@@ -272,12 +273,21 @@ export default function TaskModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] rounded-xl border-none bg-card text-card-foreground">
+      <DialogContent 
+        // 1. Modal Container Dark Mode: bg-gray-800, text-gray-100
+        className="sm:max-w-[425px] rounded-xl border-none bg-gray-800 text-gray-100"
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
           <DialogDescription>
-            <ScrollArea className="h-40 p-2 border rounded-md">
-              <p className="text-sm whitespace-pre-line text-muted-foreground">
+            <ScrollArea 
+              // 2. Scroll Area Dark Mode: border-gray-700
+              className="h-40 p-2 border border-gray-700 rounded-md"
+            >
+              <p 
+                // 2. Teks Deskripsi Dark Mode: text-gray-400
+                className="text-sm whitespace-pre-line text-gray-400"
+              >
                 {description}
               </p>
             </ScrollArea>
@@ -291,7 +301,11 @@ export default function TaskModal({
               key={i}
               className={cn(
                 "flex items-center justify-between p-3 rounded-lg border",
-                task.done ? "border-green-500 bg-green-500/10" : "border-border bg-muted/20"
+                task.done 
+                  // 3. Task Done Dark Mode: bg-green-700/20, border-green-600
+                  ? "border-green-600 bg-green-700/20" 
+                  // 3. Task Default Dark Mode: bg-gray-700/50, border-gray-700
+                  : "border-gray-700 bg-gray-700/50"
               )}
             >
               <a
@@ -302,12 +316,14 @@ export default function TaskModal({
                 }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
+                // Teks link default warna putih/terang
+                className="flex-1 flex items-center gap-2 text-sm font-medium hover:text-green-500 transition-colors"
               >
                 <span>
                   {task.service.toUpperCase()} — {task.type}
                 </span>
-                <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                {/* Ikon link dark mode */}
+                <ExternalLink className="w-3 h-3 text-gray-400" />
               </a>
 
               {task.done ? (
@@ -321,10 +337,11 @@ export default function TaskModal({
                   disabled={verifying === i}
                   className="ml-3 h-8 px-3 text-xs"
                   variant={
+                    // Mengubah secondary untuk dark mode agar tidak terlalu menyatu
                     task.service === 'twitter' ||
                     task.service === 'telegram' ||
                     task.service === 'discord'
-                      ? 'secondary'
+                      ? 'secondary' 
                       : 'default'
                   }
                 >
@@ -350,7 +367,11 @@ export default function TaskModal({
 
         <DialogFooter>
           <Button
-            className="w-full h-10 font-semibold"
+            className={cn(
+              "w-full h-10 font-semibold text-white", // Memastikan teks putih
+              // 4. Confirm Button Dark Mode: bg-green-600
+              "bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+            )}
             onClick={handleConfirm}
             disabled={submitting || !taskStates.every(t => t.done)}
           >
