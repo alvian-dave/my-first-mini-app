@@ -12,7 +12,7 @@ import { parseUnits } from "ethers"
 import { Plus, Trash2, Loader2, Link as LinkIcon, AlertTriangle, CheckCircle, Bot } from 'lucide-react'
 import { toast } from 'sonner' 
 
-// shadcn/ui components (asumsi telah dikonfigurasi untuk dark mode)
+// shadcn/ui components
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -97,11 +97,9 @@ export const CampaignForm = ({
     transactionId,
   })
   
-  // Fungsi Sonner Toast
-  // Catatan: Toast akan tetap menggunakan tema terang/gelap global jika tidak di-override
+  // Fungsi Sonner Toast - Disesuaikan untuk tema gelap
   const showToast = (message: string, type: 'success' | 'error') => {
       if (type === 'success') {
-          // Sesuaikan dengan skema warna dark mode
           toast.success(message, { 
               duration: 3000,
               icon: <CheckCircle className="h-4 w-4 text-green-400" />,
@@ -111,7 +109,6 @@ export const CampaignForm = ({
           toast.error(message, { 
               duration: 5000, 
               icon: <AlertTriangle className="h-4 w-4 text-red-400" />,
-              // Menggunakan warna error yang lebih gelap untuk dark mode
               style: { backgroundColor: '#450a0a', color: 'white', borderColor: '#f87171' }
           })
       }
@@ -462,7 +459,7 @@ export const CampaignForm = ({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          {/* Overlay - Lebih gelap untuk dark mode */}
+          {/* Overlay - Disesuaikan untuk dark mode */}
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
         </Transition.Child>
 
@@ -477,14 +474,13 @@ export const CampaignForm = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              {/* Modal Content (Dark Mode Styling) */}
+              {/* Modal Content - Latar belakang, border, dan shadow dark mode */}
               <Dialog.Panel 
-                // Menggunakan latar belakang yang lebih gelap
                 className="w-full max-w-lg transform overflow-hidden rounded-xl bg-gray-900 p-6 text-left align-middle shadow-2xl transition-all border border-gray-700"
               >
                 <Dialog.Title
                   as="h3"
-                  // Warna teks putih/terang
+                  // Teks putih untuk judul
                   className="text-2xl font-bold leading-6 text-white mb-4"
                 >
                   {editingCampaign ? 'Edit Campaign' : 'Create New Campaign ✍️'}
@@ -493,14 +489,14 @@ export const CampaignForm = ({
                 <div className="space-y-6 pt-2 pb-4 max-h-[70vh] overflow-y-auto pr-2">
                   {/* Campaign Info */}
                   <div className="space-y-4">
-                      {/* Label menggunakan warna teks terang */}
+                      {/* Label dengan teks abu-abu terang */}
                       <Label htmlFor="title" className="text-gray-300">Campaign Title</Label>
                       <Input
                           id="title"
                           placeholder="e.g., Launch Event Promo"
                           value={campaign.title}
                           onChange={(e) => handleChange('title', e.target.value)}
-                          // Input menggunakan bg-gray-800 dan border gray-700
+                          // Input styling dark mode
                           className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                       />
                       <Label htmlFor="description" className="text-gray-300">Description</Label>
@@ -510,7 +506,7 @@ export const CampaignForm = ({
                           placeholder="Detailed steps and objective of the campaign."
                           value={campaign.description}
                           onChange={(e) => handleChange('description', e.target.value)}
-                          // Textarea menggunakan bg-gray-800 dan border gray-700
+                          // Textarea styling dark mode
                           className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                       />
 
@@ -525,7 +521,7 @@ export const CampaignForm = ({
                                   value={campaign.budget || ''}
                                   onChange={(e) => handleChange('budget', e.target.value)}
                                   disabled={isEditing}
-                                  // Input menggunakan bg-gray-800/disabled style
+                                  // Input styling dark mode
                                   className={`bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
                               />
                           </div>
@@ -539,7 +535,7 @@ export const CampaignForm = ({
                                   value={campaign.reward || ''}
                                   onChange={(e) => handleChange('reward', e.target.value)}
                                   disabled={isEditing}
-                                  // Input menggunakan bg-gray-800/disabled style
+                                  // Input styling dark mode
                                   className={`bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
                               />
                           </div>
@@ -548,7 +544,7 @@ export const CampaignForm = ({
 
                   {/* Task List */}
                   <h4 
-                    // Border dan teks menggunakan warna gelap
+                    // Header dengan teks putih dan border gelap
                     className="text-lg font-semibold border-b pb-2 mb-4 text-white border-gray-700"
                   >
                     Tasks ({campaign.tasks.length}/{MAX_TASKS})
@@ -578,10 +574,10 @@ export const CampaignForm = ({
                       return (
                         <div
                           key={i}
-                          // Latar belakang dan border task item
-                          className={`bg-gray-800/50 p-4 rounded-lg space-y-3 border ${task.isOld ? 'border-primary/50' : 'border-gray-700'}`}
+                          // Latar belakang dan border task item dark mode
+                          className={`bg-gray-800/50 p-4 rounded-lg space-y-3 border ${task.isOld ? 'border-blue-600/50' : 'border-gray-700'}`}
                         >
-                          <h5 className="text-sm font-medium text-gray-300">Task #{i + 1} {task.isOld && <span className="text-xs text-primary/80">(Existing)</span>}</h5>
+                          <h5 className="text-sm font-medium text-gray-300">Task #{i + 1} {task.isOld && <span className="text-xs text-blue-600/80">(Existing)</span>}</h5>
 
                           {/* FIX 1: Ubah dari grid 2 kolom menjadi tumpukan untuk mobile (Sudah dilakukan) */}
                           <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2">
@@ -594,7 +590,7 @@ export const CampaignForm = ({
                               <SelectTrigger className="bg-gray-800 border-gray-700 text-white disabled:opacity-70 disabled:cursor-not-allowed" disabled={task.isOld}>
                                 <SelectValue placeholder="Select Service" />
                               </SelectTrigger>
-                              {/* Select Content (asumsi sudah dark mode global) */}
+                              {/* Select Content (diasumsikan sudah dark mode global, tapi set background eksplisit untuk amannya) */}
                               <SelectContent className="bg-gray-800 border-gray-700 text-white">
                                 {SERVICE_OPTIONS.map((s) => (
                                   <SelectItem key={s.service} value={s.service}>
@@ -614,7 +610,7 @@ export const CampaignForm = ({
                                 <SelectTrigger className="bg-gray-800 border-gray-700 text-white disabled:opacity-70 disabled:cursor-not-allowed" disabled={task.isOld}>
                                   <SelectValue placeholder="Select Task Type" />
                                 </SelectTrigger>
-                                {/* Select Content (asumsi sudah dark mode global) */}
+                                {/* Select Content (diasumsikan sudah dark mode global) */}
                                 <SelectContent className="bg-gray-800 border-gray-700 text-white">
                                   {TASK_TYPE_OPTIONS[task.service]?.map((t) => (
                                     <SelectItem 
@@ -640,7 +636,7 @@ export const CampaignForm = ({
                               onChange={(e) => updateTask(i, 'url', e.target.value)}
                               readOnly={task.isOld}
                             />
-                            {/* Icon menggunakan warna yang kontras tapi tidak mencolok */}
+                            {/* Icon menggunakan warna abu-abu gelap */}
                             <LinkIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                           </div>
 
@@ -674,10 +670,10 @@ export const CampaignForm = ({
                               <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                                 <Button
                                   asChild
-                                  // Button utama menggunakan warna Primary yang menonjol
+                                  // Tombol 'Add Bot': Menggunakan warna blue-600 baru untuk konsistensi
                                   variant="secondary"
                                   size="sm"
-                                  className="bg-primary hover:bg-primary/90 text-white flex-1 font-bold shadow-md"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white flex-1 font-bold shadow-md"
                                 >
                                   <a
                                     href={DISCORD_INVITE_URL}
@@ -733,7 +729,8 @@ export const CampaignForm = ({
                                   onClick={() => removeTask(i)}
                                   variant="destructive"
                                   size="sm"
-                                  className="w-full mt-2 bg-red-700 hover:bg-red-800"
+                                  // Tombol Remove: Warna merah tua untuk dark mode
+                                  className="w-full mt-2 bg-red-700 hover:bg-red-800 text-white"
                               >
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Remove Task
@@ -743,7 +740,7 @@ export const CampaignForm = ({
                       )
                     })}
 
-                    {/* Add Task Button */}
+                    {/* Add Task Button - Disesuaikan agar jelas dengan outline biru */}
                     {campaign.tasks.length < MAX_TASKS && (
                       <Button
                         onClick={() =>
@@ -753,8 +750,8 @@ export const CampaignForm = ({
                           ])
                         }
                         variant="outline"
-                        // Tombol Add Task (Outline) dengan dark mode styling
-                        className="w-full border-dashed border-primary text-primary hover:bg-primary/20 bg-gray-900"
+                        // Tombol Add Task: border dan teks biru cerah (blue-400)
+                        className="w-full border-dashed border-blue-400 text-blue-400 hover:bg-blue-400/10 bg-gray-900"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Task
@@ -765,14 +762,14 @@ export const CampaignForm = ({
 
                 {/* Footer & Action Buttons */}
                 <div 
-                  // Border footer menggunakan warna gelap
+                  // Border footer gelap dan layout mobile-first
                   className="mt-6 flex flex-col sm:flex-row gap-3 border-t pt-4 border-gray-700"
                 >
                   <Button
                     onClick={handleSubmit}
                     disabled={publishing}
-                    // Tombol Publish: Warna Primary yang menonjol
-                    className="flex-1 h-10 bg-primary hover:bg-primary/90"
+                    // Tombol Publish/Update: Menggunakan warna blue-600 sesuai permintaan
+                    className="flex-1 h-10 bg-blue-600 text-white hover:bg-blue-700"
                   >
                     {publishing ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>
@@ -787,14 +784,14 @@ export const CampaignForm = ({
                     }}
                     variant="secondary"
                     disabled={publishing}
-                    // Tombol Cancel: Warna abu-abu gelap yang serasi
+                    // Tombol Cancel: Warna abu-abu gelap profesional
                     className="flex-1 h-10 bg-gray-700 text-white hover:bg-gray-600"
                   >
                     Cancel
                   </Button>
                 </div>
                 
-                {/* Transaction Status Indicator */}
+                {/* Transaction Status Indicator - Disesuaikan agar jelas di dark mode (warna 400 scale) */}
                 {transactionId && (
                   <div className="mt-4 flex items-center justify-center text-sm font-medium">
                       {isConfirming && (
