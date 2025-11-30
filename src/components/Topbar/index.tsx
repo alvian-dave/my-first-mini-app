@@ -465,9 +465,16 @@ export const Topbar = () => {
       </header>
 
       {/* --- Modals --- */}
-      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
-      {showContactUs && <ContactUsModal onClose={() => setShowContactUs(false)} />}
-      
+       <AboutModal 
+         isOpen={showAbout} 
+         onClose={() => setShowAbout(false)} 
+       />
+
+       <ContactUsModal 
+         isOpen={showContactUs} 
+         onClose={() => setShowContactUs(false)} 
+       />
+
       {/* Notifications Modal */}
       {showNotificationsModal && (
         <NotificationsModal 
