@@ -9,6 +9,15 @@ import { useSession } from 'next-auth/react'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
 import { parseUnits } from "ethers"
+import { Plus, Trash2, Loader2, Link as LinkIcon, AlertTriangle, CheckCircle } from 'lucide-react'
+import { toast } from 'sonner' // Menggunakan Sonner
+
+// shadcn/ui components
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const MAX_TASKS = 3
 const SERVICE_OPTIONS = [
@@ -42,6 +51,7 @@ interface Task {
   type: string
   url: string
   isOld?: boolean
+  targetId?: string // Tambahkan targetId yang diset di handleSubmit
 }
 
 interface Props {
@@ -69,9 +79,9 @@ export const CampaignForm = ({
     tasks: [],
   })
 
-  // toast / notification states
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  // Hapus state 'errorMessage' dan 'successMessage' yang lama
+  // const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // const [successMessage, setSuccessMessage] = useState<string | null>
   const [publishing, setPublishing] = useState(false)
   const [transactionId, setTransactionId] = useState<string>('')
   const isEditing = !!editingCampaign
@@ -79,7 +89,7 @@ export const CampaignForm = ({
   const { data: session } = useSession()
   const userAddress = session?.user?.walletAddress || ''
 
-    const client = createPublicClient({
+  const client = createPublicClient({
     chain: worldchain,
     transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
   })
@@ -89,7 +99,22 @@ export const CampaignForm = ({
     appConfig: { app_id: process.env.NEXT_PUBLIC_APP_ID || '' },
     transactionId,
   })
+  
+  // Fungsi Sonner Toast (menggantikan state dan component toast kustom)
+  const showToast = (message: string, type: 'success' | 'error') => {
+      if (type === 'success') {
+          toast.success(message, { duration: 3000 })
+      } else {
+          toast.error(message, { 
+              duration: 5000, 
+              // Menambahkan ikon untuk error
+              icon: <AlertTriangle className="h-4 w-4 text-white" />,
+              style: { backgroundColor: '#dc2626', color: 'white' }
+          })
+      }
+  }
 
+  // Effect untuk inisialisasi/reset form
   useEffect(() => {
     if (editingCampaign) {
       setCampaign({
@@ -115,10 +140,10 @@ export const CampaignForm = ({
   }, [editingCampaign])
 
   // ============================================================
-  // 🧾 Step 4: Save campaign to backend
+  // 🧾 Step 4: Save campaign to backend (Dipanggil setelah isConfirmed)
   // ============================================================
 
-    useEffect(() => {
+  useEffect(() => {
     if (!isConfirmed || !transactionId) return
 
     const saveCampaign = async () => {
@@ -129,13 +154,13 @@ export const CampaignForm = ({
           body: JSON.stringify({ ...campaign, depositTxHash: transactionId, userAddress }),
         })
 
-    const data = await res.json()
-    if (!res.ok) {
-      console.error('Backend error:', data)
-      setErrorMessage('Failed to publish campaign.')
-    } else {
-      setSuccessMessage('Campaign published successfully!')
-      setEditingCampaign(null)
+      const data = await res.json()
+      if (!res.ok) {
+        console.error('Backend error:', data)
+        showToast('Failed to publish campaign.', 'error')
+      } else {
+        showToast('Campaign published successfully!', 'success')
+        setEditingCampaign(null)
 
         setCampaign({
           id: Date.now(),
@@ -148,50 +173,39 @@ export const CampaignForm = ({
         })
               
         if (onSubmit) {
-    onSubmit(data.record) // data.record = campaign baru dari backend
-  }
-
-      setTimeout(() => {
-        setPublishing(false)
-        onClose()
-      }, 1000)
+          onSubmit(data.record) // data.record = campaign baru dari backend
+        }
+        
+        // Timeout untuk memberikan waktu toast muncul, lalu tutup modal
+        setTimeout(() => {
+          setPublishing(false)
+          onClose()
+        }, 1000)
+      }
+    } catch (err) {
+      console.error('publish error', err)
+      showToast('Failed to publish campaign. Please try again.', 'error')
+    } finally {
+      setPublishing(false)
     }
-  } catch (err) {
-    console.error('publish error', err)
-    setErrorMessage('Failed to publish campaign. Please try again.')
-  } finally {
-    setPublishing(false)
   }
-}
     saveCampaign()
   }, [isConfirmed, transactionId]) 
-   
-
-  useEffect(() => {
-    if (errorMessage) {
-      const timer = setTimeout(() => setErrorMessage(null), 4000)
-      return () => clearTimeout(timer)
-    }
-  }, [errorMessage])
-
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [successMessage])
+    
+  // Hapus useEffect untuk error/success message karena sudah menggunakan Sonner
 
   const handleChange = (key: keyof CampaignType, value: any) => {
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
+  // Helper untuk Task
   const updateTask = (
     index: number,
     key: 'service' | 'type' | 'url',
     value: string
   ) => {
     const newTasks = [...(campaign.tasks || [])]
-    if (!newTasks[index]) newTasks[index] = { service: '', type: '', url: '' }
+    if (!newTasks[index]) newTasks[index] = { service: '', type: '', url: '' } as Task
 
     if (key === 'service') {
       newTasks[index][key] = value as '' | 'twitter' | 'discord' | 'telegram'
@@ -221,72 +235,109 @@ export const CampaignForm = ({
         )}&permissions=${encodeURIComponent(DISCORD_PERMISSIONS)}&scope=bot`
       : '#'
 
+  // ============================================================
+  // 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
+  // ============================================================
+  const sendWRTransfer = async (): Promise<string | null> => {
+    try {
+      const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
+      const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! 
+      const amount = parseUnits(campaign.budget.toString(), 18).toString()
+
+      showToast('Sending WR transfer transaction via MiniKit...', 'success')
+
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [
+          {
+            address: wrAddress,
+            abi: WRABI,
+            functionName: 'transfer',
+            args: [campaignContract, amount],
+          },
+        ],
+      })
+
+      if (finalPayload.status === 'error') {
+        console.error('Transfer failed:', finalPayload)
+        // Type fix for error access:
+        const errorMessage = (finalPayload as any).error || JSON.stringify(finalPayload);
+        showToast(`Transaction failed: ${errorMessage}`, 'error')
+        return null
+      }
+
+      console.log('✅ WR transferred successfully:', finalPayload.transaction_id)
+      return finalPayload.transaction_id
+    } catch (err) {
+      console.error('Error sending WR:', err)
+      showToast('Failed to send WR transaction.', 'error')
+      return null
+    }
+  }
+
+
   const handleSubmit = async () => {
+    // --- 1. Validation Logic (Unchanged) ---
     if (!campaign.title.trim()) {
-      setErrorMessage('Title is required')
+      showToast('Title is required', 'error')
       return
     }
     if (!campaign.description.trim()) {
-      setErrorMessage('Description is required')
+      showToast('Description is required', 'error')
       return
     }
   
-  if (!campaign.tasks || campaign.tasks.length === 0) {
-    setErrorMessage('At least one task is required')
-    return
-  }
-
-  for (const [index, t] of campaign.tasks.entries()) {
-    if (!t.service || !t.type || !t.url) {
-      setErrorMessage(`Task #${index + 1} is incomplete`)
+    if (!campaign.tasks || campaign.tasks.length === 0) {
+      showToast('At least one task is required', 'error')
       return
     }
-  }  
+
+    for (const [index, t] of campaign.tasks.entries()) {
+      if (!t.service || !t.type || !t.url) {
+        showToast(`Task #${index + 1} is incomplete`, 'error')
+        return
+      }
+    } 	
 
     setPublishing(true)
     
-
-
+    // --- 2. Verification Logic (Unchanged) ---
     for (const t of campaign.tasks) {
-
-    // ✅ cek url twitter
-
+      // ✅ cek url twitter
       if (t.service === 'twitter') {
-  try {
-    const u = new URL(t.url)
+        try {
+          const u = new URL(t.url)
 
-    if (!u.hostname.includes('twitter.com') && !u.hostname.includes('x.com')) {
-      throw new Error('Invalid domain')
-    }
+          if (!u.hostname.includes('twitter.com') && !u.hostname.includes('x.com')) {
+            throw new Error('Invalid domain')
+          }
 
-    if (t.type === 'follow') {
-  try {
-    const res = await fetch("/api/connect/twitter/verifyUrl", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: t.url }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || "Invalid Twitter profile")
-    t.targetId = data.userId // simpan targetId di campaign task
-  } catch (err) {
-    setErrorMessage(`⚠️ Invalid Twitter profile URL for task "${t.type}": ${String(err)}`)
-    setPublishing(false)
-    return
-  }
-}
-    if (t.type === 'retweet' || t.type === 'like') {
-      const parts = u.pathname.split('/')
-      const tweetId = parts.find((p) => /^\d+$/.test(p))
-      if (!tweetId) throw new Error('No tweet ID in URL')
-    }
-
-  } catch (err) {
-    setErrorMessage(`⚠️ Invalid Twitter/X URL for task "${t.type}" — ${String(err)}`)
-    setPublishing(false)
-    return
-  }
-}
+          if (t.type === 'follow') {
+            try {
+              const res = await fetch("/api/connect/twitter/verifyUrl", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: t.url }),
+              })
+              const data = await res.json()
+              if (!res.ok) throw new Error(data.error || "Invalid Twitter profile")
+              t.targetId = data.userId // simpan targetId di campaign task
+            } catch (err) {
+              showToast(`⚠️ Invalid Twitter profile URL for task "${t.type}": ${String(err)}`, 'error')
+              setPublishing(false)
+              return
+            }
+          }
+          if (t.type === 'retweet' || t.type === 'like') {
+            const parts = u.pathname.split('/')
+            const tweetId = parts.find((p) => /^\d+$/.test(p))
+            if (!tweetId) throw new Error('No tweet ID in URL')
+          }
+        } catch (err) {
+          showToast(`⚠️ Invalid Twitter/X URL for task "${t.type}" — ${String(err)}`, 'error')
+          setPublishing(false)
+          return
+        }
+      }
 
       // ✅ Check Telegram tasks verification (unchanged)
       if (t.service === 'telegram' && (t.type === 'join_group' || t.type === 'join_channel')) {
@@ -298,15 +349,16 @@ export const CampaignForm = ({
           })
           const data = await res.json()
           if (!res.ok || !data.valid) {
-            setErrorMessage(
-              '⚠️ Please make sure you have added our bot @WR_PlatformBot to your group/channel before publishing this campaign.'
+            showToast(
+              '⚠️ Please make sure you have added our bot @WR_PlatformBot to your group/channel before publishing this campaign.',
+              'error'
             )
             setPublishing(false)
             return
           }
         } catch (err) {
           console.error('verifyTelegram error:', err)
-          setErrorMessage('Failed to verify Telegram group/channel. Please try again.')
+          showToast('Failed to verify Telegram group/channel. Please try again.', 'error')
           setPublishing(false)
           return
         }
@@ -322,110 +374,85 @@ export const CampaignForm = ({
           })
           const data = await res.json()
           if (!res.ok || !data.valid) {
-            // English toast advising to invite bot
-            setErrorMessage(
-              '⚠️ Please invite the WR Platform Bot to your Discord server (use "Add WR Platform Bot to Server" button) and try again.'
+            showToast(
+              '⚠️ Please invite the WR Platform Bot to your Discord server (use "Add WR Platform Bot to Server" button) and try again.',
+              'error'
             )
             setPublishing(false)
             return
           }
         } catch (err) {
           console.error('verifyDiscord error:', err)
-          setErrorMessage('Failed to verify Discord server. Please try again.')
+          showToast('Failed to verify Discord server. Please try again.', 'error')
           setPublishing(false)
           return
         }
       }
     }
     
-
+    // Check Budget and Reward (Unchanged)
     const rewardPerTask = parseFloat(campaign.reward || '0')
     const totalBudget = parseFloat(campaign.budget || '0')
 
     if (rewardPerTask < 10) {
-      setErrorMessage('Reward per task cannot be less than 10')
+      showToast('Reward per task cannot be less than 10 WR', 'error')
       setPublishing(false)
       return
     }
 
     if (rewardPerTask > totalBudget) {
-      setErrorMessage('Reward cannot be greater than total budget')
+      showToast('Reward per task cannot be greater than total budget', 'error')
       setPublishing(false)
       return
     }
 
-
-  // ============================================================
-  // 🪙 Step 3: Transfer WR tokens using MiniKit
-  // ============================================================
-  if (!isEditing) {
-  const txId = await sendWRTransfer()
-  if (!txId) {
-    setPublishing(false)
-    return
-  }
-  setTransactionId(txId)
-}
-try {
-    const endpoint = isEditing ? `/api/campaigns/${campaign._id}` : '/api/campaigns'
-    const method = isEditing ? 'PUT' : 'POST'
-    const body: any = { ...campaign }
-    const res = await fetch(endpoint, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  const data = await res.json()
-
-  if (!res.ok) {
-    return
-  }
-
-    if (onSubmit) {
-    await onSubmit(data)
-  }
-
-} catch (err) {
-  console.error('Failed to save campaign', err)
-
-  } finally {
-    setPublishing(false)
-  }
-}
-// ============================================================
-// 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
-// ============================================================
-const sendWRTransfer = async (): Promise<string | null> => {
-  try {
-    const wrAddress = process.env.NEXT_PUBLIC_WR_CONTRACT!
-    const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! // sementara ke kontrak WR juga
-    const amount = parseUnits(campaign.budget.toString(), 18).toString()
-
-    const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-      transaction: [
-        {
-          address: wrAddress,
-          abi: WRABI,
-          functionName: 'transfer',
-          args: [campaignContract, amount],
-        },
-      ],
-    })
-
-    if (finalPayload.status === 'error') {
-      console.error('Transfer failed:', finalPayload)
-      setErrorMessage('Transaction failed. Please try again.')
-      return null
+    // --- 3. Transaction / API Call ---
+    if (!isEditing) {
+      // 3a. New Campaign: Send WR token (on-chain step)
+      const txId = await sendWRTransfer()
+      if (!txId) {
+        setPublishing(false)
+        return
+      }
+      setTransactionId(txId)
+      // Execution stops here. The `useEffect` listening to `isConfirmed` handles the backend API call later.
+      return 
     }
+    
+    // 3b. Editing Campaign: Direct API Call (No new transaction needed)
+    try {
+      const endpoint = isEditing ? `/api/campaigns/${campaign.id}` : '/api/campaigns' // Assume campaign.id is the key for PUT
+      const method = isEditing ? 'PUT' : 'POST'
 
-    console.log('✅ WR transferred successfully:', finalPayload.transaction_id)
-    return finalPayload.transaction_id
-  } catch (err) {
-    console.error('Error sending WR:', err)
-    setErrorMessage('Failed to send WR transaction.')
-    return null
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campaign),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast('Failed to update campaign.', 'error')
+        return
+      }
+
+      showToast('Campaign updated successfully!', 'success')
+      if (onSubmit) {
+        await onSubmit(data.record || data)
+      }
+      setEditingCampaign(null)
+      setTimeout(() => onClose(), 1000)
+
+    } catch (err) {
+      console.error('Failed to save campaign', err)
+      showToast('Failed to update campaign. Please try again.', 'error')
+    } finally {
+      setPublishing(false)
+    }
   }
-}
+
+
+  // --- UI RENDERING (Headless UI + Shadcn) ---
 
   return (
     <>
@@ -433,276 +460,334 @@ const sendWRTransfer = async (): Promise<string | null> => {
         <Dialog as="div" className="relative z-50" onClose={onClose}>
           <Transition.Child
             as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0 scale-95"
-            enterTo="opacity-100 scale-100"
-            leave="ease-in duration-100"
-            leaveFrom="opacity-100 scale-100"
-            leaveTo="opacity-0 scale-95"
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
-              <Dialog.Panel className="relative w-full max-w-lg bg-gray-800 text-white rounded-xl p-6 max-h-[90vh] flex flex-col">
-                <Dialog.Title className="text-xl font-bold mb-4">
-                  {editingCampaign ? 'Edit Campaign' : 'Create New Campaign'}
-                </Dialog.Title>
+            {/* Overlay */}
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          </Transition.Child>
 
-                <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-                  <input
-                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
-                    placeholder="Campaign Title"
-                    value={campaign.title}
-                    onChange={(e) => handleChange('title', e.target.value)}
-                  />
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                {/* Modal Content (Shadcn styling applied here) */}
+                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-card p-6 text-left align-middle shadow-xl transition-all border border-border">
+                  <Dialog.Title
+                    as="h3"
+                    className="text-2xl font-bold leading-6 text-foreground mb-4"
+                  >
+                    {editingCampaign ? 'Edit Campaign' : 'Create New Campaign ✍️'}
+                  </Dialog.Title>
 
-                  <textarea
-                    rows={3}
-                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
-                    placeholder="Description"
-                    value={campaign.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                  />
+                  <div className="space-y-6 pt-2 pb-4 max-h-[70vh] overflow-y-auto pr-2">
+                    {/* Campaign Info */}
+                    <div className="space-y-4">
+                        <Label htmlFor="title">Campaign Title</Label>
+                        <Input
+                            id="title"
+                            placeholder="e.g., Launch Event Promo"
+                            value={campaign.title}
+                            onChange={(e) => handleChange('title', e.target.value)}
+                            className="bg-background"
+                        />
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                            id="description"
+                            rows={3}
+                            placeholder="Detailed steps and objective of the campaign."
+                            value={campaign.description}
+                            onChange={(e) => handleChange('description', e.target.value)}
+                            className="bg-background"
+                        />
 
-                  <input
-                    type="number"
-                    min={0}
-                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
-                    placeholder="Total Budget (e.g. 1000 WR)"
-                    value={campaign.budget || ''}
-                    onChange={(e) => handleChange('budget', e.target.value)}
-                    disabled={isEditing}
-                  />
+                        <div className="flex gap-4">
+                            <div className="flex-1 space-y-2">
+                                <Label htmlFor="budget">Total Budget (WR)</Label>
+                                <Input
+                                    id="budget"
+                                    type="number"
+                                    min={0}
+                                    placeholder="e.g., 1000 WR"
+                                    value={campaign.budget || ''}
+                                    onChange={(e) => handleChange('budget', e.target.value)}
+                                    disabled={isEditing}
+                                    className={`bg-background ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <Label htmlFor="reward">Reward per Task (WR)</Label>
+                                <Input
+                                    id="reward"
+                                    type="number"
+                                    min={0}
+                                    placeholder="e.g., 10 WR"
+                                    value={campaign.reward || ''}
+                                    onChange={(e) => handleChange('reward', e.target.value)}
+                                    disabled={isEditing}
+                                    className={`bg-background ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                />
+                            </div>
+                        </div>
+                    </div>
 
-                  <input
-                    type="number"
-                    min={0}
-                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 placeholder-gray-400 text-white"
-                    placeholder="Reward per Task (e.g. 10 WR)"
-                    value={campaign.reward || ''}
-                    onChange={(e) => handleChange('reward', e.target.value)}
-                    disabled={isEditing}
-                  />
-
-                  <div className="space-y-3">
-                    {(campaign.tasks || []).map((task, i) => {
-                      let urlPlaceholder = 'Paste target URL (e.g. profile link)'
-                      if (task.service === 'twitter') {
-                        if (task.type === 'follow') {
-                          urlPlaceholder = 'Paste profile URL (e.g. https://twitter.com/username)'
-                        } else if (task.type === 'like' || task.type === 'retweet') {
-                          urlPlaceholder = 'Paste tweet URL (e.g. https://twitter.com/username/status/123456)'
-                        }
-                      } else if (task.service === 'telegram') {
-                        if (task.type === 'join_group') {
-                          urlPlaceholder = 'Paste Telegram group URL (e.g. https://t.me/groupname)'
-                        } else if (task.type === 'join_channel') {
-                          urlPlaceholder = 'Paste Telegram channel URL (e.g. https://t.me/channelname)'
-                        }
-                      } else if (task.service === 'discord') {
-                        if (task.type === 'join') {
-                          urlPlaceholder = 'Paste Discord server invite URL (e.g. https://discord.gg/yourserver)'
-                        }
-                      }
-
-                      return (
-                        <div
-                          key={i}
-                          className="bg-gray-700 p-3 rounded flex flex-col gap-2"
-                        >
-                          <select
-                            value={task.service}
-                            onChange={(e) => updateTask(i, 'service', e.target.value)}
-                            className="bg-gray-600 rounded p-2"
-                          >
-                            <option value="">Select Service</option>
-                            {SERVICE_OPTIONS.map((s) => (
-                              <option key={s.service} value={s.service}>
-                                {s.label}
-                              </option>
-                            ))}
-                          </select>
-
-                          {task.service && (
-                            <select
-                              value={task.type}
-                              onChange={(e) => updateTask(i, 'type', e.target.value)}
-                              className="bg-gray-600 rounded p-2"
-                            >
-                              <option value="">Select Task Type</option>
-                              {TASK_TYPE_OPTIONS[task.service].map((t) => (
-                                <option
-                                  key={t.value}
-                                  value={t.value}
-                                  disabled={t.disabled}
-                                >
-                                  {t.label} {t.disabled ? '(Coming Soon)' : ''}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-
-                          <input
-                            className="bg-gray-600 rounded p-2 text-white"
-                            placeholder={urlPlaceholder}
-                            value={task.url}
-                            onChange={(e) => updateTask(i, 'url', e.target.value)}
-                            readOnly={task.isOld}
-                            style={
-                              task.isOld
-                                ? { opacity: 0.6, cursor: 'not-allowed' }
-                                : {}
+                    {/* Task List */}
+                    <h4 className="text-lg font-semibold border-b pb-2 mb-4 text-foreground">Tasks ({campaign.tasks.length}/{MAX_TASKS})</h4>
+                    <div className="space-y-4">
+                      {(campaign.tasks || []).map((task, i) => {
+                        let urlPlaceholder = 'Paste target URL (e.g. profile link)'
+                        // Placeholder logic for tasks (unchanged)
+                        if (task.service === 'twitter') {
+                            if (task.type === 'follow') {
+                                urlPlaceholder = 'Paste profile URL (e.g. https://twitter.com/username)'
+                            } else if (task.type === 'like' || task.type === 'retweet') {
+                                urlPlaceholder = 'Paste tweet URL (e.g. https://twitter.com/username/status/123456)'
                             }
-                          />
+                        } else if (task.service === 'telegram') {
+                            if (task.type === 'join_group') {
+                                urlPlaceholder = 'Paste Telegram group URL (e.g. https://t.me/groupname)'
+                            } else if (task.type === 'join_channel') {
+                                urlPlaceholder = 'Paste Telegram channel URL (e.g. https://t.me/channelname)'
+                            }
+                        } else if (task.service === 'discord') {
+                            if (task.type === 'join') {
+                                urlPlaceholder = 'Paste Discord server invite URL (e.g. https://discord.gg/yourserver)'
+                            }
+                        }
 
-                          {/* Telegram Helper Message */}
-                          {task.service === 'telegram' &&
-                            (task.type === 'join_group' ||
-                              task.type === 'join_channel') && (
-                              <p className="text-yellow-400 text-sm">
-                                ⚠️ Please make sure you have added our bot{' '}
-                                <span className="font-semibold">@WR_PlatformBot</span>{' '}
-                                to your group/channel before publishing this campaign.
-                              </p>
+                        return (
+                          <div
+                            key={i}
+                            className={`bg-muted/30 p-4 rounded-lg space-y-3 border ${task.isOld ? 'border-primary/50' : 'border-border'}`}
+                          >
+                            <h5 className="text-sm font-medium text-foreground/80">Task #{i + 1} {task.isOld && <span className="text-xs text-primary/80">(Existing)</span>}</h5>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* Service Select */}
+                              <Select 
+                                onValueChange={(val) => updateTask(i, 'service', val)} 
+                                value={task.service}
+                              >
+                                <SelectTrigger className="bg-background" disabled={task.isOld}>
+                                  <SelectValue placeholder="Select Service" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover">
+                                  {SERVICE_OPTIONS.map((s) => (
+                                    <SelectItem key={s.service} value={s.service}>
+                                      {s.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {/* Type Select */}
+                              {task.service && (
+                                <Select 
+                                  onValueChange={(val) => updateTask(i, 'type', val)} 
+                                  value={task.type}
+                                >
+                                  <SelectTrigger className="bg-background" disabled={task.isOld}>
+                                    <SelectValue placeholder="Select Task Type" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-popover">
+                                    {TASK_TYPE_OPTIONS[task.service]?.map((t) => (
+                                      <SelectItem 
+                                        key={t.value} 
+                                        value={t.value} 
+                                        disabled={t.disabled}
+                                      >
+                                        {t.label} {t.disabled ? '(Coming Soon)' : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+
+                            {/* URL Input */}
+                            <div className="relative">
+                              <Input
+                                className={`bg-background pl-8 ${task.isOld ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                placeholder={urlPlaceholder}
+                                value={task.url}
+                                onChange={(e) => updateTask(i, 'url', e.target.value)}
+                                readOnly={task.isOld}
+                              />
+                              <LinkIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            </div>
+
+                            {/* Verification Helpers */}
+                            {task.service === 'telegram' &&
+                              (task.type === 'join_group' ||
+                                task.type === 'join_channel') && (
+                                  <div className="p-3 rounded-md bg-yellow-900/50 border border-yellow-500/50 text-yellow-400 text-sm flex items-start gap-2">
+                                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                    <p>
+                                      Please make sure you have added our bot{' '}
+                                      <span className="font-semibold text-white">@WR_PlatformBot</span>{' '}
+                                      to your group/channel before publishing this campaign.
+                                    </p>
+                                  </div>
+                                )}
+
+                            {task.service === 'discord' && task.type === 'join' && (
+                              <div className="p-3 rounded-md bg-blue-900/50 border border-blue-500/50 space-y-2">
+                                <p className="text-blue-400 text-sm flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                                    Invite Bot to your server for verification.
+                                </p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    asChild
+                                    variant="secondary"
+                                    size="sm"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  >
+                                    <a
+                                      href={DISCORD_INVITE_URL}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      Add WR Platform Bot to Server
+                                    </a>
+                                  </Button>
+                                  <Button
+                                    onClick={async () => {
+                                      // quick check button logic (unchanged)
+                                      try {
+                                        setPublishing(true)
+                                        const res = await fetch('/api/connect/discord/verifyServer', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ url: task.url }),
+                                        })
+                                        const data = await res.json()
+                                        if (!res.ok || !data.valid) {
+                                            showToast('⚠️ Bot is not present in the server yet. Please invite the WR Platform Bot and try again.', 'error')
+                                        } else {
+                                            showToast('Bot successfully verified in server.', 'success')
+                                        }
+                                      } catch (err) {
+                                        console.error('quick verifyDiscord error:', err)
+                                        showToast('Failed to verify Discord server. Please try again.', 'error')
+                                      } finally {
+                                        setPublishing(false)
+                                      }
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-green-600 text-green-600 hover:text-green-700"
+                                    disabled={publishing}
+                                  >
+                                    Verify Bot Presence
+                                  </Button>
+                                </div>
+                              </div>
                             )}
 
-                          {/* Discord Helper Message + Invite Button */}
-                          {task.service === 'discord' && task.type === 'join' && (
-                            <>
-                              <p className="text-yellow-400 text-sm">
-                                ⚠️ Please invite the WR Platform Bot to your Discord server before publishing this campaign.
-                                Use the button below to add the bot to your server.
-                              </p>
-
-                              <div className="flex gap-2">
-                                <a
-                                  href={DISCORD_INVITE_URL}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-3 py-1 bg-indigo-600 rounded hover:bg-indigo-700 text-white text-sm"
+                            {/* Remove Button */}
+                            {!task.isOld && (
+                                <Button
+                                    onClick={() => removeTask(i)}
+                                    variant="destructive"
+                                    size="sm"
+                                    className="w-full mt-2"
                                 >
-                                  Add WR Platform Bot to Server
-                                </a>
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Remove Task
+                                </Button>
+                            )}
+                          </div>
+                        )
+                      })}
 
-                                <button
-                                  onClick={async () => {
-                                    // quick check button for promoter convenience (optional)
-                                    try {
-                                      setPublishing(true)
-                                      const res = await fetch('/api/connect/discord/verifyServer', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ url: task.url }),
-                                      })
-                                      const data = await res.json()
-                                      if (!res.ok || !data.valid) {
-                                        setErrorMessage(
-                                          '⚠️ Bot is not present in the server yet. Please invite the WR Platform Bot and try again.'
-                                        )
-                                      } else {
-                                        setSuccessMessage('Bot successfully verified in server.')
-                                      }
-                                    } catch (err) {
-                                      console.error('quick verifyDiscord error:', err)
-                                      setErrorMessage('Failed to verify Discord server. Please try again.')
-                                    } finally {
-                                      setPublishing(false)
-                                    }
-                                  }}
-                                  className="px-3 py-1 bg-green-600 rounded hover:bg-green-700 text-white text-sm"
-                                >
-                                  Verify Bot Presence
-                                </button>
-                              </div>
-                            </>
-                          )}
-
-                          <button
-                            onClick={() => removeTask(i)}
-                            className="px-3 py-1 bg-red-600 rounded hover:bg-red-700"
-                          >
-                            Remove Task
-                          </button>
-                        </div>
-                      )
-                    })}
-
-                    {campaign.tasks.length < MAX_TASKS && (
-                      <button
-                        onClick={() =>
-                          handleChange('tasks', [
-                            ...(campaign.tasks || []),
-                            { service: '', type: '', url: '', isOld: false },
-                          ])
-                        }
-                        className="px-3 py-2 rounded font-medium transition hover:brightness-110"
-                        style={{ backgroundColor: '#2563eb', color: '#fff' }}
-                      >
-                        + Add Task
-                      </button>
-                    )}
+                      {/* Add Task Button */}
+                      {campaign.tasks.length < MAX_TASKS && (
+                        <Button
+                          onClick={() =>
+                            handleChange('tasks', [
+                              ...(campaign.tasks || []),
+                              { service: '', type: '', url: '', isOld: false },
+                            ])
+                          }
+                          variant="outline"
+                          className="w-full border-dashed border-primary text-primary hover:bg-primary/10"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Task
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2 pt-4 mt-4 border-t border-gray-700">
-                  <button
-                    onClick={handleSubmit}
-                    disabled={publishing}
-                    className="flex-1 py-2 rounded font-medium transition hover:brightness-110 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: '#16a34a', color: '#fff' }}
-                  >
-                    {publishing ? 'Publishing...' : editingCampaign ? 'Update Campaign' : 'Publish'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingCampaign(null)
-                      onClose()
-                    }}
-                    className="flex-1 py-2 rounded font-medium transition hover:brightness-110"
-                    style={{ backgroundColor: '#4b5563', color: '#fff' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </Dialog.Panel>
+                  {/* Footer & Action Buttons */}
+                  <div className="mt-6 flex gap-3 border-t pt-4 border-border">
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={publishing}
+                      className="flex-1 h-10 bg-primary hover:bg-primary/90"
+                    >
+                      {publishing ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>
+                      ) : (
+                        editingCampaign ? 'Update Campaign' : 'Publish Campaign'
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setEditingCampaign(null)
+                        onClose()
+                      }}
+                      variant="secondary"
+                      disabled={publishing}
+                      className="flex-1 h-10"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                  
+                  {/* Transaction Status Indicator */}
+                  {transactionId && (
+                    <div className="mt-4 flex items-center justify-center text-sm font-medium">
+                        {isConfirming && (
+                            <span className="flex items-center text-yellow-500">
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Transaction is confirming...
+                            </span>
+                        )}
+                        {isConfirmed && (
+                            <span className="flex items-center text-green-500">
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Transaction confirmed! Saving to backend...
+                            </span>
+                        )}
+                        {!isConfirming && !isConfirmed && (
+                            <span className="text-muted-foreground">
+                                Transaction sent, waiting for confirmation...
+                            </span>
+                        )}
+                    </div>
+                  )}
+
+                </Dialog.Panel>
+              </Transition.Child>
             </div>
-          </Transition.Child>
+          </div>
         </Dialog>
       </Transition>
 
-      {/* Error toast (simple) */}
-      <Transition
-        show={!!errorMessage}
-        as={Fragment}
-        enter="transform ease-out duration-300"
-        enterFrom="translate-y-4 opacity-0"
-        enterTo="translate-y-0 opacity-100"
-        leave="transform ease-in duration-200"
-        leaveFrom="translate-y-0 opacity-100"
-        leaveTo="translate-y-4 opacity-0"
-      >
-        <div className="fixed top-4 flex justify-center w-full z-[100]">
-          <div className="bg-red-600 text-white px-4 py-2 rounded shadow-lg">
-            {errorMessage}
-          </div>
-        </div>
-      </Transition>
-
-      {/* Success toast */}
-      <Transition
-        show={!!successMessage}
-        as={Fragment}
-        enter="transform ease-out duration-300"
-        enterFrom="translate-y-4 opacity-0"
-        enterTo="translate-y-0 opacity-100"
-        leave="transform ease-in duration-200"
-        leaveFrom="translate-y-0 opacity-100"
-        leaveTo="translate-y-4 opacity-0"
-      >
-        <div className="fixed top-4 flex justify-center w-full z-[100]">
-          <div className="bg-green-600 text-white px-4 py-2 rounded shadow-lg">
-            {successMessage}
-          </div>
-        </div>
-      </Transition>
+      {/* Hapus Toast kustom yang lama (Error dan Success) karena sudah digantikan oleh Sonner */}
     </>
   )
 }
