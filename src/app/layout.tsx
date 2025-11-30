@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import ClientProviders from '@/providers';
-import '@worldcoin/mini-apps-ui-kit-react/styles.css';
+import { Toaster } from "@/components/ui/sonner"
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -33,7 +33,10 @@ export default async function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <div id="app-scroll" className="app-scroll overflow-y-auto">
-          <ClientProviders session={session}>{children}</ClientProviders>
+          <ClientProviders session={session}>
+            {children}
+            <Toaster richColors closeButton position="top-center" />
+            </ClientProviders>
         </div>
       </body>
     </html>
