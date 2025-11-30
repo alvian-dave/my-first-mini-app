@@ -35,43 +35,55 @@ interface NotificationsModalProps {
 // ===================================
 const NotificationsModal = ({ onClose, notifications, markAsRead }: NotificationsModalProps) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white w-96 max-h-[80vh] rounded-xl shadow-2xl flex flex-col transform transition-all animate-in fade-in-0 zoom-in-95">
-        <div className="flex justify-between items-center px-6 py-4 border-b sticky top-0 bg-white rounded-t-xl z-10">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <Bell className="w-5 h-5" /> Notifications
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div 
+        // 1. Container Dark Mode: bg-gray-900, border-gray-700
+        className="bg-gray-900 w-96 max-h-[80vh] rounded-xl shadow-2xl flex flex-col transform transition-all animate-in fade-in-0 zoom-in-95 border border-gray-700"
+      >
+        <div 
+          // 2. Header Dark Mode: bg-gray-900, border-gray-700, text-white
+          className="flex justify-between items-center px-6 py-4 border-b border-gray-700 sticky top-0 bg-gray-900 rounded-t-xl z-10"
+        >
+          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+            <Bell className="w-5 h-5 text-gray-400" /> Notifications
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-900 p-1 transition-colors rounded-full"
+            // 3. Close Button Dark Mode: text-gray-400, hover:text-white
+            className="text-gray-400 hover:text-white p-1 transition-colors rounded-full"
             aria-label="Close notifications"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
+        <div 
+          // 4. List Divider Dark Mode: divide-gray-700
+          className="overflow-y-auto flex-1 divide-y divide-gray-700"
+        >
           {notifications.length > 0 ? (
             notifications.map((n) => (
               <div
                 key={n._id}
-                // Hanya izinkan markAsRead jika notifikasi belum dibaca
                 onClick={() => !n.isRead && markAsRead(n._id)}
                 className={`px-6 py-3 cursor-pointer transition-colors ${
-                  n.isRead ? 'bg-white text-gray-700' : 'bg-blue-50/50 hover:bg-blue-100 font-medium text-gray-900'
+                  n.isRead 
+                    // 5. Read Item Dark Mode: bg-gray-900, text-gray-300
+                    ? 'bg-gray-900 text-gray-300' 
+                    // 6. Unread Item Dark Mode: bg-blue-900/30, hover:bg-blue-900/50, text-white
+                    : 'bg-blue-900/30 hover:bg-blue-900/50 font-medium text-white'
                 }`}
               >
                 <p className="text-sm">{n.message}</p>
                 <p className="text-xs text-gray-500 mt-1 flex justify-between items-center">
-                  <span>{new Date(n.createdAt).toLocaleString()}</span>
+                  <span className='text-gray-400'>{new Date(n.createdAt).toLocaleString()}</span>
                   {n.metadata?.txLink && (
                     <a
                       href={n.metadata.txLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      // Stop propagation agar klik pada link tidak memicu markAsRead
                       onClick={(e) => e.stopPropagation()}
-                      className="text-blue-600 hover:text-blue-800 underline transition-colors"
+                      className="text-blue-400 hover:text-blue-300 underline transition-colors"
                     >
                       View Tx 🔗
                     </a>
@@ -80,7 +92,8 @@ const NotificationsModal = ({ onClose, notifications, markAsRead }: Notification
               </div>
             ))
           ) : (
-            <p className="px-4 py-8 text-sm text-gray-500 text-center">🎉 All caught up! No new notifications.</p>
+            // 7. No Notifications Dark Mode: text-gray-400
+            <p className="px-4 py-8 text-sm text-gray-400 text-center">🎉 All caught up! No new notifications.</p>
           )}
         </div>
       </div>
