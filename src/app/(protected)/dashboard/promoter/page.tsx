@@ -314,7 +314,7 @@ useEffect(() => {
             Contributors: <b>{c.contributors ?? 0}</b>
           </p>
 
-<div className="mt-4 px-6 flex justify-center gap-4">
+<div className="mt-4 px-4 flex justify-center gap-4">
   {c.status !== 'finished' && (
     <>
       {/* Edit button */}
@@ -323,7 +323,7 @@ useEffect(() => {
           setEditingCampaign(c)
           setIsModalOpen(true)
         }}
-        className="flex-1 py-6 rounded-xl font-semibold text-black"
+        className="w-28 py-2.5 rounded-lg font-semibold text-black text-sm"
         style={{ backgroundColor: '#facc15' }}
       >
         Edit
@@ -333,7 +333,7 @@ useEffect(() => {
       {c.contributors > 0 ? (
         <button
           onClick={() => handleMarkFinished(c._id)}
-          className="flex-1 py-3 rounded-xl font-semibold text-white flex items-center justify-center"
+          className="w-32 py-2.5 rounded-lg font-semibold text-white text-sm flex items-center justify-center"
           style={{ backgroundColor: '#2563eb' }}
           disabled={loadingId === c._id}
           aria-busy={loadingId === c._id}
@@ -353,7 +353,7 @@ useEffect(() => {
       ) : (
         <button
           onClick={() => handleDelete(c._id)}
-          className="flex-1 py-3 rounded-xl font-semibold text-white flex items-center justify-center"
+          className="w-28 py-2.5 rounded-lg font-semibold text-white text-sm flex items-center justify-center"
           style={{ backgroundColor: '#dc2626' }}
           disabled={loadingId === c._id}
           aria-busy={loadingId === c._id}
@@ -519,10 +519,10 @@ useEffect(() => {
       {/* Toast */}
 {toast && toast.type === 'confirm' && (
   <div className="fixed inset-0 z-50 flex items-center justify-center">
-    <div className="bg-gray-800 px-6 py-6 rounded-lg shadow-md flex flex-col gap-6 max-w-sm w-full">
+    <div className="bg-gray-800 px-6 py-5 rounded-lg shadow-md flex flex-col gap-5 max-w-sm w-full">
       <p className="text-white text-center">{toast.message}</p>
 
-      <div className="flex justify-center gap-4">
+      <div className="flex justify-center gap-3">
         <button
           onClick={() => { toast?.onConfirm(); setToast(null); }}
           style={{ backgroundColor: '#16a34a', padding: '12px 24px', color: 'white', borderRadius: '8px', fontSize: '18px', fontWeight: 600 }}
