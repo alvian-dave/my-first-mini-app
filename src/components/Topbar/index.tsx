@@ -1,8 +1,3 @@
-// Refactored Topbar using only shadcn UI components available in your project
-// - Logic and functions are kept exactly the same (no behavioral changes)
-// - Only styling / visual components replaced with shadcn components and lucide-react icons
-// - Uses only these shadcn components (as provided): avatar, badge, button, card, dialog, dropdown-menu, form, input, label, select, sonner, tabs, textarea, tooltip
-
 'use client'
 
 import { useSession, signOut } from 'next-auth/react'
@@ -10,22 +5,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
-
-// shadcn UI components (available in your project)
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Avatar } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu'
-
-// icons (lucide-react)
-import { Home, LogOut, Bell, Mail, Info, RefreshCw } from 'lucide-react'
 
 const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
 const ContactUsModal = dynamic(() => import('@/components/ContactUs'), { ssr: false })
@@ -209,17 +188,17 @@ export const Topbar = () => {
       <header className="sticky top-0 z-50 bg-gray-900 text-white px-4 py-3 shadow flex items-center justify-between">
         {/* LEFT: Home (icon + optional label on larger screens) */}
         <div className="flex items-center gap-3">
-          <Tooltip>
-  <TooltipTrigger asChild>
-    <Button variant="ghost" className="flex items-center gap-2 p-2">
-      <Home className="w-5 h-5" />
-      <span className="hidden sm:inline text-lg font-semibold tracking-wide">Dashboard</span>
-    </Button>
-  </TooltipTrigger>
-  <TooltipContent>
-    <p>Home</p>
-  </TooltipContent>
-</Tooltip>
+          <button
+            aria-label="Home"
+            className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+            title="Home"
+          >
+            {/* home svg */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75l9-7.5 9 7.5M4.5 10.5v9.75h5.25V15h4.5v5.25H19.5V10.5" />
+            </svg>
+            <span className="hidden sm:inline text-lg font-semibold tracking-wide">Dashboard</span>
+          </button>
         </div>
 
         {/* CENTER: keep empty so layout stays single-line and balanced */}
@@ -229,126 +208,143 @@ export const Topbar = () => {
         {status === 'authenticated' && (
           <div className="relative flex items-center gap-2">
             {/* LOGOUT ICON (to the left of profile) */}
-            <Tooltip>
-  <TooltipTrigger asChild>
-    <Button
-      onClick={handleLogout}
-      disabled={isLoggingOut}
-      className="p-2"
-      aria-label="Logout"
-    >
-      <LogOut className="w-5 h-5 text-red-400" />
-    </Button>
-  </TooltipTrigger>
-  <TooltipContent>
-    <p>Logout</p>
-  </TooltipContent>
-</Tooltip>
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="Logout"
+            >
+              {/* logout svg */}
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+              </svg>
+            </button>
 
             {/* NOTIFICATION ICON (single) */}
-            <Tooltip>
-  <TooltipTrigger asChild>
-    <Button onClick={openNotifications} className="relative p-2" aria-label="Notifications">
-      <Bell className="w-5 h-5" />
-      {unreadCount > 0 && (
-        <Badge className="absolute -top-1 -right-1 text-[10px]">{unreadCount}</Badge>
-      )}
-    </Button>
-  </TooltipTrigger>
-  <TooltipContent>
-    <p>Notifications</p>
-  </TooltipContent>
-</Tooltip>
+            <button
+              onClick={openNotifications}
+              className="relative p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="Notifications"
+            >
+              {/* bell svg */}
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
 
             {/* CONTACT US ICON */}
-            <Tooltip>
-  <TooltipTrigger asChild>
-    <Button
-      onClick={() => { setShowContactUs(true); setIsMenuOpen(false) }}
-      className="p-2"
-      aria-label="Contact us"
-    >
-      <Mail className="w-5 h-5" />
-    </Button>
-  </TooltipTrigger>
-  <TooltipContent>
-    <p>Contact Us</p>
-  </TooltipContent>
-</Tooltip>
+            <button
+              onClick={() => { setShowContactUs(true); setIsMenuOpen(false) }}
+              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="Contact us"
+            >
+<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
+  viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+  <path strokeLinecap="round" strokeLinejoin="round"
+    d="M18 13v3a3 3 0 01-3 3h-1M6 13v3a3 3 0 003 3h1m8-6a8 8 0 10-16 0m16 0v2m-16-2v2m5-7h2a2 2 0 012 2v3a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3a2 2 0 012-2z" />
+</svg>
+            </button>
 
             {/* ABOUT ICON */}
-            <Tooltip>
-  <TooltipTrigger asChild>
-    <Button
-      onClick={() => { setShowAbout(true); setIsMenuOpen(false) }}
-      className="p-2"
-      aria-label="About"
-    >
-      <Info className="w-5 h-5" />
-    </Button>
-  </TooltipTrigger>
-  <TooltipContent>
-    <p>About</p>
-  </TooltipContent>
-</Tooltip>
+            <button
+              onClick={() => { setShowAbout(true); setIsMenuOpen(false) }}
+              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="About"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+              </svg>
+            </button>
 
             {/* PROFILE BUTTON (id kept as topbar-button to match original click-outside logic) */}
-            <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  id="topbar-button"
-                  onClick={() => { setShowNotificationsModal(false); setIsMenuOpen((s) => !s) }}
-                  aria-label="User menu"
-                  className="flex items-center gap-2 p-2"
-                >
-                  <div className="hidden sm:flex flex-col text-right leading-tight">
-                    <span className="text-sm font-semibold truncate max-w-[140px]">{username}</span>
-                    <span className="text-xs text-green-400 uppercase truncate">{role || 'No role'}</span>
-                  </div>
-                  <Avatar className="w-9 h-9 bg-gray-700 text-sm font-bold uppercase flex items-center justify-center">
-                    {username?.[0] || 'U'}
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
+            <button
+              id="topbar-button"
+              onClick={() => {
+                // toggle profile dropdown and ensure notifications modal closed
+                setShowNotificationsModal(false)
+                setIsMenuOpen((s) => !s)
+              }}
+              aria-label="User menu"
+              className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              title="Profile"
+            >
+              <div className="hidden sm:flex flex-col text-right leading-tight">
+                <span className="text-sm font-semibold truncate max-w-[140px]">{username}</span>
+                <span className="text-xs text-green-400 uppercase truncate">{role || 'No role'}</span>
+              </div>
+              <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center font-bold uppercase text-sm">
+                {username?.[0] || 'U'}
+              </div>
+            </button>
 
-              {/* PROFILE DROPDOWN (id kept topbar-menu to match original click-outside logic) */}
-              <DropdownMenuContent id="topbar-menu" align="end" className="w-64">
-                <div className="px-4 py-3 bg-gray-100 border-b">
+            {/* PROFILE DROPDOWN (id kept topbar-menu to match original click-outside logic) */}
+            {isMenuOpen && (
+                <div
+                  id="topbar-menu"
+                  className="absolute right-0 top-full mt-2 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
+                  onMouseLeave={() => setIsMenuOpen(false)}
+                >
+                <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
                   <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
                   <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
                 </div>
 
-                <DropdownMenuItem asChild>
-                  <button
-                    onClick={handleRefresh}
-                    disabled={!canRefresh}
-                    className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md ${!canRefresh ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {refreshing ? <span className="animate-spin">⏳</span> : <RefreshCw className="w-4 h-4" />}
-                    <span>Refresh</span>
-                  </button>
-                </DropdownMenuItem>
+                <ul className="divide-y divide-gray-200 text-sm">
+                  {/* --- Refresh button --- */}
+                  <li className="px-4 py-2">
+                    <button
+                      onClick={handleRefresh}
+                      disabled={!canRefresh}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 transition ${
+                        !canRefresh ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {refreshing && <span className="animate-spin">⏳</span>}
+                      Refresh
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z"
+                        />
+                      </svg>
+                    </button>
+                  </li>
 
-                <DropdownMenuSeparator />
+                  {/* --- Main balance --- */}
+                  <li className="flex justify-between items-center px-4 py-2">
+                    <span>Main balance</span>
+                    <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
+                  </li>
 
-                <div className="px-4 py-2 flex justify-between items-center text-sm">
-                  <span>Main balance</span>
-                  <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
-                </div>
+                  {/* --- Choose Role --- */}
 
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem asChild>
-                  <button
-                    onClick={handleChooseRole}
-                    disabled={isNavigating}
-                    className={`w-full text-left px-4 py-2 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {isNavigating ? 'Loading…' : 'Choose role'}
-                  </button>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <li>
+                    <button
+                      onClick={handleChooseRole}
+                      disabled={isNavigating}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 transition ${
+                        isNavigating ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {isNavigating ? 'Loading…' : 'Choose role'}
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </header>
@@ -364,7 +360,12 @@ export const Topbar = () => {
           <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
             <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
               <h2 className="text-lg font-semibold">Notifications</h2>
-              <Button variant="ghost" onClick={() => setShowNotificationsModal(false)} className="text-gray-500 hover:text-gray-700">Close</Button>
+              <button
+                onClick={() => setShowNotificationsModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
             </div>
 
             <div className="overflow-y-auto flex-1">
