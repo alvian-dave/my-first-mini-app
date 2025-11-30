@@ -37,8 +37,9 @@ const NotificationsModal = ({ onClose, notifications, markAsRead }: Notification
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div 
-        // 1. Container Dark Mode: bg-gray-900, border-gray-700
-        className="bg-gray-900 w-96 max-h-[80vh] rounded-xl shadow-2xl flex flex-col transform transition-all animate-in fade-in-0 zoom-in-95 border border-gray-700"
+        // 1. Container Dark Mode & Mobile Friendly: 
+        // Mengganti w-96 dengan w-full max-w-md dan menambahkan mx-4 (margin horizontal)
+        className="bg-gray-900 w-full max-w-md mx-4 max-h-[80vh] rounded-xl shadow-2xl flex flex-col transform transition-all animate-in fade-in-0 zoom-in-95 border border-gray-700"
       >
         <div 
           // 2. Header Dark Mode: bg-gray-900, border-gray-700, text-white

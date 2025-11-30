@@ -34,7 +34,7 @@ export const GlobalChatRoom = () => {
     session?.user?.username || session?.user?.walletAddress?.split('@')[0] || 'anon'
 
   // Cek apakah role saat ini adalah promoter (untuk styling input & button)
-  const isPromoter = role === 'promoter'
+  const isPromoter = role.toLowerCase() === 'promoter' // pastikan menggunakan toLowerCase()
 
   // --- Fungsi Pembantu ---
   const getRoleBadge = (msgRole: string) => {
@@ -45,7 +45,7 @@ export const GlobalChatRoom = () => {
   }
 
   const getColorClass = (uname: string) => {
-    if (uname === 'anon') return 'text-gray-600'
+    if (uname === 'anon') return 'text-gray-400' // Diubah untuk dark mode
     const key = `chatColor-${uname}`
     // Cek localStorage hanya di client-side
     if (typeof window !== 'undefined') {
@@ -53,9 +53,10 @@ export const GlobalChatRoom = () => {
         if (saved) return saved
     }
     
+    // Warna untuk Dark Mode (lebih cerah agar kontras dengan bg-900)
     const colors = [
-      'text-blue-600', 'text-green-600', 'text-purple-600',
-      'text-pink-600', 'text-orange-600', 'text-indigo-600',
+      'text-blue-400', 'text-green-400', 'text-purple-400',
+      'text-pink-400', 'text-orange-400', 'text-indigo-400',
     ]
     const randomColor = colors[Math.floor(Math.random() * colors.length)]
     
@@ -138,17 +139,18 @@ export const GlobalChatRoom = () => {
     <div className="flex flex-col flex-1 min-h-0 h-full"> 
       <div
         ref={chatRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 text-sm bg-gray-50"
+        // 1. Latar Belakang Chat Dark Mode: bg-gray-900
+        className="flex-1 overflow-y-auto p-4 space-y-3 text-sm bg-gray-900"
       >
         {messages.map((m) => {
           const isSelf = m.username === username
           // Cek role pesan ini untuk warna bubble (agar konsisten dengan history)
-          const msgIsPromoter = m.role === 'promoter'
+          const msgIsPromoter = m.role.toLowerCase() === 'promoter'
 
           // Tentukan warna background bubble sendiri
           const selfBubbleColor = msgIsPromoter 
             ? 'bg-blue-600 text-white' // Warna Promoter
-            : 'bg-green-500 text-white' // Warna Hunter (Default)
+            : 'bg-green-600 text-white' // Warna Hunter (Diubah menjadi green-600 agar lebih gelap)
 
           return (
             <div
@@ -159,7 +161,8 @@ export const GlobalChatRoom = () => {
                 className={`max-w-[80%] px-3 py-2 rounded-xl shadow-md ${
                   isSelf
                     ? `${selfBubbleColor} rounded-br-none`
-                    : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
+                    // 2. Bubble Pesan Lain Dark Mode: bg-gray-700, text-gray-200, border-gray-600
+                    : 'bg-gray-700 text-gray-200 rounded-tl-none border border-gray-600'
                 }`}
               >
                 {/* Header Pesan */}
@@ -171,13 +174,19 @@ export const GlobalChatRoom = () => {
                     {m.username}
                   </span>
                   {isSelf && getRoleBadge(m.role)}
-                  <span className={`text-xs ${isSelf ? 'text-white/80' : 'text-gray-500'} font-light`}>
+                  <span 
+                    // 4. Header Pesan Lain (Timestamp) Dark Mode: text-gray-400
+                    className={`text-xs ${isSelf ? 'text-white/80' : 'text-gray-400'} font-light`}
+                  >
                     {formatTimestamp(m.created_at)}
                   </span>
                 </div>
 
                 {/* Isi Pesan */}
-                <div className={`${isSelf ? 'text-white' : 'text-gray-800'} whitespace-pre-line text-[0.9rem]`}>
+                <div 
+                  // 3. Isi Pesan Lain Dark Mode: text-gray-200
+                  className={`${isSelf ? 'text-white' : 'text-gray-200'} whitespace-pre-line text-[0.9rem]`}
+                >
                   {m.text}
                 </div>
               </div>
@@ -187,10 +196,17 @@ export const GlobalChatRoom = () => {
       </div>
 
       {/* Input Area */}
-      <div className="border-t p-3 flex items-center gap-2 bg-white">
+      <div 
+        // 5. Input Area Dark Mode: border-gray-700, bg-gray-800
+        className="border-t border-gray-700 p-3 flex items-center gap-2 bg-gray-800"
+      >
         <Input
-          // Kondisional class ring: Jika Promoter warna Biru, selain itu Hijau
-          className={`flex-1 text-sm ${isPromoter ? 'focus-visible:ring-blue-500' : 'focus-visible:ring-green-500'}`}
+          // Input Dark Mode: text-white, bg-gray-900, border-gray-700, ring-offset-gray-800
+          className={`
+            flex-1 text-sm text-white bg-gray-900 border-gray-700 
+            focus-visible:ring-offset-gray-800
+            ${isPromoter ? 'focus-visible:ring-blue-500' : 'focus-visible:ring-green-500'}
+          `}
           placeholder={`Chatting as ${username} (${role})...`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -199,7 +215,7 @@ export const GlobalChatRoom = () => {
         <Button
           onClick={sendMessage}
           disabled={!input.trim()}
-          // Kondisional class background button: Jika Promoter warna Biru, selain itu Hijau
+          // Background Button tidak berubah karena sudah menggunakan warna primer (biru/hijau)
           className={`
             text-white disabled:opacity-50
             ${isPromoter 
