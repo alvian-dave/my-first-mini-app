@@ -146,21 +146,25 @@ export default function TaskModal({
     return () => window.removeEventListener('message', handleMessage)
   }, [campaignId, onClose]) // onClose ditambahkan ke dependency array
 
-  // ✅ Verifikasi task
-  const handleVerify = async (idx: number, task: Task) => {
+// ✅ Verifikasi task
+const handleVerify = async (idx: number, task: Task) => {
     try {
       setVerifying(idx)
 
       if (task.service === 'twitter' && !twitterConnected) {
         const res = await fetch('/api/connect/twitter/start')
         const data = await res.json()
-        if (data.url) window.location.href = data.url
+        if (data.url) {
+          onClose() // Tutup modal sebelum redirect
+          window.location.href = data.url
+        }
         return
       }
 
       if (task.service === 'telegram') {
         if (!task.connected) {
           // Menggunakan window.open untuk menghindari redirect pada modal yang sedang terbuka
+          onClose() // Tutup modal sebelum membuka jendela/tab baru
           window.open(
             `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${session.user.id}`,
             '_blank'
@@ -188,6 +192,7 @@ export default function TaskModal({
           const res = await fetch('/api/connect/discord/start')
           const data = await res.json()
           if (data?.url) {
+            onClose() // Tutup modal sebelum redirect
             window.location.href = data.url
           } else {
             showSonnerToast('Failed to start Discord connect flow', 'error')
@@ -230,7 +235,7 @@ export default function TaskModal({
       setVerifying(null)
     }
   }
-
+  
   // ✅ Submit semua task
   const handleConfirm = async () => {
     if (!taskStates.every(t => t.done)) {
