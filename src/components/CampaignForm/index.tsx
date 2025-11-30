@@ -9,14 +9,15 @@ import { useSession } from 'next-auth/react'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
 import { parseUnits } from "ethers"
-import { Plus, Trash2, Loader2, Link as LinkIcon, AlertTriangle, CheckCircle } from 'lucide-react'
-import { toast } from 'sonner' // Menggunakan Sonner
+import { Plus, Trash2, Loader2, Link as LinkIcon, AlertTriangle, CheckCircle, Bot } from 'lucide-react'
+import { toast } from 'sonner' 
 
 // shadcn/ui components
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+// Perlu diingat: Shadcn Select biasanya sudah mobile-friendly, namun kita pastikan container-nya juga responsif
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const MAX_TASKS = 3
@@ -51,7 +52,7 @@ interface Task {
   type: string
   url: string
   isOld?: boolean
-  targetId?: string // Tambahkan targetId yang diset di handleSubmit
+  targetId?: string
 }
 
 interface Props {
@@ -79,9 +80,6 @@ export const CampaignForm = ({
     tasks: [],
   })
 
-  // Hapus state 'errorMessage' dan 'successMessage' yang lama
-  // const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  // const [successMessage, setSuccessMessage] = useState<string | null>
   const [publishing, setPublishing] = useState(false)
   const [transactionId, setTransactionId] = useState<string>('')
   const isEditing = !!editingCampaign
@@ -100,14 +98,13 @@ export const CampaignForm = ({
     transactionId,
   })
   
-  // Fungsi Sonner Toast (menggantikan state dan component toast kustom)
+  // Fungsi Sonner Toast
   const showToast = (message: string, type: 'success' | 'error') => {
       if (type === 'success') {
           toast.success(message, { duration: 3000 })
       } else {
           toast.error(message, { 
               duration: 5000, 
-              // Menambahkan ikon untuk error
               icon: <AlertTriangle className="h-4 w-4 text-white" />,
               style: { backgroundColor: '#dc2626', color: 'white' }
           })
@@ -173,10 +170,9 @@ export const CampaignForm = ({
         })
               
         if (onSubmit) {
-          onSubmit(data.record) // data.record = campaign baru dari backend
+          onSubmit(data.record)
         }
         
-        // Timeout untuk memberikan waktu toast muncul, lalu tutup modal
         setTimeout(() => {
           setPublishing(false)
           onClose()
@@ -190,15 +186,12 @@ export const CampaignForm = ({
     }
   }
     saveCampaign()
-  }, [isConfirmed, transactionId]) 
+  }, [isConfirmed, transactionId, userAddress]) 
     
-  // Hapus useEffect untuk error/success message karena sudah menggunakan Sonner
-
   const handleChange = (key: keyof CampaignType, value: any) => {
     setCampaign((prev) => ({ ...prev, [key]: value }))
   }
 
-  // Helper untuk Task
   const updateTask = (
     index: number,
     key: 'service' | 'type' | 'url',
@@ -209,7 +202,6 @@ export const CampaignForm = ({
 
     if (key === 'service') {
       newTasks[index][key] = value as '' | 'twitter' | 'discord' | 'telegram'
-      // reset type & url when service changed
       newTasks[index].type = ''
       newTasks[index].url = ''
     } else {
@@ -236,7 +228,7 @@ export const CampaignForm = ({
       : '#'
 
   // ============================================================
-  // 🪙 STEP 1: Send WR transfer transaction via MiniKit dipanggil setelah verifikasi form selesai
+  // 🪙 STEP 1: Send WR transfer transaction via MiniKit
   // ============================================================
   const sendWRTransfer = async (): Promise<string | null> => {
     try {
@@ -244,7 +236,7 @@ export const CampaignForm = ({
       const campaignContract = process.env.NEXT_PUBLIC_WR_ESCROW! 
       const amount = parseUnits(campaign.budget.toString(), 18).toString()
 
-      showToast('Sending WR transfer transaction via MiniKit...', 'success')
+      toast.info('Sending WR transfer transaction via MiniKit. Please confirm in your wallet.', { duration: 5000 })
 
       const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
@@ -259,7 +251,6 @@ export const CampaignForm = ({
 
       if (finalPayload.status === 'error') {
         console.error('Transfer failed:', finalPayload)
-        // Type fix for error access:
         const errorMessage = (finalPayload as any).error || JSON.stringify(finalPayload);
         showToast(`Transaction failed: ${errorMessage}`, 'error')
         return null
@@ -276,7 +267,7 @@ export const CampaignForm = ({
 
 
   const handleSubmit = async () => {
-    // --- 1. Validation Logic (Unchanged) ---
+    // --- 1. Validation Logic ---
     if (!campaign.title.trim()) {
       showToast('Title is required', 'error')
       return
@@ -293,14 +284,14 @@ export const CampaignForm = ({
 
     for (const [index, t] of campaign.tasks.entries()) {
       if (!t.service || !t.type || !t.url) {
-        showToast(`Task #${index + 1} is incomplete`, 'error')
+        showToast(`Task #${index + 1} is incomplete. Fill in Service, Type, and URL.`, 'error')
         return
       }
     } 	
 
     setPublishing(true)
     
-    // --- 2. Verification Logic (Unchanged) ---
+    // --- 2. Verification Logic ---
     for (const t of campaign.tasks) {
       // ✅ cek url twitter
       if (t.service === 'twitter') {
@@ -320,7 +311,7 @@ export const CampaignForm = ({
               })
               const data = await res.json()
               if (!res.ok) throw new Error(data.error || "Invalid Twitter profile")
-              t.targetId = data.userId // simpan targetId di campaign task
+              t.targetId = data.userId
             } catch (err) {
               showToast(`⚠️ Invalid Twitter profile URL for task "${t.type}": ${String(err)}`, 'error')
               setPublishing(false)
@@ -339,7 +330,7 @@ export const CampaignForm = ({
         }
       }
 
-      // ✅ Check Telegram tasks verification (unchanged)
+      // ✅ Check Telegram tasks verification
       if (t.service === 'telegram' && (t.type === 'join_group' || t.type === 'join_channel')) {
         try {
           const res = await fetch('/api/connect/telegram/verifyGroup', {
@@ -390,7 +381,7 @@ export const CampaignForm = ({
       }
     }
     
-    // Check Budget and Reward (Unchanged)
+    // Check Budget and Reward
     const rewardPerTask = parseFloat(campaign.reward || '0')
     const totalBudget = parseFloat(campaign.budget || '0')
 
@@ -415,13 +406,12 @@ export const CampaignForm = ({
         return
       }
       setTransactionId(txId)
-      // Execution stops here. The `useEffect` listening to `isConfirmed` handles the backend API call later.
       return 
     }
     
-    // 3b. Editing Campaign: Direct API Call (No new transaction needed)
+    // 3b. Editing Campaign: Direct API Call
     try {
-      const endpoint = isEditing ? `/api/campaigns/${campaign.id}` : '/api/campaigns' // Assume campaign.id is the key for PUT
+      const endpoint = isEditing ? `/api/campaigns/${campaign.id}` : '/api/campaigns' 
       const method = isEditing ? 'PUT' : 'POST'
 
       const res = await fetch(endpoint, {
@@ -455,339 +445,339 @@ export const CampaignForm = ({
   // --- UI RENDERING (Headless UI + Shadcn) ---
 
   return (
-    <>
-      <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={onClose}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            {/* Overlay */}
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          </Transition.Child>
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          {/* Overlay */}
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+        </Transition.Child>
 
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                {/* Modal Content (Shadcn styling applied here) */}
-                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-card p-6 text-left align-middle shadow-xl transition-all border border-border">
-                  <Dialog.Title
-                    as="h3"
-                    className="text-2xl font-bold leading-6 text-foreground mb-4"
-                  >
-                    {editingCampaign ? 'Edit Campaign' : 'Create New Campaign ✍️'}
-                  </Dialog.Title>
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              {/* Modal Content (Shadcn styling) */}
+              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-card p-6 text-left align-middle shadow-xl transition-all border border-border">
+                <Dialog.Title
+                  as="h3"
+                  className="text-2xl font-bold leading-6 text-foreground mb-4"
+                >
+                  {editingCampaign ? 'Edit Campaign' : 'Create New Campaign ✍️'}
+                </Dialog.Title>
 
-                  <div className="space-y-6 pt-2 pb-4 max-h-[70vh] overflow-y-auto pr-2">
-                    {/* Campaign Info */}
-                    <div className="space-y-4">
-                        <Label htmlFor="title">Campaign Title</Label>
-                        <Input
-                            id="title"
-                            placeholder="e.g., Launch Event Promo"
-                            value={campaign.title}
-                            onChange={(e) => handleChange('title', e.target.value)}
-                            className="bg-background"
-                        />
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                            id="description"
-                            rows={3}
-                            placeholder="Detailed steps and objective of the campaign."
-                            value={campaign.description}
-                            onChange={(e) => handleChange('description', e.target.value)}
-                            className="bg-background"
-                        />
+                <div className="space-y-6 pt-2 pb-4 max-h-[70vh] overflow-y-auto pr-2">
+                  {/* Campaign Info */}
+                  <div className="space-y-4">
+                      <Label htmlFor="title">Campaign Title</Label>
+                      <Input
+                          id="title"
+                          placeholder="e.g., Launch Event Promo"
+                          value={campaign.title}
+                          onChange={(e) => handleChange('title', e.target.value)}
+                          className="bg-background"
+                      />
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                          id="description"
+                          rows={3}
+                          placeholder="Detailed steps and objective of the campaign."
+                          value={campaign.description}
+                          onChange={(e) => handleChange('description', e.target.value)}
+                          className="bg-background"
+                      />
 
-                        <div className="flex gap-4">
-                            <div className="flex-1 space-y-2">
-                                <Label htmlFor="budget">Total Budget (WR)</Label>
-                                <Input
-                                    id="budget"
-                                    type="number"
-                                    min={0}
-                                    placeholder="e.g., 1000 WR"
-                                    value={campaign.budget || ''}
-                                    onChange={(e) => handleChange('budget', e.target.value)}
-                                    disabled={isEditing}
-                                    className={`bg-background ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                />
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <Label htmlFor="reward">Reward per Task (WR)</Label>
-                                <Input
-                                    id="reward"
-                                    type="number"
-                                    min={0}
-                                    placeholder="e.g., 10 WR"
-                                    value={campaign.reward || ''}
-                                    onChange={(e) => handleChange('reward', e.target.value)}
-                                    disabled={isEditing}
-                                    className={`bg-background ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                />
-                            </div>
-                        </div>
-                    </div>
+                      <div className="flex gap-4">
+                          <div className="flex-1 space-y-2">
+                              <Label htmlFor="budget">Total Budget (WR)</Label>
+                              <Input
+                                  id="budget"
+                                  type="number"
+                                  min={0}
+                                  placeholder="e.g., 1000 WR"
+                                  value={campaign.budget || ''}
+                                  onChange={(e) => handleChange('budget', e.target.value)}
+                                  disabled={isEditing}
+                                  className={`bg-background ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                              />
+                          </div>
+                          <div className="flex-1 space-y-2">
+                              <Label htmlFor="reward">Reward per Task (WR)</Label>
+                              <Input
+                                  id="reward"
+                                  type="number"
+                                  min={0}
+                                  placeholder="e.g., 10 WR"
+                                  value={campaign.reward || ''}
+                                  onChange={(e) => handleChange('reward', e.target.value)}
+                                  disabled={isEditing}
+                                  className={`bg-background ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                              />
+                          </div>
+                      </div>
+                  </div>
 
-                    {/* Task List */}
-                    <h4 className="text-lg font-semibold border-b pb-2 mb-4 text-foreground">Tasks ({campaign.tasks.length}/{MAX_TASKS})</h4>
-                    <div className="space-y-4">
-                      {(campaign.tasks || []).map((task, i) => {
-                        let urlPlaceholder = 'Paste target URL (e.g. profile link)'
-                        // Placeholder logic for tasks (unchanged)
-                        if (task.service === 'twitter') {
-                            if (task.type === 'follow') {
-                                urlPlaceholder = 'Paste profile URL (e.g. https://twitter.com/username)'
-                            } else if (task.type === 'like' || task.type === 'retweet') {
-                                urlPlaceholder = 'Paste tweet URL (e.g. https://twitter.com/username/status/123456)'
-                            }
-                        } else if (task.service === 'telegram') {
-                            if (task.type === 'join_group') {
-                                urlPlaceholder = 'Paste Telegram group URL (e.g. https://t.me/groupname)'
-                            } else if (task.type === 'join_channel') {
-                                urlPlaceholder = 'Paste Telegram channel URL (e.g. https://t.me/channelname)'
-                            }
-                        } else if (task.service === 'discord') {
-                            if (task.type === 'join') {
-                                urlPlaceholder = 'Paste Discord server invite URL (e.g. https://discord.gg/yourserver)'
-                            }
-                        }
+                  {/* Task List */}
+                  <h4 className="text-lg font-semibold border-b pb-2 mb-4 text-foreground">Tasks ({campaign.tasks.length}/{MAX_TASKS})</h4>
+                  <div className="space-y-4">
+                    {(campaign.tasks || []).map((task, i) => {
+                      let urlPlaceholder = 'Paste target URL (e.g. profile link)'
+                      // Placeholder logic for tasks (unchanged)
+                      if (task.service === 'twitter') {
+                          if (task.type === 'follow') {
+                              urlPlaceholder = 'Paste profile URL (e.g. https://twitter.com/username)'
+                          } else if (task.type === 'like' || task.type === 'retweet') {
+                              urlPlaceholder = 'Paste tweet URL (e.g. https://twitter.com/username/status/123456)'
+                          }
+                      } else if (task.service === 'telegram') {
+                          if (task.type === 'join_group') {
+                              urlPlaceholder = 'Paste Telegram group URL (e.g. https://t.me/groupname)'
+                          } else if (task.type === 'join_channel') {
+                              urlPlaceholder = 'Paste Telegram channel URL (e.g. https://t.me/channelname)'
+                          }
+                      } else if (task.service === 'discord') {
+                          if (task.type === 'join') {
+                              urlPlaceholder = 'Paste Discord server invite URL (e.g. https://discord.gg/yourserver)'
+                          }
+                      }
 
-                        return (
-                          <div
-                            key={i}
-                            className={`bg-muted/30 p-4 rounded-lg space-y-3 border ${task.isOld ? 'border-primary/50' : 'border-border'}`}
-                          >
-                            <h5 className="text-sm font-medium text-foreground/80">Task #{i + 1} {task.isOld && <span className="text-xs text-primary/80">(Existing)</span>}</h5>
+                      return (
+                        <div
+                          key={i}
+                          className={`bg-muted/30 p-4 rounded-lg space-y-3 border ${task.isOld ? 'border-primary/50' : 'border-border'}`}
+                        >
+                          <h5 className="text-sm font-medium text-foreground/80">Task #{i + 1} {task.isOld && <span className="text-xs text-primary/80">(Existing)</span>}</h5>
 
-                            <div className="grid grid-cols-2 gap-3">
-                              {/* Service Select */}
+                          {/* FIX 1: Ubah dari grid 2 kolom menjadi tumpukan untuk mobile */}
+                          <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2">
+                            {/* Service Select */}
+                            <Select 
+                              onValueChange={(val) => updateTask(i, 'service', val)} 
+                              value={task.service}
+                            >
+                              <SelectTrigger className="bg-background" disabled={task.isOld}>
+                                <SelectValue placeholder="Select Service" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover">
+                                {SERVICE_OPTIONS.map((s) => (
+                                  <SelectItem key={s.service} value={s.service}>
+                                    {s.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            {/* Type Select */}
+                            {task.service && (
                               <Select 
-                                onValueChange={(val) => updateTask(i, 'service', val)} 
-                                value={task.service}
+                                onValueChange={(val) => updateTask(i, 'type', val)} 
+                                value={task.type}
                               >
                                 <SelectTrigger className="bg-background" disabled={task.isOld}>
-                                  <SelectValue placeholder="Select Service" />
+                                  <SelectValue placeholder="Select Task Type" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-popover">
-                                  {SERVICE_OPTIONS.map((s) => (
-                                    <SelectItem key={s.service} value={s.service}>
-                                      {s.label}
+                                  {TASK_TYPE_OPTIONS[task.service]?.map((t) => (
+                                    <SelectItem 
+                                      key={t.value} 
+                                      value={t.value} 
+                                      disabled={t.disabled}
+                                    >
+                                      {t.label} {t.disabled ? '(Coming Soon)' : ''}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
-
-                              {/* Type Select */}
-                              {task.service && (
-                                <Select 
-                                  onValueChange={(val) => updateTask(i, 'type', val)} 
-                                  value={task.type}
-                                >
-                                  <SelectTrigger className="bg-background" disabled={task.isOld}>
-                                    <SelectValue placeholder="Select Task Type" />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-popover">
-                                    {TASK_TYPE_OPTIONS[task.service]?.map((t) => (
-                                      <SelectItem 
-                                        key={t.value} 
-                                        value={t.value} 
-                                        disabled={t.disabled}
-                                      >
-                                        {t.label} {t.disabled ? '(Coming Soon)' : ''}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </div>
-
-                            {/* URL Input */}
-                            <div className="relative">
-                              <Input
-                                className={`bg-background pl-8 ${task.isOld ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                placeholder={urlPlaceholder}
-                                value={task.url}
-                                onChange={(e) => updateTask(i, 'url', e.target.value)}
-                                readOnly={task.isOld}
-                              />
-                              <LinkIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            </div>
-
-                            {/* Verification Helpers */}
-                            {task.service === 'telegram' &&
-                              (task.type === 'join_group' ||
-                                task.type === 'join_channel') && (
-                                  <div className="p-3 rounded-md bg-yellow-900/50 border border-yellow-500/50 text-yellow-400 text-sm flex items-start gap-2">
-                                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                    <p>
-                                      Please make sure you have added our bot{' '}
-                                      <span className="font-semibold text-white">@WR_PlatformBot</span>{' '}
-                                      to your group/channel before publishing this campaign.
-                                    </p>
-                                  </div>
-                                )}
-
-                            {task.service === 'discord' && task.type === 'join' && (
-                              <div className="p-3 rounded-md bg-blue-900/50 border border-blue-500/50 space-y-2">
-                                <p className="text-blue-400 text-sm flex items-center gap-2">
-                                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                                    Invite Bot to your server for verification.
-                                </p>
-                                <div className="flex gap-2">
-                                  <Button
-                                    asChild
-                                    variant="secondary"
-                                    size="sm"
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                                  >
-                                    <a
-                                      href={DISCORD_INVITE_URL}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      Add WR Platform Bot to Server
-                                    </a>
-                                  </Button>
-                                  <Button
-                                    onClick={async () => {
-                                      // quick check button logic (unchanged)
-                                      try {
-                                        setPublishing(true)
-                                        const res = await fetch('/api/connect/discord/verifyServer', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ url: task.url }),
-                                        })
-                                        const data = await res.json()
-                                        if (!res.ok || !data.valid) {
-                                            showToast('⚠️ Bot is not present in the server yet. Please invite the WR Platform Bot and try again.', 'error')
-                                        } else {
-                                            showToast('Bot successfully verified in server.', 'success')
-                                        }
-                                      } catch (err) {
-                                        console.error('quick verifyDiscord error:', err)
-                                        showToast('Failed to verify Discord server. Please try again.', 'error')
-                                      } finally {
-                                        setPublishing(false)
-                                      }
-                                    }}
-                                    variant="outline"
-                                    size="sm"
-                                    className="border-green-600 text-green-600 hover:text-green-700"
-                                    disabled={publishing}
-                                  >
-                                    Verify Bot Presence
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Remove Button */}
-                            {!task.isOld && (
-                                <Button
-                                    onClick={() => removeTask(i)}
-                                    variant="destructive"
-                                    size="sm"
-                                    className="w-full mt-2"
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Remove Task
-                                </Button>
                             )}
                           </div>
-                        )
-                      })}
 
-                      {/* Add Task Button */}
-                      {campaign.tasks.length < MAX_TASKS && (
-                        <Button
-                          onClick={() =>
-                            handleChange('tasks', [
-                              ...(campaign.tasks || []),
-                              { service: '', type: '', url: '', isOld: false },
-                            ])
-                          }
-                          variant="outline"
-                          className="w-full border-dashed border-primary text-primary hover:bg-primary/10"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Task
-                        </Button>
-                      )}
-                    </div>
+                          {/* URL Input */}
+                          <div className="relative">
+                            <Input
+                              className={`bg-background pl-8 ${task.isOld ? 'opacity-70 cursor-not-allowed' : ''}`}
+                              placeholder={urlPlaceholder}
+                              value={task.url}
+                              onChange={(e) => updateTask(i, 'url', e.target.value)}
+                              readOnly={task.isOld}
+                            />
+                            <LinkIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          </div>
+
+                          {/* Verification Helpers: Telegram */}
+                          {task.service === 'telegram' &&
+                            (task.type === 'join_group' ||
+                              task.type === 'join_channel') && (
+                                <div className="p-3 rounded-md bg-yellow-900/50 border border-yellow-500/50 text-yellow-400 text-sm flex items-start gap-2">
+                                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                  <p>
+                                    Please make sure you have added our bot{' '}
+                                    <span className="font-semibold text-white">@WR_PlatformBot</span>{' '}
+                                    to your group/channel before publishing this campaign.
+                                  </p>
+                                </div>
+                              )}
+
+                          {/* Verification Helpers: Discord */}
+                          {task.service === 'discord' && task.type === 'join' && (
+                            // FIX 2 & 3: Warna kontras dan tata letak tombol responsif
+                            <div className="p-3 rounded-md bg-indigo-900/50 border border-indigo-500/50 space-y-3">
+                              <p className="text-indigo-400 text-sm flex items-center gap-2">
+                                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                                  Please invite the **WR Platform Bot** to your server for verification.
+                              </p>
+                              {/* Gunakan flex-col pada mobile dan wrap pada desktop */}
+                              <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                                <Button
+                                  asChild
+                                  variant="secondary"
+                                  size="sm"
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white flex-1"
+                                >
+                                  <a
+                                    href={DISCORD_INVITE_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Bot className="h-4 w-4 mr-2" />
+                                    Add WR Platform Bot to Server
+                                  </a>
+                                </Button>
+                                <Button
+                                  onClick={async () => {
+                                    try {
+                                      setPublishing(true)
+                                      const res = await fetch('/api/connect/discord/verifyServer', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ url: task.url }),
+                                      })
+                                      const data = await res.json()
+                                      if (!res.ok || !data.valid) {
+                                          showToast('⚠️ Bot is not present in the server yet. Please invite the WR Platform Bot and try again.', 'error')
+                                      } else {
+                                          showToast('Bot successfully verified in server.', 'success')
+                                      }
+                                    } catch (err) {
+                                      console.error('quick verifyDiscord error:', err)
+                                      showToast('Failed to verify Discord server. Please try again.', 'error')
+                                    } finally {
+                                      setPublishing(false)
+                                    }
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-green-600 text-green-600 hover:text-green-700 flex-1"
+                                  disabled={publishing}
+                                >
+                                  Verify Bot Presence
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Remove Button */}
+                          {!task.isOld && (
+                              <Button
+                                  onClick={() => removeTask(i)}
+                                  variant="destructive"
+                                  size="sm"
+                                  className="w-full mt-2"
+                              >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Remove Task
+                              </Button>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {/* Add Task Button */}
+                    {campaign.tasks.length < MAX_TASKS && (
+                      <Button
+                        onClick={() =>
+                          handleChange('tasks', [
+                            ...(campaign.tasks || []),
+                            { service: '', type: '', url: '', isOld: false },
+                          ])
+                        }
+                        variant="outline"
+                        className="w-full border-dashed border-primary text-primary hover:bg-primary/10"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Task
+                      </Button>
+                    )}
                   </div>
+                </div>
 
-                  {/* Footer & Action Buttons */}
-                  <div className="mt-6 flex gap-3 border-t pt-4 border-border">
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={publishing}
-                      className="flex-1 h-10 bg-primary hover:bg-primary/90"
-                    >
-                      {publishing ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>
-                      ) : (
-                        editingCampaign ? 'Update Campaign' : 'Publish Campaign'
+                {/* Footer & Action Buttons */}
+                <div className="mt-6 flex gap-3 border-t pt-4 border-border">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={publishing}
+                    className="flex-1 h-10 bg-primary hover:bg-primary/90"
+                  >
+                    {publishing ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>
+                    ) : (
+                      editingCampaign ? 'Update Campaign' : 'Publish Campaign'
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setEditingCampaign(null)
+                      onClose()
+                    }}
+                    variant="secondary"
+                    disabled={publishing}
+                    className="flex-1 h-10"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                
+                {/* Transaction Status Indicator */}
+                {transactionId && (
+                  <div className="mt-4 flex items-center justify-center text-sm font-medium">
+                      {isConfirming && (
+                          <span className="flex items-center text-yellow-500">
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Transaction is confirming...
+                          </span>
                       )}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setEditingCampaign(null)
-                        onClose()
-                      }}
-                      variant="secondary"
-                      disabled={publishing}
-                      className="flex-1 h-10"
-                    >
-                      Cancel
-                    </Button>
+                      {isConfirmed && (
+                          <span className="flex items-center text-green-500">
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Transaction confirmed! Saving to backend...
+                          </span>
+                      )}
+                      {!isConfirming && !isConfirmed && (
+                          <span className="text-muted-foreground">
+                              Transaction sent, waiting for confirmation...
+                          </span>
+                      )}
                   </div>
-                  
-                  {/* Transaction Status Indicator */}
-                  {transactionId && (
-                    <div className="mt-4 flex items-center justify-center text-sm font-medium">
-                        {isConfirming && (
-                            <span className="flex items-center text-yellow-500">
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Transaction is confirming...
-                            </span>
-                        )}
-                        {isConfirmed && (
-                            <span className="flex items-center text-green-500">
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Transaction confirmed! Saving to backend...
-                            </span>
-                        )}
-                        {!isConfirming && !isConfirmed && (
-                            <span className="text-muted-foreground">
-                                Transaction sent, waiting for confirmation...
-                            </span>
-                        )}
-                    </div>
-                  )}
+                )}
 
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
+              </Dialog.Panel>
+            </Transition.Child>
           </div>
-        </Dialog>
-      </Transition>
-
-      {/* Hapus Toast kustom yang lama (Error dan Success) karena sudah digantikan oleh Sonner */}
-    </>
+        </div>
+      </Dialog>
+    </Transition>
   )
 }
