@@ -1,44 +1,52 @@
 'use client';
+
 import { walletAuth } from '@/auth/wallet';
-import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
+import { Button } from '@/components/ui/button';
 import { useMiniKit } from '@worldcoin/minikit-js/minikit-provider';
 import { useCallback, useState } from 'react';
-import '@worldcoin/mini-apps-ui-kit-react/styles.css'
 
 export const AuthButton = () => {
   const [isPending, setIsPending] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'success' | 'failed'>('idle');
   const { isInstalled } = useMiniKit();
 
   const onClick = useCallback(async () => {
     if (!isInstalled || isPending) return;
+
     setIsPending(true);
+    setStatus('idle');
 
     try {
       await walletAuth();
+      setStatus('success');
     } catch (error) {
-      console.error('Wallet authentication button error', error);
+      console.error('Wallet authentication error:', error);
+      setStatus('failed');
     } finally {
       setIsPending(false);
+
+      // reset status setelah 2 detik
+      setTimeout(() => setStatus('idle'), 2000);
     }
   }, [isInstalled, isPending]);
 
   return (
-    <LiveFeedback
-      label={{
-        failed: 'Failed to login',
-        pending: 'Logging in',
-        success: 'Logged in',
-      }}
-      state={isPending ? 'pending' : undefined}
-    >
+    <div className="flex flex-col items-center gap-2">
       <Button
         onClick={onClick}
         disabled={isPending}
         size="lg"
-        variant="primary"
+        className="w-full"
       >
-        Login with World ID
+        {isPending ? 'Logging in…' : 'Login with World ID'}
       </Button>
-    </LiveFeedback>
+
+      {status === 'success' && (
+        <p className="text-sm text-green-500">Logged in</p>
+      )}
+      {status === 'failed' && (
+        <p className="text-sm text-red-500">Failed to login</p>
+      )}
+    </div>
   );
 };
