@@ -1,21 +1,18 @@
 'use client'
+
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 export const Login = () => {
   const router = useRouter()
   const { data: session, status } = useSession()
   const [loadingRole, setLoadingRole] = useState<'promoter' | 'hunter' | null>(null)
 
-  // Loading session
-  if (status === 'loading') {
-    return <p>Loading session...</p>
-  }
-
-  if (!session?.user?.id) {
-    return <p>Please login first to continue.</p>
-  }
+  if (status === 'loading') return <p className="text-center py-20">Loading session...</p>
+  if (!session?.user?.id) return <p className="text-center py-20 text-red-500">Please login first to continue.</p>
 
   const handleLogin = async (role: 'promoter' | 'hunter') => {
     setLoadingRole(role)
@@ -23,15 +20,11 @@ export const Login = () => {
       const res = await fetch('/api/roles/set', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }), // API akan ambil userId dari auth()
+        body: JSON.stringify({ role }),
       })
 
       const data = await res.json()
-
-      if (!res.ok) {
-        const msg = data?.message || 'Unknown error'
-        throw new Error(msg)
-      }
+      if (!res.ok) throw new Error(data?.message || 'Unknown error')
 
       if (data.success) {
         router.push(role === 'promoter' ? '/dashboard/promoter' : '/dashboard/hunter')
@@ -47,46 +40,46 @@ export const Login = () => {
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
-      {/* CLIENT CARD */}
-      <div className="bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col justify-between transition hover:shadow-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-blue-400 mb-3">For Project Owners</h2>
-          <p className="mt-3 text-gray-300">
+    <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl mx-auto py-16">
+      {/* Promoter Card */}
+      <Card className="border border-blue-500 hover:shadow-lg transition duration-300">
+        <CardHeader>
+          <CardTitle className="text-blue-600">For Project Owners</CardTitle>
+          <CardDescription>
             Launch your own campaign and distribute rewards to real humans.
-          </p>
-        </div>
-        <div className="mt-4">
-          <button
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="mt-4">
+          <Button
+            variant="default"
+            className="w-full bg-blue-600 text-white hover:bg-blue-700"
             disabled={loadingRole === 'promoter'}
             onClick={() => handleLogin('promoter')}
-            className="w-full py-2 rounded font-medium transition hover:brightness-110 disabled:opacity-50"
-            style={{ backgroundColor: '#2563eb', color: '#fff' }}
           >
             {loadingRole === 'promoter' ? 'Processing...' : 'Promoter Dashboard'}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
 
-      {/* HUNTER CARD */}
-      <div className="bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col justify-between transition hover:shadow-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-green-400 mb-3">For Bounty Hunters</h2>
-          <p className="mt-3 text-gray-300">
+      {/* Hunter Card */}
+      <Card className="border border-green-500 hover:shadow-lg transition duration-300">
+        <CardHeader>
+          <CardTitle className="text-green-600">For Bounty Hunters</CardTitle>
+          <CardDescription>
             Earn crypto by completing simple tasks and proving you’re human.
-          </p>
-        </div>
-        <div className="mt-4">
-          <button
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="mt-4">
+          <Button
+            variant="default"
+            className="w-full bg-green-600 text-white hover:bg-green-700"
             disabled={loadingRole === 'hunter'}
             onClick={() => handleLogin('hunter')}
-            className="w-full py-2 rounded font-medium transition hover:brightness-110 disabled:opacity-50"
-            style={{ backgroundColor: '#16a34a', color: '#fff' }}
           >
             {loadingRole === 'hunter' ? 'Processing...' : 'Hunter Dashboard'}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }
