@@ -44,6 +44,34 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white relative">
+      
+      {/* --- Tambahkan Style CSS untuk Efek Api di sini --- */}
+      <style jsx>{`
+        .fire-text {
+          color: white;
+          text-shadow: 
+            0 0 7px #fff,
+            0 -10px 25px #f00, 
+            0 -20px 35px #ff0;
+          animation: flicker 1.5s infinite alternate;
+        }
+
+        @keyframes flicker {
+          0%, 100% {
+            text-shadow: 
+              0 0 4px #fff,
+              0 -5px 15px #fe0, 
+              0 -15px 30px #f00;
+          }
+          50% {
+            text-shadow: 
+              0 0 9px #fff,
+              0 -12px 25px #fe0, 
+              0 -22px 40px #f00;
+          }
+        }
+      `}</style>
+
       {status === "loading" || loading ? (
         <div className="flex flex-col items-center gap-3 animate-pulse">
           <Loader2 className="w-8 h-8 animate-spin" />
@@ -51,7 +79,9 @@ export default function Home() {
         </div>
       ) : status === "unauthenticated" ? (
         <section className="max-w-3xl text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
+          
+          {/* Judul dengan Class fire-text */}
+          <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4 fire-text">
             Welcome to WR Bounty Platform
           </h1>
 

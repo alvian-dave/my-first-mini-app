@@ -566,7 +566,7 @@ export default function PromoterDashboard() {
       {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
 
       {/* Floating Chat */}
-      <div className="fixed bottom-6 left-4 z-50">
+      <div className="fixed bottom-6 left-6 z-50">
         {!showChat ? (
           <div className="text-center">
             <Button

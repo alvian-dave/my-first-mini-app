@@ -24,28 +24,50 @@ export const AuthButton = () => {
       setStatus('failed');
     } finally {
       setIsPending(false);
-
       // reset status setelah 2 detik
       setTimeout(() => setStatus('idle'), 2000);
     }
   }, [isInstalled, isPending]);
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-4 w-full sm:w-auto">
       <Button
         onClick={onClick}
         disabled={isPending}
         size="lg"
-        className="w-full"
+        className={`
+          relative overflow-hidden w-full sm:min-w-[200px] px-8 py-6 text-lg font-bold tracking-wide text-white
+          bg-gradient-to-r from-red-700 via-orange-600 to-yellow-500
+          border border-orange-400/50 rounded-xl
+          shadow-[0_0_15px_rgba(255,69,0,0.3)]
+          transition-all duration-300 ease-out
+          
+          hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]
+          hover:scale-105 hover:brightness-110 hover:-translate-y-1
+          
+          active:scale-95 active:shadow-none
+          
+          disabled:opacity-70 disabled:cursor-not-allowed disabled:grayscale
+        `}
       >
-        {isPending ? 'Logging in…' : 'Login with World ID'}
+        {/* Lapisan overlay agar teks lebih terbaca jika background terlalu terang */}
+        <span className="relative z-10 drop-shadow-md">
+          {isPending ? 'Logging in…' : 'Login with World ID'}
+        </span>
+        
+        {/* Efek kilau (sheen) halus di background */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
       </Button>
 
       {status === 'success' && (
-        <p className="text-sm text-green-500">Logged in</p>
+        <p className="text-sm font-medium text-green-400 animate-in fade-in slide-in-from-top-2">
+          Successfully Logged In
+        </p>
       )}
       {status === 'failed' && (
-        <p className="text-sm text-red-500">Failed to login</p>
+        <p className="text-sm font-medium text-red-400 animate-in fade-in slide-in-from-top-2">
+          Failed to login
+        </p>
       )}
     </div>
   );
