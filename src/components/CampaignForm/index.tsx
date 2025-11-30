@@ -12,7 +12,7 @@ import { parseUnits } from "ethers"
 import { Plus, Trash2, Loader2, Link as LinkIcon, AlertTriangle, CheckCircle, Bot } from 'lucide-react'
 import { toast } from 'sonner' 
 
-// shadcn/ui components
+// shadcn/ui components (asumsi telah dikonfigurasi untuk dark mode)
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -98,14 +98,21 @@ export const CampaignForm = ({
   })
   
   // Fungsi Sonner Toast
+  // Catatan: Toast akan tetap menggunakan tema terang/gelap global jika tidak di-override
   const showToast = (message: string, type: 'success' | 'error') => {
       if (type === 'success') {
-          toast.success(message, { duration: 3000 })
+          // Sesuaikan dengan skema warna dark mode
+          toast.success(message, { 
+              duration: 3000,
+              icon: <CheckCircle className="h-4 w-4 text-green-400" />,
+              style: { backgroundColor: '#1f2937', color: 'white', borderColor: '#34d399' }
+          })
       } else {
           toast.error(message, { 
               duration: 5000, 
-              icon: <AlertTriangle className="h-4 w-4 text-white" />,
-              style: { backgroundColor: '#dc2626', color: 'white' }
+              icon: <AlertTriangle className="h-4 w-4 text-red-400" />,
+              // Menggunakan warna error yang lebih gelap untuk dark mode
+              style: { backgroundColor: '#450a0a', color: 'white', borderColor: '#f87171' }
           })
       }
   }
@@ -455,8 +462,8 @@ export const CampaignForm = ({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          {/* Overlay */}
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          {/* Overlay - Lebih gelap untuk dark mode */}
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -470,11 +477,15 @@ export const CampaignForm = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              {/* Modal Content (Shadcn styling) */}
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-card p-6 text-left align-middle shadow-xl transition-all border border-border">
+              {/* Modal Content (Dark Mode Styling) */}
+              <Dialog.Panel 
+                // Menggunakan latar belakang yang lebih gelap
+                className="w-full max-w-lg transform overflow-hidden rounded-xl bg-gray-900 p-6 text-left align-middle shadow-2xl transition-all border border-gray-700"
+              >
                 <Dialog.Title
                   as="h3"
-                  className="text-2xl font-bold leading-6 text-foreground mb-4"
+                  // Warna teks putih/terang
+                  className="text-2xl font-bold leading-6 text-white mb-4"
                 >
                   {editingCampaign ? 'Edit Campaign' : 'Create New Campaign ✍️'}
                 </Dialog.Title>
@@ -482,27 +493,30 @@ export const CampaignForm = ({
                 <div className="space-y-6 pt-2 pb-4 max-h-[70vh] overflow-y-auto pr-2">
                   {/* Campaign Info */}
                   <div className="space-y-4">
-                      <Label htmlFor="title">Campaign Title</Label>
+                      {/* Label menggunakan warna teks terang */}
+                      <Label htmlFor="title" className="text-gray-300">Campaign Title</Label>
                       <Input
                           id="title"
                           placeholder="e.g., Launch Event Promo"
                           value={campaign.title}
                           onChange={(e) => handleChange('title', e.target.value)}
-                          className="bg-background"
+                          // Input menggunakan bg-gray-800 dan border gray-700
+                          className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                       />
-                      <Label htmlFor="description">Description</Label>
+                      <Label htmlFor="description" className="text-gray-300">Description</Label>
                       <Textarea
                           id="description"
                           rows={3}
                           placeholder="Detailed steps and objective of the campaign."
                           value={campaign.description}
                           onChange={(e) => handleChange('description', e.target.value)}
-                          className="bg-background"
+                          // Textarea menggunakan bg-gray-800 dan border gray-700
+                          className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                       />
 
                       <div className="flex gap-4">
                           <div className="flex-1 space-y-2">
-                              <Label htmlFor="budget">Total Budget (WR)</Label>
+                              <Label htmlFor="budget" className="text-gray-300">Total Budget (WR)</Label>
                               <Input
                                   id="budget"
                                   type="number"
@@ -511,11 +525,12 @@ export const CampaignForm = ({
                                   value={campaign.budget || ''}
                                   onChange={(e) => handleChange('budget', e.target.value)}
                                   disabled={isEditing}
-                                  className={`bg-background ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                  // Input menggunakan bg-gray-800/disabled style
+                                  className={`bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
                               />
                           </div>
                           <div className="flex-1 space-y-2">
-                              <Label htmlFor="reward">Reward per Task (WR)</Label>
+                              <Label htmlFor="reward" className="text-gray-300">Reward per Task (WR)</Label>
                               <Input
                                   id="reward"
                                   type="number"
@@ -524,14 +539,20 @@ export const CampaignForm = ({
                                   value={campaign.reward || ''}
                                   onChange={(e) => handleChange('reward', e.target.value)}
                                   disabled={isEditing}
-                                  className={`bg-background ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                  // Input menggunakan bg-gray-800/disabled style
+                                  className={`bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 ${isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
                               />
                           </div>
                       </div>
                   </div>
 
                   {/* Task List */}
-                  <h4 className="text-lg font-semibold border-b pb-2 mb-4 text-foreground">Tasks ({campaign.tasks.length}/{MAX_TASKS})</h4>
+                  <h4 
+                    // Border dan teks menggunakan warna gelap
+                    className="text-lg font-semibold border-b pb-2 mb-4 text-white border-gray-700"
+                  >
+                    Tasks ({campaign.tasks.length}/{MAX_TASKS})
+                  </h4>
                   <div className="space-y-4">
                     {(campaign.tasks || []).map((task, i) => {
                       let urlPlaceholder = 'Paste target URL (e.g. profile link)'
@@ -557,21 +578,24 @@ export const CampaignForm = ({
                       return (
                         <div
                           key={i}
-                          className={`bg-muted/30 p-4 rounded-lg space-y-3 border ${task.isOld ? 'border-primary/50' : 'border-border'}`}
+                          // Latar belakang dan border task item
+                          className={`bg-gray-800/50 p-4 rounded-lg space-y-3 border ${task.isOld ? 'border-primary/50' : 'border-gray-700'}`}
                         >
-                          <h5 className="text-sm font-medium text-foreground/80">Task #{i + 1} {task.isOld && <span className="text-xs text-primary/80">(Existing)</span>}</h5>
+                          <h5 className="text-sm font-medium text-gray-300">Task #{i + 1} {task.isOld && <span className="text-xs text-primary/80">(Existing)</span>}</h5>
 
-                          {/* FIX 1: Ubah dari grid 2 kolom menjadi tumpukan untuk mobile */}
+                          {/* FIX 1: Ubah dari grid 2 kolom menjadi tumpukan untuk mobile (Sudah dilakukan) */}
                           <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2">
                             {/* Service Select */}
                             <Select 
                               onValueChange={(val) => updateTask(i, 'service', val)} 
                               value={task.service}
                             >
-                              <SelectTrigger className="bg-background" disabled={task.isOld}>
+                              {/* Select Trigger dengan dark mode styling */}
+                              <SelectTrigger className="bg-gray-800 border-gray-700 text-white disabled:opacity-70 disabled:cursor-not-allowed" disabled={task.isOld}>
                                 <SelectValue placeholder="Select Service" />
                               </SelectTrigger>
-                              <SelectContent className="bg-popover">
+                              {/* Select Content (asumsi sudah dark mode global) */}
+                              <SelectContent className="bg-gray-800 border-gray-700 text-white">
                                 {SERVICE_OPTIONS.map((s) => (
                                   <SelectItem key={s.service} value={s.service}>
                                     {s.label}
@@ -586,10 +610,12 @@ export const CampaignForm = ({
                                 onValueChange={(val) => updateTask(i, 'type', val)} 
                                 value={task.type}
                               >
-                                <SelectTrigger className="bg-background" disabled={task.isOld}>
+                                {/* Select Trigger dengan dark mode styling */}
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-white disabled:opacity-70 disabled:cursor-not-allowed" disabled={task.isOld}>
                                   <SelectValue placeholder="Select Task Type" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-popover">
+                                {/* Select Content (asumsi sudah dark mode global) */}
+                                <SelectContent className="bg-gray-800 border-gray-700 text-white">
                                   {TASK_TYPE_OPTIONS[task.service]?.map((t) => (
                                     <SelectItem 
                                       key={t.value} 
@@ -607,20 +633,25 @@ export const CampaignForm = ({
                           {/* URL Input */}
                           <div className="relative">
                             <Input
-                              className={`bg-background pl-8 ${task.isOld ? 'opacity-70 cursor-not-allowed' : ''}`}
+                              // Input dengan dark mode styling
+                              className={`bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 pl-8 ${task.isOld ? 'opacity-70 cursor-not-allowed' : ''}`}
                               placeholder={urlPlaceholder}
                               value={task.url}
                               onChange={(e) => updateTask(i, 'url', e.target.value)}
                               readOnly={task.isOld}
                             />
-                            <LinkIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            {/* Icon menggunakan warna yang kontras tapi tidak mencolok */}
+                            <LinkIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                           </div>
 
                           {/* Verification Helpers: Telegram */}
                           {task.service === 'telegram' &&
                             (task.type === 'join_group' ||
                               task.type === 'join_channel') && (
-                                <div className="p-3 rounded-md bg-yellow-900/50 border border-yellow-500/50 text-yellow-400 text-sm flex items-start gap-2">
+                                <div 
+                                  // Warna peringatan Telegram (kuning)
+                                  className="p-3 rounded-md bg-yellow-900/50 border border-yellow-600 text-yellow-400 text-sm flex items-start gap-2"
+                                >
                                   <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                   <p>
                                     Please make sure you have added our bot{' '}
@@ -630,21 +661,20 @@ export const CampaignForm = ({
                                 </div>
                               )}
 
-                          {/* Verification Helpers: Discord (FIXED COLOR & BUTTONS) */}
+                          {/* Verification Helpers: Discord */}
                           {task.service === 'discord' && task.type === 'join' && (
-                            // FIX: Warna warning diubah ke kuning/amber dan tombol dioptimalkan
-                            <div className="p-3 rounded-md bg-amber-900/50 border border-amber-500/50 space-y-3">
-                              {/* FIX: Warning dalam Bahasa Inggris */}
+                            // Warna peringatan Discord (amber)
+                            <div className="p-3 rounded-md bg-amber-900/50 border border-amber-600 space-y-3">
                               <p className="text-amber-400 text-sm flex items-start gap-2">
                                   <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                   <span className="text-white font-medium">
                                     **Important:** Please invite the **WR Platform Bot** to your Discord server for verification before publishing.
                                   </span>
                               </p>
-                              {/* Tata letak tombol: tumpukan di mobile, berdampingan di desktop */}
                               <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                                 <Button
                                   asChild
+                                  // Button utama menggunakan warna Primary yang menonjol
                                   variant="secondary"
                                   size="sm"
                                   className="bg-primary hover:bg-primary/90 text-white flex-1 font-bold shadow-md"
@@ -683,7 +713,7 @@ export const CampaignForm = ({
                                   // Tombol Verify: Menggunakan warna Outline Hijau yang jelas
                                   variant="outline"
                                   size="sm"
-                                  className="border-green-500 text-green-500 hover:bg-green-500/10 flex-1 font-semibold"
+                                  className="border-green-600 text-green-500 hover:bg-green-600/20 flex-1 font-semibold"
                                   disabled={publishing}
                                 >
                                   {/* Tampilkan loader jika sedang proses verifikasi cepat */}
@@ -703,7 +733,7 @@ export const CampaignForm = ({
                                   onClick={() => removeTask(i)}
                                   variant="destructive"
                                   size="sm"
-                                  className="w-full mt-2"
+                                  className="w-full mt-2 bg-red-700 hover:bg-red-800"
                               >
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Remove Task
@@ -723,7 +753,8 @@ export const CampaignForm = ({
                           ])
                         }
                         variant="outline"
-                        className="w-full border-dashed border-primary text-primary hover:bg-primary/10"
+                        // Tombol Add Task (Outline) dengan dark mode styling
+                        className="w-full border-dashed border-primary text-primary hover:bg-primary/20 bg-gray-900"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Task
@@ -733,10 +764,14 @@ export const CampaignForm = ({
                 </div>
 
                 {/* Footer & Action Buttons */}
-                <div className="mt-6 flex gap-3 border-t pt-4 border-border">
+                <div 
+                  // Border footer menggunakan warna gelap
+                  className="mt-6 flex flex-col sm:flex-row gap-3 border-t pt-4 border-gray-700"
+                >
                   <Button
                     onClick={handleSubmit}
                     disabled={publishing}
+                    // Tombol Publish: Warna Primary yang menonjol
                     className="flex-1 h-10 bg-primary hover:bg-primary/90"
                   >
                     {publishing ? (
@@ -752,7 +787,8 @@ export const CampaignForm = ({
                     }}
                     variant="secondary"
                     disabled={publishing}
-                    className="flex-1 h-10"
+                    // Tombol Cancel: Warna abu-abu gelap yang serasi
+                    className="flex-1 h-10 bg-gray-700 text-white hover:bg-gray-600"
                   >
                     Cancel
                   </Button>
@@ -762,19 +798,19 @@ export const CampaignForm = ({
                 {transactionId && (
                   <div className="mt-4 flex items-center justify-center text-sm font-medium">
                       {isConfirming && (
-                          <span className="flex items-center text-yellow-500">
+                          <span className="flex items-center text-yellow-400">
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                               Transaction is confirming...
                           </span>
                       )}
                       {isConfirmed && (
-                          <span className="flex items-center text-green-500">
+                          <span className="flex items-center text-green-400">
                               <CheckCircle className="w-4 h-4 mr-2" />
                               Transaction confirmed! Saving to backend...
                           </span>
                       )}
                       {!isConfirming && !isConfirmed && (
-                          <span className="text-muted-foreground">
+                          <span className="text-gray-500">
                               Transaction sent, waiting for confirmation...
                           </span>
                       )}
