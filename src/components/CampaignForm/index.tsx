@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-// Perlu diingat: Shadcn Select biasanya sudah mobile-friendly, namun kita pastikan container-nya juga responsif
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const MAX_TASKS = 3
@@ -631,24 +630,23 @@ export const CampaignForm = ({
                                 </div>
                               )}
 
-
-                          {/* Verification Helpers: Discord */}
+                          {/* Verification Helpers: Discord (FIXED COLOR & BUTTONS) */}
                           {task.service === 'discord' && task.type === 'join' && (
                             // FIX: Warna warning diubah ke kuning/amber dan tombol dioptimalkan
                             <div className="p-3 rounded-md bg-amber-900/50 border border-amber-500/50 space-y-3">
+                              {/* FIX: Warning dalam Bahasa Inggris */}
                               <p className="text-amber-400 text-sm flex items-start gap-2">
                                   <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                  <span className="text-white">
-                                    **Penting:** Harap undang **WR Platform Bot** ke server Discord Anda untuk memverifikasi.
+                                  <span className="text-white font-medium">
+                                    **Important:** Please invite the **WR Platform Bot** to your Discord server for verification before publishing.
                                   </span>
                               </p>
-                              {/* Tata letak tombol diubah: tumpukan di mobile, berdampingan di desktop */}
+                              {/* Tata letak tombol: tumpukan di mobile, berdampingan di desktop */}
                               <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                                 <Button
                                   asChild
                                   variant="secondary"
                                   size="sm"
-                                  // FIX: Warna tombol Add Bot diubah menjadi primary untuk penekanan
                                   className="bg-primary hover:bg-primary/90 text-white flex-1 font-bold shadow-md"
                                 >
                                   <a
@@ -662,20 +660,42 @@ export const CampaignForm = ({
                                 </Button>
                                 <Button
                                   onClick={async () => {
-                                    // ... (Logic verifikasi)
+                                    try {
+                                      setPublishing(true) // Start loading
+                                      const res = await fetch('/api/connect/discord/verifyServer', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ url: task.url }),
+                                      })
+                                      const data = await res.json()
+                                      if (!res.ok || !data.valid) {
+                                          showToast('⚠️ Bot is not present in the server yet. Please invite the WR Platform Bot and try again.', 'error')
+                                      } else {
+                                          showToast('Bot successfully verified in server.', 'success')
+                                      }
+                                    } catch (err) {
+                                      console.error('quick verifyDiscord error:', err)
+                                      showToast('Failed to verify Discord server. Please try again.', 'error')
+                                    } finally {
+                                      setPublishing(false) // Stop loading, enabling the button again
+                                    }
                                   }}
-                                  // FIX: Tombol Verify diubah menjadi 'outline' dengan warna hijau yang lebih jelas
+                                  // Tombol Verify: Menggunakan warna Outline Hijau yang jelas
                                   variant="outline"
                                   size="sm"
                                   className="border-green-500 text-green-500 hover:bg-green-500/10 flex-1 font-semibold"
                                   disabled={publishing}
                                 >
-                                  Verify Bot Presence
+                                  {/* Tampilkan loader jika sedang proses verifikasi cepat */}
+                                  {publishing ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                      'Verify Bot Presence'
+                                  )}
                                 </Button>
                               </div>
                             </div>
                           )}
-
 
                           {/* Remove Button */}
                           {!task.isOld && (
