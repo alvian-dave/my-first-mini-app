@@ -159,11 +159,14 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
   return (
     // Menggunakan Dialog shadcn/ui
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent 
-        // Dark Mode: Latar belakang gelap (bg-gray-900), border abu-abu
-        className="sm:max-w-[425px] rounded-xl border border-gray-700 bg-gray-900 p-6"
-      >
-        <DialogHeader className="text-center">
+<DialogContent
+  // Dark Mode: Latar belakang gelap (bg-gray-900), border abu-abu
+  // PERBAIKAN: Menambahkan text-gray-400 untuk membuat tombol close (X) terlihat
+  className="sm:max-w-[425px] rounded-xl border border-gray-700 bg-gray-900 p-6 
+             text-gray-400 hover:text-white 
+             focus-visible:ring-blue-600 focus-visible:ring-offset-gray-900"
+>
+  <DialogHeader className="text-center">
           <DialogTitle 
             // Teks putih untuk judul
             className="text-2xl font-bold text-white"
