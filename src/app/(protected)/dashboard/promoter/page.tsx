@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { formatUnits } from 'ethers'
+import { toast } from 'sonner' // 💡 Sonner: Import fungsi toast
 
 // Shadcn UI Components
 import { Button } from '@/components/ui/button'
@@ -11,16 +12,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs' // Import Tabs
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs' 
 import { MessageCircle, Wallet, ArrowLeft, ArrowRight, Edit, Trash2, CheckCircle, Users } from 'lucide-react'
 
 // Your Custom Components
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
-// import { CampaignTabs } from '@/components/CampaignTabs' // Dihapus/diganti
 import USDCTransferModal from '@/components/USDCTransferModal'
-import Toast from '@/components/Toast'
+// ❌ Hapus: import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
@@ -34,9 +34,10 @@ type UICampaign = BaseCampaign & {
   remainingWR?: string
 }
 
-type ToastState =
-  | { message: string; type?: 'success' | 'error' }
-  | { message: string; type: 'confirm'; onConfirm: () => void; onCancel?: () => void }
+// ❌ Hapus Tipe ToastState Kustom
+// type ToastState =
+//   | { message: string; type?: 'success' | 'error' }
+//   | { message: string; type: 'confirm'; onConfirm: () => void; onCancel?: () => void }
 
 // =====================================
 // ## CampaignDescription Component (Internal Refactoring)
@@ -82,7 +83,8 @@ export default function PromoterDashboard() {
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
-  const [toast, setToast] = useState<ToastState | null>(null)
+  // ❌ Hapus state toast kustom yang lama
+  // const [toast, setToast] = useState<ToastState | null>(null) 
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   // Pagination
@@ -108,6 +110,8 @@ export default function PromoterDashboard() {
       setBalance(Number(onChainBal))
     } catch (err) {
       console.error('Failed to fetch on-chain balance:', err)
+      // 💡 Sonner: Notifikasi error
+      toast.error('Failed to fetch WR from blockchain') 
     }
   }, [session])
 
@@ -140,6 +144,8 @@ export default function PromoterDashboard() {
       setCampaigns(enriched)
     } catch (err) {
       console.error('Failed to load campaigns:', err)
+      // 💡 Sonner: Notifikasi error
+      toast.error('Failed to load campaigns')
     }
   }, [session])
 
@@ -162,7 +168,10 @@ export default function PromoterDashboard() {
         body: JSON.stringify(campaign),
       })
 
-      setToast({ message: `Campaign ${method === 'PUT' ? 'updated' : 'created'} successfully`, type: 'success' })
+      // 💡 Sonner: Notifikasi sukses
+      toast.success(`Campaign ${method === 'PUT' ? 'updated' : 'created'} successfully`, {
+        description: `Your campaign is now ${method === 'PUT' ? 'updated' : 'live'}.`
+      })
 
       // Reload data
       await Promise.all([loadCampaigns(), fetchBalance()])
@@ -171,7 +180,10 @@ export default function PromoterDashboard() {
       setEditingCampaign(null)
     } catch (err) {
       console.error('Failed to submit campaign:', err)
-      setToast({ message: 'Failed to submit campaign', type: 'error' })
+      // 💡 Sonner: Notifikasi error
+      toast.error('Failed to submit campaign', {
+        description: 'Please check your input and try again.'
+      })
     }
   }
 
@@ -187,40 +199,59 @@ export default function PromoterDashboard() {
 
       if (!resp.ok) {
         console.error('Mark finished failed:', result)
-        setToast({ message: result?.error || 'Failed to mark finished', type: 'error' })
+        // 💡 Sonner: Notifikasi error
+        toast.error(result?.error || 'Failed to mark finished', {
+          description: 'Could not update campaign status.'
+        })
         return
       }
       
       await Promise.all([loadCampaigns(), fetchBalance()])
 
-      setToast({ message: result?.txLink ? 'Campaign finished & remaining funds rescued. View tx' : 'Campaign marked as finished', type: 'success' })
+      // 💡 Sonner: Notifikasi sukses
+      toast.success('Campaign finished!', {
+        description: result?.txLink ? 'Remaining funds rescued and status updated.' : 'Campaign marked as finished.',
+        action: result?.txLink ? {
+            label: 'View Tx',
+            onClick: () => window.open(result.txLink, '_blank')
+        } : undefined
+      })
       setActiveTab('finished')
     } catch (err) {
       console.error('Failed to mark finished:', err)
-      setToast({ message: 'Failed to mark finished', type: 'error' })
+      // 💡 Sonner: Notifikasi error
+      toast.error('Failed to mark finished', {
+        description: 'An unexpected error occurred.'
+      })
     } finally {
       setLoadingId(null)
     }
   }
 
   const handleDelete = (id: string) => {
-    setToast({
-      message: 'Are you sure you want to delete this campaign?',
-      type: 'confirm',
-      onConfirm: async () => {
-        setLoadingId(id)
-        try {
-          await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
-          setCampaigns(prev => prev.filter(p => p._id !== id))
-          setToast({ message: 'Campaign deleted successfully', type: 'success' })
-        } catch (err) {
-          console.error('Failed to delete campaign:', err)
-          setToast({ message: 'Failed to delete campaign', type: 'error' })
-        } finally {
-          setLoadingId(null)
-        }
+    // 💡 Sonner: Mengganti modal konfirmasi kustom dengan action di Sonner
+    toast.warning('Are you sure you want to delete this campaign?', {
+      id: `delete-campaign-${id}`,
+      description: 'This action cannot be undone and is only allowed if there are no contributors.',
+      duration: 10000, // Beri waktu 10 detik untuk konfirmasi
+      action: {
+        label: 'Confirm Delete',
+        onClick: async () => {
+          setLoadingId(id)
+          try {
+            await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
+            setCampaigns(prev => prev.filter(p => p._id !== id))
+            // 💡 Sonner: Notifikasi sukses
+            toast.success('Campaign deleted successfully')
+          } catch (err) {
+            console.error('Failed to delete campaign:', err)
+            // 💡 Sonner: Notifikasi error
+            toast.error('Failed to delete campaign')
+          } finally {
+            setLoadingId(null)
+          }
+        },
       },
-      onCancel: () => setToast(null),
     })
   }
   
@@ -279,7 +310,6 @@ export default function PromoterDashboard() {
           <Card className="flex-1 bg-gray-800 border-gray-700 mr-4">
             <CardContent className="py-3 px-4 flex items-center justify-start gap-3 overflow-hidden">
               <Wallet className="w-5 h-5 text-blue-400 shrink-0" />
-              {/* PERBAIKAN BALANCE: Tambahkan whitespace-nowrap dan text-ellipsis */}
               <p className="text-gray-300 text-lg flex items-center min-w-0">
                 <span className="shrink-0 mr-1">Balance:</span>
                 <span 
@@ -600,38 +630,7 @@ export default function PromoterDashboard() {
         )}
       </div>
 
-      {/* Toast (Konfirmasi dan Pemberitahuan) */}
-      {toast && toast.type !== 'confirm' && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
-        />
-      )}
-
-      {toast && toast.type === 'confirm' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <Card className="bg-gray-800 border-gray-700 max-w-sm w-full">
-            <CardContent className="px-6 py-6 flex flex-col gap-6">
-              <p className="text-white text-center text-lg">{toast.message}</p>
-              <div className="flex justify-center gap-4">
-                <Button
-                  onClick={() => { toast.onConfirm(); setToast(null); }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                >
-                  Yes
-                </Button>
-                <Button
-                  onClick={() => { toast.onCancel?.(); setToast(null); }}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
-                >
-                  No
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* ❌ Hapus: Toast kustom dan logic konfirmasi toast sudah dihapus karena diganti Sonner */}
 
     </div>
   )
