@@ -216,7 +216,7 @@ export default function HunterDashboard() {
                             value={tab}
                             className="text-white data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
                         >
-                            {tab.charAt(0).toUpperCase() + tab.slice(1)} Campaigns
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
                         </TabsTrigger>
                     ))}
                 </TabsList>
