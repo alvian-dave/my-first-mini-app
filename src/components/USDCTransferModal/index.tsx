@@ -3,11 +3,26 @@
 import { useState, useEffect } from 'react'
 import { MiniKit } from '@worldcoin/minikit-js'
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
-import ERC20 from '@/abi/ERC20.json'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
 import { useSession } from 'next-auth/react'
-import Toast from '@/components/Toast'
+import { Loader2, CheckCircle } from 'lucide-react'
+import { toast } from 'sonner' // Menggunakan Sonner untuk Toast
+
+// ABI (Asumsi file ini ada di path yang benar)
+import ERC20 from '@/abi/ERC20.json' 
+
+// Komponen Shadcn/ui
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 
 interface USDCTransferModalProps {
   onClose: () => void
@@ -17,8 +32,7 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
   const [amountUSDC, setAmountUSDC] = useState('')
   const [estimatedWR, setEstimatedWR] = useState('0.0000')
   const [transactionId, setTransactionId] = useState<string>('')
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-
+  
   const RATE = 0.0050 // 1 WR = 0.0050 USDC
 
   const { data: session } = useSession()
@@ -35,21 +49,36 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
     transactionId,
   })
 
+  // Fungsi Sonner Toast
+  const showSonnerToast = (message: string, type: 'success' | 'error') => {
+    if (type === 'success') {
+      toast.success(message, { duration: 3000 })
+    } else {
+      toast.error(message, { duration: 3000 })
+    }
+  }
+
+  // Effect untuk menghitung estimasi WR
   useEffect(() => {
-    if (!amountUSDC) return setEstimatedWR('0.0000')
+    if (!amountUSDC || isNaN(parseFloat(amountUSDC))) return setEstimatedWR('0.0000')
     const wr = parseFloat(amountUSDC) / RATE
     setEstimatedWR(wr.toFixed(4))
   }, [amountUSDC])
 
+  // ✅ Fungsi Pengiriman Transaksi
   const sendTransaction = async () => {
-    if (!amountUSDC || Number(amountUSDC) <= 0) return
+    if (!amountUSDC || Number(amountUSDC) <= 0) {
+        showSonnerToast('Please enter a valid amount.', 'error')
+        return
+    }
 
     const usdcAddress = process.env.NEXT_PUBLIC_USDC_CONTRACT || ''
     const contractAddress = process.env.NEXT_PUBLIC_WR_CONTRACT || ''
-    const amount = (Number(amountUSDC) * 1_000_000).toString() // USDC 6 decimals
+    // Pastikan amount dihitung dengan benar
+    const amount = (Number(amountUSDC) * 1_000_000).toString() 
 
     try {
-      const { commandPayload, finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
             address: usdcAddress,
@@ -62,15 +91,35 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
 
       if (finalPayload.status === 'error') {
         console.error('Error sending transaction:', finalPayload)
+        
+        // --- FIX: Mengatasi Type Error pada finalPayload.error ---
+        let errorMessage = 'Unknown error';
+        
+        // Gunakan type assertion (as any) untuk mengakses properti yang diharapkan ada 
+        // pada objek error, lalu fallback menggunakan JSON.stringify jika gagal.
+        if ((finalPayload as any).error) {
+            errorMessage = (finalPayload as any).error;
+        } else {
+            // Fallback: stringify payload jika tidak ada properti error yang jelas
+            errorMessage = JSON.stringify(finalPayload);
+        }
+        
+        showSonnerToast(`Transaction failed: ${errorMessage}`, 'error')
+        // --- END FIX ---
+        
       } else {
         console.log('Transaction sent successfully:', finalPayload)
         setTransactionId(finalPayload.transaction_id)
+        showSonnerToast('Transaction sent! Waiting for network confirmation.', 'success')
       }
     } catch (err) {
       console.error('Unexpected error:', err)
+      // Tangani error dari MiniKit/Promise (bukan finalPayload)
+      showSonnerToast(`Unexpected error during transaction: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
   }
 
+  // ✅ Effect Pasca Konfirmasi Transaksi (Kirim ke Backend)
   useEffect(() => {
     if (!isConfirmed || !transactionId) return
     if (!userAddress) return
@@ -87,123 +136,108 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
           }),
         })
         const data = await res.json()
+        
         if (!res.ok || !data.ok) {
           console.error('❌ Topup backend error:', data)
+          showSonnerToast(data.message || 'Topup processing failed on backend.', 'error')
         } else {
-          setToast({
-            message: `Topup successful, ${estimatedWR} WR added. Please refresh dashboard.`,
-            type: 'success',
-          })
+          showSonnerToast(
+            `Topup successful, ${estimatedWR} WR added. Please refresh dashboard.`,
+            'success'
+          )
+          // Opsional: Tutup modal setelah proses backend berhasil
+          // onClose() 
         }
       } catch (err) {
         console.error('Failed to call topup API:', err)
+        showSonnerToast('Failed to connect to backend service.', 'error')
       }
     }
     sendToBackend()
-  }, [isConfirmed, transactionId])
+  }, [isConfirmed, transactionId, userAddress, amountUSDC, estimatedWR])
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 50,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-      }}
-    >
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+    // Menggunakan Dialog shadcn/ui
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px] rounded-xl border-none bg-card p-6">
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-2xl font-bold text-foreground">
+            Topup WR with USDC 💵
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Transfer USDC on World Chain to receive WR at a rate of 1 WR = ${RATE} USDC.
+          </DialogDescription>
+        </DialogHeader>
 
-      <div
-        style={{
-          backgroundColor: '#1f2937',
-          padding: '24px',
-          borderRadius: '24px',
-          width: '100%',
-          maxWidth: '400px',
-          position: 'relative',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-        }}
-      >
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            color: '#d1d5db',
-            fontWeight: 'bold',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '18px',
-          }}
-        >
-          ✕
-        </button>
+        {/* Input Form */}
+        <div className="space-y-4 py-4">
+          <div>
+            <Label htmlFor="usdc-amount" className="text-sm text-muted-foreground">
+              USDC Amount
+            </Label>
+            <div className="relative mt-2">
+              <Input
+                id="usdc-amount"
+                type="number"
+                value={amountUSDC}
+                onChange={(e) => setAmountUSDC(e.target.value)}
+                placeholder="0.00"
+                className="pr-16 h-12 text-lg focus-visible:ring-primary"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                USDC
+              </span>
+            </div>
+          </div>
 
-        <h2 style={{ color: 'white', textAlign: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>
-          Topup WR with USDC
-        </h2>
-
-        <label style={{ color: '#d1d5db', fontSize: '14px' }}>USDC Amount</label>
-        <input
-          type="number"
-          value={amountUSDC}
-          onChange={(e) => setAmountUSDC(e.target.value)}
-          placeholder="0.0"
-          style={{
-            width: '100%',
-            padding: '12px',
-            marginTop: '4px',
-            marginBottom: '16px',
-            borderRadius: '16px',
-            backgroundColor: '#111827',
-            color: 'white',
-            border: '1px solid #374151',
-            outline: 'none',
-          }}
-        />
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9ca3af', fontSize: '14px', marginBottom: '24px' }}>
-          <span>WR you will receive:</span>
-          <span style={{ color: 'white' }}>{estimatedWR} WR</span>
+          <div className="flex justify-between text-sm pt-2">
+            <span className="text-muted-foreground">WR you will receive:</span>
+            <span className="font-semibold text-foreground">
+              {estimatedWR} WR
+            </span>
+          </div>
         </div>
-
-        <button
+        
+        {/* Tombol Aksi */}
+        <Button
           onClick={sendTransaction}
-          disabled={isConfirming}
-          style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '16px',
-            fontWeight: 600,
-            color: 'white',
-            backgroundColor: isConfirming ? '#4b5563' : '#2563eb',
-            cursor: isConfirming ? 'not-allowed' : 'pointer',
-            border: 'none',
-          }}
+          disabled={isConfirming || Number(amountUSDC) <= 0 || !userAddress}
+          className="w-full h-12 text-base font-semibold transition-all duration-200"
         >
-          {isConfirming ? 'Waiting for confirmation...' : 'Send USDC'}
-        </button>
+          {isConfirming ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Waiting for confirmation...
+            </>
+          ) : (
+            'Send USDC'
+          )}
+        </Button>
 
+        {/* Status Transaksi */}
         {transactionId && (
-          <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '14px', color: '#d1d5db' }}>
-            {isConfirming && <span>Transaction is confirming...</span>}
-            {isConfirmed && <span style={{ color: '#22c55e' }}>Transaction confirmed ✅</span>}
-            {!isConfirming && !isConfirmed && <span>Transaction sent, waiting for confirmation...</span>}
+          <div className="mt-4 flex items-center justify-center text-sm font-medium">
+            {isConfirming && (
+              <span className="flex items-center text-yellow-500">
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Transaction is confirming...
+              </span>
+            )}
+            {isConfirmed && (
+              <span className="flex items-center text-green-500">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Transaction confirmed!
+              </span>
+            )}
+            {!isConfirming && !isConfirmed && (
+                <span className="text-muted-foreground">
+                    Transaction sent, waiting for confirmation...
+                </span>
+            )}
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
