@@ -1,70 +1,150 @@
 'use client'
 
 import { useSession, signOut } from 'next-auth/react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
+// Menggunakan ikon Lucide/modern
+import { Home, LogOut, Bell, MessageSquare, Info, RefreshCw, Users, CreditCard } from 'lucide-react'
+
+// Dynamic Imports untuk Modals
 const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
 const ContactUsModal = dynamic(() => import('@/components/ContactUs'), { ssr: false })
 
+// --- TIPE DATA PENTING ---
+interface NotificationItem {
+  _id: string
+  message: string
+  isRead: boolean
+  createdAt: string
+  metadata?: {
+    txLink?: string
+  }
+}
+
+interface NotificationsModalProps {
+  onClose: () => void
+  notifications: NotificationItem[]
+  markAsRead: (id: string) => Promise<void>
+}
+
+// ===================================
+// ## Komponen Modal Notifikasi
+// ===================================
+const NotificationsModal = ({ onClose, notifications, markAsRead }: NotificationsModalProps) => {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white w-96 max-h-[80vh] rounded-xl shadow-2xl flex flex-col transform transition-all animate-in fade-in-0 zoom-in-95">
+        <div className="flex justify-between items-center px-6 py-4 border-b sticky top-0 bg-white rounded-t-xl z-10">
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+            <Bell className="w-5 h-5" /> Notifications
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-900 p-1 transition-colors rounded-full"
+            aria-label="Close notifications"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
+          {notifications.length > 0 ? (
+            notifications.map((n) => (
+              <div
+                key={n._id}
+                // Hanya izinkan markAsRead jika notifikasi belum dibaca
+                onClick={() => !n.isRead && markAsRead(n._id)}
+                className={`px-6 py-3 cursor-pointer transition-colors ${
+                  n.isRead ? 'bg-white text-gray-700' : 'bg-blue-50/50 hover:bg-blue-100 font-medium text-gray-900'
+                }`}
+              >
+                <p className="text-sm">{n.message}</p>
+                <p className="text-xs text-gray-500 mt-1 flex justify-between items-center">
+                  <span>{new Date(n.createdAt).toLocaleString()}</span>
+                  {n.metadata?.txLink && (
+                    <a
+                      href={n.metadata.txLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      // Stop propagation agar klik pada link tidak memicu markAsRead
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-blue-600 hover:text-blue-800 underline transition-colors"
+                    >
+                      View Tx 🔗
+                    </a>
+                  )}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="px-4 py-8 text-sm text-gray-500 text-center">🎉 All caught up! No new notifications.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ===================================
+// ## Komponen Topbar Utama
+// ===================================
 export const Topbar = () => {
   const { data: session, status } = useSession()
   const router = useRouter()
 
+  // State
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  // reuse isMenuOpen as PROFILE dropdown open state (keeps original variable usage)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showContactUs, setShowContactUs] = useState(false)
-  const [role, setRole] = useState('')
+  const [role, setRole] = useState<string>('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
-
-  // --- Notification state ---
-  const [notifications, setNotifications] = useState<any[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [unreadCount, setUnreadCount] = useState<number>(0)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
-
-  // --- Refresh state ---
   const [refreshing, setRefreshing] = useState(false)
   const [canRefresh, setCanRefresh] = useState(true)
+  const [isNavigating, setIsNavigating] = useState(false)
 
-  const username =
+
+  const username: string =
     session?.user?.username ||
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
 
-  // --- Fetch functions ---
-  const fetchBalance = async () => {
+  // --- Fetch functions menggunakan useCallback ---
+  const fetchBalance = useCallback(async () => {
     const walletAddress = session?.user?.walletAddress
     if (!walletAddress) return
 
     try {
-      const balance = await getWRCreditBalance(walletAddress)
+      const balance: number = await getWRCreditBalance(walletAddress)
       setMainBalance(balance)
     } catch (err) {
       console.error('❌ Failed to fetch WRCredit balance:', err)
       setMainBalance(0)
     }
-  }
+  }, [session?.user?.walletAddress])
 
-  const fetchNotifications = async (userRole?: string) => {
+  const fetchNotifications = useCallback(async (userRole?: string) => {
     if (!session?.user?.id) return
     const r = userRole || role
     if (!r) return
     try {
       const res = await fetch(`/api/notifications/${session.user.id}?role=${r}`)
-      const data = await res.json()
+      const data: { success: boolean, notifications?: NotificationItem[] } = await res.json()
       if (data.success && data.notifications) {
         setNotifications(data.notifications)
-        const unread = data.notifications.filter((n: any) => !n.isRead).length
+        const unread = data.notifications.filter((n: NotificationItem) => !n.isRead).length
         setUnreadCount(unread)
       }
     } catch (err) {
       console.error('Failed to fetch notifications:', err)
     }
-  }
+  }, [session?.user?.id, role])
 
   const handleRefresh = async () => {
     if (!canRefresh) return
@@ -72,25 +152,23 @@ export const Topbar = () => {
     setCanRefresh(false)
     await Promise.all([fetchBalance(), fetchNotifications()])
     setRefreshing(false)
-    setTimeout(() => setCanRefresh(true), 10000) // enable after 10s
+    setTimeout(() => setCanRefresh(true), 10000) // Re-enable after 10 seconds
   }
 
-  // --- Initial fetch ---
+  // --- Initial fetch (Role, Balance, Notifications) ---
   useEffect(() => {
     if (!session?.user?.id) return
 
     const init = async () => {
       try {
-        // --- fetch role ---
+        // Fetch role first
         const res = await fetch('/api/roles/get')
-        const data = await res.json()
+        const data: { success: boolean, activeRole?: string } = await res.json()
         const activeRole = data.success && data.activeRole ? data.activeRole : ''
         setRole(activeRole)
 
-        // --- fetch balance ---
+        // Fetch other data
         await fetchBalance()
-
-        // --- fetch notifications langsung pakai role terbaru ---
         if (activeRole) await fetchNotifications(activeRole)
       } catch (err) {
         console.error('Failed initial fetch:', err)
@@ -98,12 +176,11 @@ export const Topbar = () => {
     }
 
     init()
-  }, [session])
+  }, [session, fetchBalance, fetchNotifications])
 
-  // === AUTO CLOSE MENU ===
+  // === AUTO CLOSE MENU on Scroll / Click Outside ===
   useEffect(() => {
     const container = document.getElementById('app-scroll')
-
     const closeProfile = () => setIsMenuOpen(false)
 
     if (container) container.addEventListener('scroll', closeProfile)
@@ -126,6 +203,7 @@ export const Topbar = () => {
 
   // --- Notification mark as read ---
   const markAsRead = async (id: string) => {
+    // Optimistic update
     setNotifications((prev) =>
       prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
     )
@@ -137,16 +215,18 @@ export const Topbar = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       })
-      const data = await res.json()
+      const data: { success: boolean } = await res.json()
       if (!data.success) throw new Error('Failed to update notification')
     } catch (err) {
       console.error('Failed to mark notification as read:', err)
+      // Revert or re-fetch on failure
       fetchNotifications()
     }
   }
 
-  // --- Logout ---
+  // --- Handlers ---
   const handleLogout = async () => {
+    setIsMenuOpen(false)
     setIsLoggingOut(true)
     try {
       await signOut({ redirect: false })
@@ -158,246 +238,216 @@ export const Topbar = () => {
     }
   }
 
-  const handleGoToAbout = () => {
-    // close dropdown first
-    setIsMenuOpen(false)
-    setShowAbout(true)
-  }
-
-  const handleGoToContactUs = () => {
-    setIsMenuOpen(false)
-    setShowContactUs(true)
-  }
-
-  const [isNavigating, setIsNavigating] = useState(false)
-
   const handleChooseRole = () => {
+    setIsMenuOpen(false)
     setIsNavigating(true)
     router.push('/home')
     setTimeout(() => setIsNavigating(false), 2000)
   }
 
-  // helper: open notifications modal (close profile dropdown first)
-  const openNotifications = () => {
+  const openNotificationsModal = () => {
     setIsMenuOpen(false)
     setShowNotificationsModal(true)
   }
 
+  const openAboutModal = () => {
+    setIsMenuOpen(false)
+    setShowAbout(true)
+  }
+
+  const openContactUsModal = () => {
+    setIsMenuOpen(false)
+    setShowContactUs(true)
+  }
+
+
   return (
     <>
-      <header className="sticky top-0 z-50 bg-gray-900 text-white px-4 py-3 shadow flex items-center justify-between">
-        {/* LEFT: Home (icon + optional label on larger screens) */}
-        <div className="flex items-center gap-3">
-          <button
-            aria-label="Home"
-            className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-            title="Home"
-          >
-            {/* home svg */}
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75l9-7.5 9 7.5M4.5 10.5v9.75h5.25V15h4.5v5.25H19.5V10.5" />
-            </svg>
-            <span className="hidden sm:inline text-lg font-semibold tracking-wide">Dashboard</span>
-          </button>
-        </div>
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm text-gray-800 px-4 py-2 flex items-center justify-between h-14">
+        
+        {/* KIRI: Logo/Home */}
+        <button
+          aria-label="Home Dashboard"
+          onClick={() => router.push('/')}
+          className="flex items-center gap-2 p-2 rounded-md transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          title="Dashboard"
+        >
+          <Home className="w-5 h-5 text-blue-600 flex-shrink-0" />
+          <span className="hidden sm:inline text-lg font-bold tracking-tight text-gray-900">App Name</span>
+        </button>
 
-        {/* CENTER: keep empty so layout stays single-line and balanced */}
+        {/* TENGAH: Kosong untuk centering */}
         <div className="flex-1" />
 
-        {/* RIGHT: Icons + profile */}
+        {/* KANAN: Ikon Aksi + Profil */}
         {status === 'authenticated' && (
-          <div className="relative flex items-center gap-2">
-            {/* LOGOUT ICON (to the left of profile) */}
+          <div className="relative flex items-center gap-1">
+
+            {/* REFRESH BUTTON */}
             <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="Logout"
+              onClick={handleRefresh}
+              disabled={!canRefresh || refreshing}
+              className={`p-2 rounded-full transition-colors ${
+                !canRefresh || refreshing
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
+              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              title="Refresh Data"
             >
-              {/* logout svg */}
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
-              </svg>
+              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
 
-            {/* NOTIFICATION ICON (single) */}
+            {/* NOTIFICATION ICON */}
             <button
-              onClick={openNotifications}
-              className="relative p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="Notifications"
+              onClick={openNotificationsModal}
+              className="relative p-2 rounded-full transition-colors hover:bg-gray-100 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title={`Notifications (${unreadCount} unread)`}
             >
-              {/* bell svg */}
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
+              <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
-                  {unreadCount}
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-600 border-2 border-white rounded-full transform translate-x-1/4 -translate-y-1/4">
+                  {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
-
-            {/* CONTACT US ICON */}
+            
+            {/* CONTACT US ICON (Desktop Only) */}
             <button
-              onClick={() => { setShowContactUs(true); setIsMenuOpen(false) }}
-              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="Contact us"
+              onClick={openContactUsModal}
+              className="p-2 rounded-full transition-colors hover:bg-gray-100 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 hidden md:block"
+              title="Contact Us"
             >
-<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
-  viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-  <path strokeLinecap="round" strokeLinejoin="round"
-    d="M18 13v3a3 3 0 01-3 3h-1M6 13v3a3 3 0 003 3h1m8-6a8 8 0 10-16 0m16 0v2m-16-2v2m5-7h2a2 2 0 012 2v3a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3a2 2 0 012-2z" />
-</svg>
+              <MessageSquare className="w-5 h-5" />
             </button>
 
-            {/* ABOUT ICON */}
+            {/* ABOUT ICON (Desktop Only) */}
             <button
-              onClick={() => { setShowAbout(true); setIsMenuOpen(false) }}
-              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
+              onClick={openAboutModal}
+              className="p-2 rounded-full transition-colors hover:bg-gray-100 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 hidden md:block"
               title="About"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
-              </svg>
+              <Info className="w-5 h-5" />
             </button>
 
-            {/* PROFILE BUTTON (id kept as topbar-button to match original click-outside logic) */}
+
+            {/* PROFILE BUTTON & DROPDOWN TRIGGER */}
             <button
               id="topbar-button"
               onClick={() => {
-                // toggle profile dropdown and ensure notifications modal closed
                 setShowNotificationsModal(false)
                 setIsMenuOpen((s) => !s)
               }}
               aria-label="User menu"
-              className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="Profile"
+              className="ml-2 flex items-center gap-2 p-1.5 rounded-full transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Profile Menu"
             >
-              <div className="hidden sm:flex flex-col text-right leading-tight">
-                <span className="text-sm font-semibold truncate max-w-[140px]">{username}</span>
-                <span className="text-xs text-green-400 uppercase truncate">{role || 'No role'}</span>
+              {/* Avatar Placeholder */}
+              <div className="w-9 h-9 bg-blue-500 rounded-full flex items-center justify-center font-semibold text-white text-sm">
+                {username?.[0]?.toUpperCase() || 'U'}
               </div>
-              <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center font-bold uppercase text-sm">
-                {username?.[0] || 'U'}
+              <div className="hidden lg:flex flex-col text-left leading-tight pr-1">
+                <span className="text-sm font-medium truncate max-w-[120px]">{username}</span>
+                <span className="text-xs text-green-600 uppercase font-medium">{role || 'No role'}</span>
               </div>
             </button>
 
-            {/* PROFILE DROPDOWN (id kept topbar-menu to match original click-outside logic) */}
+            {/* PROFILE DROPDOWN */}
             {isMenuOpen && (
                 <div
                   id="topbar-menu"
-                  className="absolute right-0 top-full mt-2 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
+                  className="absolute right-0 top-full mt-2 w-64 bg-white text-gray-800 rounded-lg shadow-2xl border border-gray-100 z-50 transition-all duration-200 origin-top-right scale-100 opacity-100"
                   onMouseLeave={() => setIsMenuOpen(false)}
                 >
-                <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
-                  <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
-                </div>
+                  <div className="px-4 py-3 border-b border-gray-200">
+                    <p className="text-sm font-bold text-gray-900 truncate">{username}</p>
+                    <p className="text-xs text-green-600 uppercase font-medium">{role || 'No role'}</p>
+                  </div>
 
-                <ul className="divide-y divide-gray-200 text-sm">
-                  {/* --- Refresh button --- */}
-                  <li className="px-4 py-2">
-                    <button
-                      onClick={handleRefresh}
-                      disabled={!canRefresh}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 transition ${
-                        !canRefresh ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                    >
-                      {refreshing && <span className="animate-spin">⏳</span>}
-                      Refresh
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        className="w-4 h-4"
+                  <ul className="text-sm">
+                    {/* --- Main balance (Credit) --- */}
+                    <li className="flex justify-between items-center px-4 py-2 hover:bg-gray-50 transition-colors">
+                      <div className='flex items-center gap-3 text-gray-600'>
+                        <CreditCard className='w-4 h-4'/>
+                        <span>Main Balance</span>
+                      </div>
+                      <span className="font-semibold text-blue-600">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
+                    </li>
+                      <li className="h-px bg-gray-100 my-1"/>
+
+                    {/* --- Choose Role --- */}
+                    <li>
+                      <button
+                        onClick={handleChooseRole}
+                        disabled={isNavigating}
+                        className={`w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors ${
+                          isNavigating ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z"
-                        />
-                      </svg>
-                    </button>
-                  </li>
+                        <Users className='w-4 h-4 text-gray-600'/>
+                        {isNavigating ? 'Switching Role…' : 'Switch Role'}
+                      </button>
+                    </li>
 
-                  {/* --- Main balance --- */}
-                  <li className="flex justify-between items-center px-4 py-2">
-                    <span>Main balance</span>
-                    <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
-                  </li>
+                    {/* --- Contact Us (Mobile View) --- */}
+                    <li>
+                      <button
+                        onClick={openContactUsModal}
+                        className="md:hidden w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors"
+                      >
+                        <MessageSquare className='w-4 h-4 text-gray-600'/>
+                        Contact Us
+                      </button>
+                    </li>
 
-                  {/* --- Choose Role --- */}
+                    {/* --- About (Mobile View) --- */}
+                    <li>
+                      <button
+                        onClick={openAboutModal}
+                        className="md:hidden w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors"
+                      >
+                        <Info className='w-4 h-4 text-gray-600'/>
+                        About
+                      </button>
+                    </li>
 
-                  <li>
-                    <button
-                      onClick={handleChooseRole}
-                      disabled={isNavigating}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 transition ${
-                        isNavigating ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                    >
-                      {isNavigating ? 'Loading…' : 'Choose role'}
-                    </button>
-                  </li>
-                </ul>
-              </div>
+                    {/* --- Logout --- */}
+                    <li className="border-t border-gray-100 mt-1">
+                      <button
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        className={`w-full text-left flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors ${
+                          isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        <LogOut className='w-4 h-4'/>
+                        {isLoggingOut ? 'Logging Out...' : 'Log Out'}
+                      </button>
+                    </li>
+                  </ul>
+                </div>
             )}
+          </div>
+        )}
+        {/* Tampilkan Loading/Skeleton jika status loading */}
+        {status === 'loading' && (
+          <div className="animate-pulse flex items-center gap-2">
+            <div className="w-24 h-4 bg-gray-200 rounded"></div>
+            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
           </div>
         )}
       </header>
 
       {/* --- Modals --- */}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
-
       {showContactUs && <ContactUsModal onClose={() => setShowContactUs(false)} />}
-
-      {/* Notifications Modal (same behavior as original) */}
+      
+      {/* Notifications Modal */}
       {showNotificationsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
-            <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
-              <h2 className="text-lg font-semibold">Notifications</h2>
-              <button
-                onClick={() => setShowNotificationsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1">
-              {notifications.length > 0 ? (
-                notifications.map((n) => (
-                  <div
-                    key={n._id}
-                    onClick={() => markAsRead(n._id)}
-                    className={`px-4 py-2 border-b last:border-b-0 cursor-pointer ${n.isRead ? 'bg-white text-gray-800' : 'bg-gray-100 font-medium text-gray-900'} hover:bg-gray-200 transition`}
-                  >
-                    <p className="text-sm">{n.message}</p>
-                    <p className="text-xs text-gray-600">{new Date(n.createdAt).toLocaleString()}</p>
-
-                    {n.metadata?.txLink && (
-                      <a
-                        href={n.metadata.txLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-blue-600 text-xs underline mt-1 block hover:text-blue-800"
-                      >
-                        View on Explorer 🔗
-                      </a>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
-              )}
-            </div>
-          </div>
-        </div>
+        <NotificationsModal 
+          onClose={() => setShowNotificationsModal(false)}
+          notifications={notifications}
+          markAsRead={markAsRead}
+        />
       )}
     </>
   )
