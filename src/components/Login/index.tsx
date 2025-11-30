@@ -11,7 +11,7 @@ export const Login = () => {
   const { data: session, status } = useSession()
   const [loadingRole, setLoadingRole] = useState<'promoter' | 'hunter' | null>(null)
 
-  if (status === 'loading') return <p className="text-center py-20">Loading session...</p>
+  if (status === 'loading') return <p className="text-center py-20 text-gray-300">Loading session...</p>
   if (!session?.user?.id) return <p className="text-center py-20 text-red-500">Please login first to continue.</p>
 
   const handleLogin = async (role: 'promoter' | 'hunter') => {
@@ -42,17 +42,16 @@ export const Login = () => {
   return (
     <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl mx-auto py-16">
       {/* Promoter Card */}
-      <Card className="border border-blue-500 hover:shadow-lg transition duration-300">
+      <Card className="bg-gray-800 border border-blue-500 hover:shadow-lg transition duration-300">
         <CardHeader>
-          <CardTitle className="text-blue-600">For Project Owners</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-blue-400">For Project Owners</CardTitle>
+          <CardDescription className="text-gray-300">
             Launch your own campaign and distribute rewards to real humans.
           </CardDescription>
         </CardHeader>
         <CardContent className="mt-4">
           <Button
-            variant="default"
-            className="w-full bg-blue-600 text-white hover:bg-blue-700"
+            className="w-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
             disabled={loadingRole === 'promoter'}
             onClick={() => handleLogin('promoter')}
           >
@@ -62,17 +61,16 @@ export const Login = () => {
       </Card>
 
       {/* Hunter Card */}
-      <Card className="border border-green-500 hover:shadow-lg transition duration-300">
+      <Card className="bg-gray-800 border border-green-500 hover:shadow-lg transition duration-300">
         <CardHeader>
-          <CardTitle className="text-green-600">For Bounty Hunters</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-green-400">For Bounty Hunters</CardTitle>
+          <CardDescription className="text-gray-300">
             Earn crypto by completing simple tasks and proving you’re human.
           </CardDescription>
         </CardHeader>
         <CardContent className="mt-4">
           <Button
-            variant="default"
-            className="w-full bg-green-600 text-white hover:bg-green-700"
+            className="w-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
             disabled={loadingRole === 'hunter'}
             onClick={() => handleLogin('hunter')}
           >
