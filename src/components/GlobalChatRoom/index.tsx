@@ -33,29 +33,35 @@ export const GlobalChatRoom = () => {
   const username =
     session?.user?.username || session?.user?.walletAddress?.split('@')[0] || 'anon'
 
+  // Cek apakah role saat ini adalah promoter (untuk styling input & button)
+  const isPromoter = role === 'promoter'
+
   // --- Fungsi Pembantu ---
   const getRoleBadge = (msgRole: string) => {
-    const role = msgRole.toLowerCase()
-    if (role === 'admin') return <Badge className="bg-red-600 hover:bg-red-700 text-white">ADMIN</Badge>
-    if (role === 'promoter') return <Badge className="bg-blue-600 hover:bg-blue-700 text-white">PROMOTER</Badge>
+    const r = msgRole?.toLowerCase() || ''
+    if (r === 'admin') return <Badge className="bg-red-600 hover:bg-red-700 text-white">ADMIN</Badge>
+    if (r === 'promoter') return <Badge className="bg-blue-600 hover:bg-blue-700 text-white">PROMOTER</Badge>
     return <Badge variant="secondary" className="bg-gray-500 hover:bg-gray-600 text-white">HUNTER</Badge>
   }
 
   const getColorClass = (uname: string) => {
     if (uname === 'anon') return 'text-gray-600'
     const key = `chatColor-${uname}`
-    const saved = localStorage.getItem(key)
-    if (saved) return saved
+    // Cek localStorage hanya di client-side
+    if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem(key)
+        if (saved) return saved
+    }
+    
     const colors = [
-      'text-blue-600',
-      'text-green-600',
-      'text-purple-600',
-      'text-pink-600',
-      'text-orange-600',
-      'text-indigo-600',
+      'text-blue-600', 'text-green-600', 'text-purple-600',
+      'text-pink-600', 'text-orange-600', 'text-indigo-600',
     ]
     const randomColor = colors[Math.floor(Math.random() * colors.length)]
-    localStorage.setItem(key, randomColor)
+    
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(key, randomColor)
+    }
     return randomColor
   }
   // --- End Fungsi Pembantu ---
@@ -136,6 +142,14 @@ export const GlobalChatRoom = () => {
       >
         {messages.map((m) => {
           const isSelf = m.username === username
+          // Cek role pesan ini untuk warna bubble (agar konsisten dengan history)
+          const msgIsPromoter = m.role === 'promoter'
+
+          // Tentukan warna background bubble sendiri
+          const selfBubbleColor = msgIsPromoter 
+            ? 'bg-blue-600 text-white' // Warna Promoter
+            : 'bg-green-500 text-white' // Warna Hunter (Default)
+
           return (
             <div
               key={m.id}
@@ -144,7 +158,7 @@ export const GlobalChatRoom = () => {
               <div 
                 className={`max-w-[80%] px-3 py-2 rounded-xl shadow-md ${
                   isSelf
-                    ? 'bg-green-500 text-white rounded-br-none'
+                    ? `${selfBubbleColor} rounded-br-none`
                     : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
                 }`}
               >
@@ -152,12 +166,12 @@ export const GlobalChatRoom = () => {
                 <div className={`flex items-center gap-2 mb-1 ${isSelf ? 'justify-end' : 'justify-start'}`}>
                   {!isSelf && getRoleBadge(m.role)}
                   <span
-                    className={`text-xs font-bold ${isSelf ? 'text-green-100' : getColorClass(m.username)}`}
+                    className={`text-xs font-bold ${isSelf ? 'text-white/90' : getColorClass(m.username)}`}
                   >
                     {m.username}
                   </span>
                   {isSelf && getRoleBadge(m.role)}
-                  <span className={`text-xs ${isSelf ? 'text-green-200' : 'text-gray-500'} font-light`}>
+                  <span className={`text-xs ${isSelf ? 'text-white/80' : 'text-gray-500'} font-light`}>
                     {formatTimestamp(m.created_at)}
                   </span>
                 </div>
@@ -172,10 +186,11 @@ export const GlobalChatRoom = () => {
         })}
       </div>
 
-      {/* Input Area menggunakan komponen Shadcn */}
+      {/* Input Area */}
       <div className="border-t p-3 flex items-center gap-2 bg-white">
         <Input
-          className="flex-1 text-sm focus-visible:ring-green-500"
+          // Kondisional class ring: Jika Promoter warna Biru, selain itu Hijau
+          className={`flex-1 text-sm ${isPromoter ? 'focus-visible:ring-blue-500' : 'focus-visible:ring-green-500'}`}
           placeholder={`Chatting as ${username} (${role})...`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -184,7 +199,13 @@ export const GlobalChatRoom = () => {
         <Button
           onClick={sendMessage}
           disabled={!input.trim()}
-          className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+          // Kondisional class background button: Jika Promoter warna Biru, selain itu Hijau
+          className={`
+            text-white disabled:opacity-50
+            ${isPromoter 
+                ? 'bg-blue-600 hover:bg-blue-700' 
+                : 'bg-green-600 hover:bg-green-700'}
+          `}
         >
           <Send className="h-4 w-4" />
         </Button>
