@@ -2,13 +2,24 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+
+// Shadcn UI Components
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { ArrowLeft, ArrowRight, MessageCircle, Wallet, CheckCircle } from 'lucide-react'
+
+// Your Custom Components
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
-import TaskModal from '@/components/TaskModal'
-import Toast from '@/components/Toast'
+import TaskModal from '@/components/TaskModal' // Diasumsikan sudah di-style
+import Toast from '@/components/Toast' // Diasumsikan sudah di-style
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
+// --- Interfaces tetap sama ---
 interface Task {
   service: string
   type: string
@@ -32,6 +43,9 @@ interface Campaign {
   contributors?: number
 }
 
+// =====================================
+// ## HUNTER DASHBOARD
+// =====================================
 export default function HunterDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -118,25 +132,23 @@ export default function HunterDashboard() {
   }
 
   // =========================
-  // FILTER & SORT
+  // FILTER & SORT & PAGINATION
   // =========================
-  const filtered = (() => {
+  const filtered = useMemo(() => {
+    let result: Campaign[] = []
     if (activeTab === 'active') {
       const completedIds = new Set(completedCampaigns.map((c) => c._id))
-      return campaigns.filter((c) => c.status === 'active' && !completedIds.has(c._id))
+      result = campaigns.filter((c) => c.status === 'active' && !completedIds.has(c._id))
     }
-    if (activeTab === 'completed') return completedCampaigns
-    if (activeTab === 'rejected') return campaigns.filter((c) => c.status === 'rejected')
-    return []
-  })().sort((a, b) => (a._id > b._id ? 1 : -1))
+    if (activeTab === 'completed') result = completedCampaigns
+    if (activeTab === 'rejected') result = campaigns.filter((c) => c.status === 'rejected')
+    
+    return result.sort((a, b) => (a._id > b._id ? 1 : -1))
+  }, [campaigns, completedCampaigns, activeTab])
 
-  // =========================
-  // PAGINATION (AMAN)
-  // =========================
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
-  // reset ke halaman pertama saat ganti tab
   useEffect(() => {
     setCurrentPage(1)
   }, [activeTab])
@@ -152,239 +164,252 @@ export default function HunterDashboard() {
   if (status === 'loading') return <div className="text-white p-6">Loading...</div>
   if (!session?.user) return null
 
+  // =========================
+  // RENDER HELPERS
+  // =========================
+
+  // Menentukan warna badge/status
+  const getStatusBadge = (status: Campaign['status']) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-600 hover:bg-green-700 text-white">Active</Badge>
+      case 'finished':
+        return <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 text-white">Finished</Badge>
+      case 'rejected':
+        return <Badge variant="destructive">Rejected</Badge>
+      default:
+        return <Badge variant="secondary">Draft</Badge>
+    }
+  }
+
+  const getSubmissionStatusBadge = (status: string) => {
+    // Asumsi status submission (di completed tab)
+    if (status === 'finished') {
+        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white">Approved</Badge>
+    }
+    return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-black">Submitted</Badge>
+  }
+  
   return (
-    <div className="min-h-screen bg-gray-900 text-white w-full">
+    <div className="min-h-screen bg-gray-900 w-full" id="app-scroll">
       <Topbar />
 
-      <div className="w-full px-6 py-8">
-        {/* Banner */}
-        <div
-          className="text-center font-semibold text-white rounded-lg py-3 mb-6 shadow-lg"
-          style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}
-        >
-          "Every task you complete brings you closer to greatness..."
-        </div>
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
+        
+        {/* Banner - Menggunakan Card dengan background gradient Hijau/Biru */}
+        <Card className="mb-8 border-0 shadow-xl" style={{ background: 'linear-gradient(to right, #16a34a, #3b82f6)' }}>
+            <CardContent className="py-4 text-center">
+                <p className="font-semibold text-white text-lg">
+                    "Every task you complete brings you closer to greatness..."
+                </p>
+            </CardContent>
+        </Card>
 
         {/* Tabs */}
-        <div className="sticky top-16 z-40 bg-gray-900 flex justify-center gap-4 py-3">
-          {['active', 'completed', 'rejected'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className="px-4 py-2 rounded-full font-semibold text-white"
-              style={{
-                backgroundColor: activeTab === tab ? '#16a34a' : '#374151',
-                fontSize: 'clamp(14px, 2vw, 18px)', // teks responsive
-              }}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+        <div className="sticky top-14 z-40 bg-gray-900 py-3">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 bg-gray-800 h-auto p-1">
+                    {['active', 'completed', 'rejected'].map((tab) => (
+                        <TabsTrigger 
+                            key={tab} 
+                            value={tab}
+                            className="text-white data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)} Campaigns
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </Tabs>
         </div>
-
-        {/* Balance */}
-        <div className="text-center mb-6">
-          <p className="text-gray-300">
-            Your Balance: <span className="text-green-400 font-bold">{dbBalance} WR</span>
-          </p>
-        </div>
+        
+        {/* Balance Status */}
+        <Card className="mb-8 bg-gray-800 border-gray-700">
+            <CardContent className="pt-6 flex items-center justify-center gap-3">
+                <Wallet className="w-5 h-5 text-green-400" />
+                <p className="text-gray-300 text-lg">
+                    Your Balance: <span className="text-green-400 font-bold ml-1">{dbBalance.toFixed(2)} WR</span>
+                </p>
+            </CardContent>
+        </Card>
 
 
         {/* Task Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {currentCampaigns.length === 0 ? (
-            <p className="text-center text-gray-400 col-span-2">No tasks in this tab.</p>
+            <p className="text-center text-gray-400 col-span-full py-12">🎉 No tasks available in the {activeTab} tab.</p>
           ) : (
             currentCampaigns.map((c) => {
               const isExpanded = expandedIds.has(c._id)
               const displayedDesc = isExpanded
                 ? c.description
-                : c.description.length > 100
-                ? c.description.slice(0, 100) + '...'
+                : c.description.length > 120
+                ? c.description.slice(0, 120) + '...'
                 : c.description
 
               return (
-                <div
-                  key={c._id}
-                  className="bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition"
+                <Card 
+                    key={c._id} 
+                    className="bg-gray-800 border-gray-700 shadow-xl hover:shadow-green-500/20 transition-all duration-300 flex flex-col"
                 >
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-bold text-green-400">{c.title}</h3>
-                    {activeTab === 'completed' && (
-                      <span className="bg-yellow-500 text-black text-xs px-2 py-1 rounded">
-                        Submitted
-                      </span>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <CardTitle className="text-xl font-bold text-green-400">{c.title}</CardTitle>
+                        {activeTab === 'completed' ? getSubmissionStatusBadge(c.status) : getStatusBadge(c.status)}
+                    </div>
+                    <CardDescription className="text-sm text-gray-400 mt-2">
+                        Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="flex-1">
+                    {/* Description Section */}
+                    {activeTab === 'active' && (
+                        <>
+                            <p className="text-gray-300 mb-3 whitespace-pre-line text-sm">
+                                {displayedDesc}
+                            </p>
+                            {c.description.length > 120 && (
+                                <Button
+                                    variant="link"
+                                    onClick={() => toggleExpand(c._id)}
+                                    className="p-0 h-auto text-blue-400 hover:text-blue-300"
+                                >
+                                    {isExpanded ? 'Show Less' : 'Read More'}
+                                </Button>
+                            )}
+                        </>
                     )}
-                  </div>
+                    
+                    <Separator className="my-4 bg-gray-700" />
 
-                  {activeTab === 'active' && (
-                    <>
-                      <p className="text-gray-300 mb-2 whitespace-pre-line">
-                        {displayedDesc}
-                      </p>
-                      {c.description.length > 100 && (
-                        <button
-                          onClick={() => toggleExpand(c._id)}
-                          style={{
-                            color: 'white',
-                            backgroundColor: '#3b82f6',
-                            border: 'none',
-                            padding: '4px 10px',
-                            borderRadius: '4px',
-                            fontSize: '0.8rem',
-                            display: 'block',
-                            marginTop: '4px',
-                          }}
-                        >
-                          {isExpanded ? 'Show Less' : 'Read More'}
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  <p className="text-sm text-gray-400 mb-2 mt-2">
-                    Reward: <span className="text-green-400 font-semibold">{c.reward}</span>
-                  </p>
-
-                  {activeTab === 'active' ? (
-                    <div className="mt-3">
-                      <p className="text-yellow-400 font-medium mb-2">Task In Progress</p>
-                      {c.tasks && c.tasks.length > 0 && (
-                        <ul className="text-sm text-gray-300 space-y-1">
-                          {c.tasks.map((t, i) => (
-                            <li key={i} className="flex items-center gap-2 last:mb-3">
-                              <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-yellow-400">
-                                {t.service}
-                              </span>
-                              <span className="text-gray-200">{t.type}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <button
-                        className="mt-3 w-full py-2 rounded font-semibold text-white"
-                        style={{ backgroundColor: '#16a34a' }}
-                        onClick={() => setSelectedCampaign(c)}
-                      >
-                        {isLoading(c._id) ? 'Loading...' : 'Submit Task'}
-                      </button>
+                    {/* Task List / Submission Status */}
+                    <div className="space-y-2">
+                        <p className="font-medium text-yellow-400 flex items-center gap-2">
+                            {activeTab === 'active' ? 'Required Tasks:' : 'Submitted Details:'}
+                        </p>
+                        
+                        {c.tasks && c.tasks.length > 0 ? (
+                            <ul className="text-sm text-gray-300 space-y-1">
+                                {c.tasks.map((t, i) => (
+                                    <li key={i} className="flex items-center gap-2">
+                                        <Badge 
+                                            variant="secondary" 
+                                            className={`bg-gray-700 text-xs ${activeTab === 'active' ? 'text-yellow-400' : 'text-green-400'}`}
+                                        >
+                                            {t.service}
+                                        </Badge>
+                                        <span className="text-gray-300">{t.type}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-gray-500 italic">No tasks defined.</p>
+                        )}
                     </div>
-                  ) : activeTab === 'completed' ? (
-                    <div className="mt-3">
-                      <p className="text-green-400 font-medium mb-2">
-                        Task Submitted — Status:{' '}
-                        <span
-                          className={
-                            c.status === 'finished' ? 'text-blue-400' : 'text-green-400'
-                          }
+                  </CardContent>
+
+                  {/* Footer - Action Button */}
+                  <CardFooter className="pt-4">
+                    {activeTab === 'active' && (
+                        <Button
+                            className="w-full bg-green-600 hover:bg-green-700 transition"
+                            onClick={() => setSelectedCampaign(c)}
+                            disabled={isLoading(c._id)}
                         >
-                          {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
-                        </span>
-                      </p>
-                      {c.tasks && c.tasks.length > 0 && (
-                        <ul className="text-sm text-gray-300 space-y-1">
-                          {c.tasks.map((t, i) => (
-                            <li key={i} className="flex items-center gap-2">
-                              <span className="bg-gray-700 px-2 py-0.5 rounded text-xs text-green-400">
-                                {t.service}
-                              </span>
-                              <span className="text-gray-200">{t.type}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
+                            {isLoading(c._id) ? 'Loading...' : 'Complete & Submit Task'}
+                        </Button>
+                    )}
+                    {activeTab === 'completed' && (
+                        <Button
+                            variant="outline"
+                            className="w-full border-green-500 text-green-400 hover:bg-green-900/50"
+                            disabled
+                        >
+                            <CheckCircle className="w-4 h-4 mr-2" /> Submission Sent
+                        </Button>
+                    )}
+                    {activeTab === 'rejected' && (
+                        <Button
+                            variant="destructive"
+                            className="w-full"
+                            disabled
+                        >
+                            Rejected (Review Required)
+                        </Button>
+                    )}
+                  </CardFooter>
+                </Card>
               )
             })
           )}
         </div>
-      </div>
+      </main>
 
-{/* ✅ PAGINATION BAR (Final + Force Colors) */}
-{totalPages > 1 && (
-  <div className="flex flex-col items-center gap-2 mb-4">
-    {/* Baris tombol pagination */}
-    <div className="flex justify-center items-center gap-2 flex-wrap">
-      {/* Prev */}
-      <button
-        onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-        disabled={currentPage === 1}
-        style={{
-          backgroundColor: currentPage === 1 ? '#374151' : '#facc15', // gray atau kuning
-          color: currentPage === 1 ? '#9ca3af' : '#000', // teks abu-abu / hitam
-          fontWeight: 'bold',
-          padding: '4px 12px',
-          borderRadius: '6px',
-          cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-        }}
-      >
-        Prev
-      </button>
+      {/* Pagination Bar */}
+      {totalPages > 1 && (
+        <div className="flex flex-col items-center gap-3 py-6">
+          <div className="flex justify-center items-center gap-2 flex-wrap">
+            {/* Prev */}
+            <Button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              variant={currentPage === 1 ? 'ghost' : 'default'}
+              className={`bg-yellow-500 hover:bg-yellow-600 text-black font-bold ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" /> Prev
+            </Button>
 
-      {/* Page numbers */}
-      {Array.from({ length: totalPages })
-        .map((_, i) => i + 1)
-        .filter((page) => {
-          return (
-            page === 1 ||
-            page === totalPages ||
-            (page >= currentPage - 2 && page <= currentPage + 2)
-          )
-        })
-        .map((page, idx, arr) => {
-          const prevPage = arr[idx - 1]
-          const showEllipsis = prevPage && page - prevPage > 1
+            {/* Page numbers */}
+            {Array.from({ length: totalPages })
+              .map((_, i) => i + 1)
+              .filter((page) => {
+                // Logic untuk menampilkan 1, ..., (current-2), (current-1), current, (current+1), (current+2), ..., totalPages
+                return (
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 2 && page <= currentPage + 2)
+                )
+              })
+              .map((page, idx, arr) => {
+                const prevPage = arr[idx - 1]
+                const showEllipsis = prevPage && page - prevPage > 1
 
-          return (
-            <span key={page} className="flex items-center">
-              {showEllipsis && (
-                <span style={{ padding: '0 4px', color: '#9ca3af' }}>...</span>
-              )}
-              <button
-                onClick={() => setCurrentPage(page)}
-                style={{
-                  backgroundColor: currentPage === page ? '#16a34a' : '#374151', // hijau / gray
-                  color: currentPage === page ? '#fff' : '#d1d5db', // putih / abu-abu terang
-                  fontWeight: currentPage === page ? 'bold' : 'normal',
-                  padding: '4px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                }}
-              >
-                {page}
-              </button>
-            </span>
-          )
-        })}
+                return (
+                  <span key={page} className="flex items-center">
+                    {showEllipsis && (
+                      <span className="px-1 text-gray-500">...</span>
+                    )}
+                    <Button
+                      onClick={() => setCurrentPage(page)}
+                      variant={currentPage === page ? 'default' : 'secondary'}
+                      className={currentPage === page ? 'bg-green-600 hover:bg-green-700 text-white font-bold' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}
+                    >
+                      {page}
+                    </Button>
+                  </span>
+                )
+              })}
 
-      {/* Next */}
-      <button
-        onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-        disabled={currentPage === totalPages}
-        style={{
-          backgroundColor: currentPage === totalPages ? '#374151' : '#facc15', // gray / kuning
-          color: currentPage === totalPages ? '#9ca3af' : '#000', // abu-abu / hitam
-          fontWeight: 'bold',
-          padding: '4px 12px',
-          borderRadius: '6px',
-          cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-        }}
-      >
-        Next
-      </button>
-    </div>
+            {/* Next */}
+            <Button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              variant={currentPage === totalPages ? 'ghost' : 'default'}
+              className={`bg-yellow-500 hover:bg-yellow-600 text-black font-bold ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Next <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
 
-    {/* Info bar di bawah */}
-    <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
-      Page {currentPage} of {totalPages}
-    </span>
-  </div>
-)}
+          {/* Info bar di bawah */}
+          <p className="text-sm text-gray-500 mt-2">
+            Showing {Math.min(indexOfFirst + 1, filtered.length)} - {Math.min(indexOfLast, filtered.length)} of {filtered.length} Campaigns | Page {currentPage} of {totalPages}
+          </p>
+        </div>
+      )}
 
 
-      {/* Modal Task */}
+      {/* Modal Task (Assume TaskModal already uses Shadcn Dialog/styling) */}
       {selectedCampaign && (
         <TaskModal
           campaignId={selectedCampaign._id}
@@ -409,29 +434,37 @@ export default function HunterDashboard() {
       )}
 
       {/* Floating Chat */}
-      <div className="fixed bottom-6 left-4 z-50">
+      <div className="fixed bottom-6 left-6 z-50">
         {!showChat ? (
           <div className="text-center">
-            <button
-              className="p-3 rounded-full shadow hover:scale-105 transition text-white"
-              style={{ backgroundColor: '#16a34a' }}
+            <Button
+              size="icon"
+              className="p-3 rounded-full shadow-lg bg-green-600 hover:bg-green-700 hover:scale-105 transition duration-300"
               onClick={() => setShowChat(true)}
+              aria-label="Open Global Chat"
             >
-              💬
-            </button>
+              <MessageCircle className="w-6 h-6" />
+            </Button>
             <p className="text-xs text-gray-400 mt-1">Chat</p>
           </div>
         ) : (
-          <div className="w-80 h-96 bg-white text-black rounded-xl shadow-lg overflow-hidden flex flex-col">
-            <div
-              className="flex justify-between items-center px-4 py-2 text-white"
-              style={{ backgroundColor: '#16a34a' }}
-            >
-              <span className="font-semibold">Global Chat</span>
-              <button onClick={() => setShowChat(false)}>✕</button>
-            </div>
-            <GlobalChatRoom />
-          </div>
+          <Card className="w-80 h-96 bg-white text-black rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            <CardHeader className="p-3 bg-green-600 text-white flex flex-row items-center justify-between">
+              <CardTitle className="text-lg font-semibold text-white">Global Chat</CardTitle>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="hover:bg-green-700 text-white"
+                onClick={() => setShowChat(false)}
+                aria-label="Close Chat"
+              >
+                ✕
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 p-0 overflow-hidden">
+                <GlobalChatRoom /> {/* Assume component is styled internally */}
+            </CardContent>
+          </Card>
         )}
       </div>
 
