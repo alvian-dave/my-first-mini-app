@@ -274,7 +274,6 @@ export const Topbar = () => {
         {/* KIRI: Logo/Home */}
         <button
           aria-label="Home Dashboard"
-          onClick={() => router.push('/')}
           className="flex items-center gap-2 p-2 rounded-md transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
           title="Dashboard"
         >
