@@ -33,6 +33,7 @@ interface NotificationsModalProps {
 // ===================================
 // ## Komponen Modal Notifikasi
 // ===================================
+// Catatan: Warna Modal biasanya tetap putih untuk kontras dengan halaman utama yang gelap.
 const NotificationsModal = ({ onClose, notifications, markAsRead }: NotificationsModalProps) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -263,17 +264,23 @@ export const Topbar = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm text-gray-800 px-4 py-2 flex items-center justify-between h-14">
+      {/* PERUBAHAN UTAMA:
+        1. bg-white -> bg-gray-900 (Background gelap)
+        2. border-b border-gray-200 -> border-b border-gray-700 (Border gelap)
+        3. text-gray-800 -> text-white (Warna teks default)
+      */}
+      <header className="sticky top-0 z-50 bg-gray-900 border-b border-gray-700 shadow-lg text-white px-4 py-2 flex items-center justify-between h-14">
         
         {/* KIRI: Logo/Home */}
         <button
           aria-label="Home Dashboard"
           onClick={() => router.push('/')}
-          className="flex items-center gap-2 p-2 rounded-md transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex items-center gap-2 p-2 rounded-md transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
           title="Dashboard"
         >
-          <Home className="w-5 h-5 text-blue-600 flex-shrink-0" />
-          <span className="hidden sm:inline text-lg font-bold tracking-tight text-gray-900">App Name</span>
+          {/* Ikon Home diubah ke warna terang yang kontras */}
+          <Home className="w-5 h-5 text-blue-400 flex-shrink-0" /> 
+          <span className="hidden sm:inline text-lg font-bold tracking-tight text-white">App Name</span>
         </button>
 
         {/* TENGAH: Kosong untuk centering */}
@@ -289,9 +296,9 @@ export const Topbar = () => {
               disabled={!canRefresh || refreshing}
               className={`p-2 rounded-full transition-colors ${
                 !canRefresh || refreshing
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  ? 'text-gray-500 cursor-not-allowed' // Warna disabled
+                  : 'hover:bg-gray-800 text-gray-300 hover:text-white' // Warna normal/hover gelap
+              } focus:outline-none focus:ring-2 focus:ring-blue-400`}
               title="Refresh Data"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -300,12 +307,13 @@ export const Topbar = () => {
             {/* NOTIFICATION ICON */}
             <button
               onClick={openNotificationsModal}
-              className="relative p-2 rounded-full transition-colors hover:bg-gray-100 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              // Warna ikon disesuaikan untuk background gelap
+              className="relative p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
               title={`Notifications (${unreadCount} unread)`}
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-600 border-2 border-white rounded-full transform translate-x-1/4 -translate-y-1/4">
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-600 border-2 border-gray-900 rounded-full transform translate-x-1/4 -translate-y-1/4">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -314,7 +322,8 @@ export const Topbar = () => {
             {/* CONTACT US ICON (Desktop Only) */}
             <button
               onClick={openContactUsModal}
-              className="p-2 rounded-full transition-colors hover:bg-gray-100 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 hidden md:block"
+              // Warna ikon disesuaikan untuk background gelap
+              className="p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 hidden md:block"
               title="Contact Us"
             >
               <MessageSquare className="w-5 h-5" />
@@ -323,7 +332,8 @@ export const Topbar = () => {
             {/* ABOUT ICON (Desktop Only) */}
             <button
               onClick={openAboutModal}
-              className="p-2 rounded-full transition-colors hover:bg-gray-100 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 hidden md:block"
+              // Warna ikon disesuaikan untuk background gelap
+              className="p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 hidden md:block"
               title="About"
             >
               <Info className="w-5 h-5" />
@@ -338,7 +348,8 @@ export const Topbar = () => {
                 setIsMenuOpen((s) => !s)
               }}
               aria-label="User menu"
-              className="ml-2 flex items-center gap-2 p-1.5 rounded-full transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              // Warna hover diubah agar terlihat baik di background gelap
+              className="ml-2 flex items-center gap-2 p-1.5 rounded-full transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
               title="Profile Menu"
             >
               {/* Avatar Placeholder */}
@@ -346,12 +357,12 @@ export const Topbar = () => {
                 {username?.[0]?.toUpperCase() || 'U'}
               </div>
               <div className="hidden lg:flex flex-col text-left leading-tight pr-1">
-                <span className="text-sm font-medium truncate max-w-[120px]">{username}</span>
-                <span className="text-xs text-green-600 uppercase font-medium">{role || 'No role'}</span>
+                <span className="text-sm font-medium truncate max-w-[120px] text-white">{username}</span>
+                <span className="text-xs text-green-400 uppercase font-medium">{role || 'No role'}</span> {/* Warna role diubah menjadi lebih terang */}
               </div>
             </button>
 
-            {/* PROFILE DROPDOWN */}
+            {/* PROFILE DROPDOWN (Biasanya dibiarkan terang agar mudah dibaca) */}
             {isMenuOpen && (
                 <div
                   id="topbar-menu"
@@ -431,8 +442,8 @@ export const Topbar = () => {
         {/* Tampilkan Loading/Skeleton jika status loading */}
         {status === 'loading' && (
           <div className="animate-pulse flex items-center gap-2">
-            <div className="w-24 h-4 bg-gray-200 rounded"></div>
-            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+            <div className="w-24 h-4 bg-gray-600 rounded"></div> {/* Warna skeleton diubah lebih gelap */}
+            <div className="w-8 h-8 bg-gray-600 rounded-full"></div>
           </div>
         )}
       </header>
