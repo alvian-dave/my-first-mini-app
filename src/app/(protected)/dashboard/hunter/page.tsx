@@ -225,7 +225,7 @@ export default function HunterDashboard() {
         
         {/* Balance Status */}
         <Card className="mb-8 bg-gray-800 border-gray-700">
-            <CardContent className="pt-6 flex items-center justify-center gap-3">
+            <CardContent className="py-3 flex items-center justify-center gap-3">
                 <Wallet className="w-5 h-5 text-green-400" />
                 <p className="text-gray-300 text-lg">
                     Your Balance: <span className="text-green-400 font-bold ml-1">{dbBalance.toFixed(2)} WR</span>
@@ -433,44 +433,47 @@ export default function HunterDashboard() {
         />
       )}
 
-      {/* Floating Chat (Perbaikan Layout Chat Room di sini) */}
-      <div className="fixed bottom-6 left-6 z-50">
-        {!showChat ? (
-          <div className="text-center">
+      
+    {/* Floating Chat (Perbaikan Layout Chat Room di sini) */}
+    <div className="fixed bottom-6 left-6 z-50">
+      {!showChat ? (
+        <div className="text-center">
+          <Button
+            size="icon"
+            className="p-3 rounded-full shadow-lg bg-green-600 hover:bg-green-700 hover:scale-105 transition duration-300"
+            onClick={() => setShowChat(true)}
+            aria-label="Open Global Chat"
+          >
+            <MessageCircle className="w-6 h-6" />
+          </Button>
+          <p className="text-xs text-gray-400 mt-1">Chat</p>
+        </div>
+      ) : (
+        // CARD CONTAINER UNTUK CHAT ROOM
+        <Card className="w-80 h-96 bg-white text-black rounded-xl shadow-2xl overflow-hidden flex flex-col">
+          
+          {/* PERBAIKAN: Gunakan 'py-2' (lebih ramping dari p-3) dan hapus 'h-[52px]' */}
+          <CardHeader className="py-2 px-4 bg-green-600 text-white flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-semibold text-white">Global Chat</CardTitle>
             <Button
               size="icon"
-              className="p-3 rounded-full shadow-lg bg-green-600 hover:bg-green-700 hover:scale-105 transition duration-300"
-              onClick={() => setShowChat(true)}
-              aria-label="Open Global Chat"
+              variant="ghost"
+              // Gunakan styling ukuran kecil (w-6 h-6) untuk tombol X agar header ramping
+              className="w-6 h-6 hover:bg-green-700 text-white p-0"
+              onClick={() => setShowChat(false)}
+              aria-label="Close Chat"
             >
-              <MessageCircle className="w-6 h-6" />
+              ✕
             </Button>
-            <p className="text-xs text-gray-400 mt-1">Chat</p>
-          </div>
-        ) : (
-          // CARD CONTAINER UNTUK CHAT ROOM
-          <Card className="w-80 h-96 bg-white text-black rounded-xl shadow-2xl overflow-hidden flex flex-col">
-            <CardHeader className="p-3 bg-green-600 text-white flex flex-row items-center justify-between h-[52px]">
-              <CardTitle className="text-lg font-semibold text-white">Global Chat</CardTitle>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="hover:bg-green-700 text-white"
-                onClick={() => setShowChat(false)}
-                aria-label="Close Chat"
-              >
-                ✕
-              </Button>
-            </CardHeader>
-            {/* PENTING: CardContent harus memiliki flex-1 dan p-0 untuk menampung GlobalChatRoom full-size */}
-            <CardContent className="flex-1 p-0 overflow-hidden">
-                {/* GlobalChatRoom sekarang harus dikonfigurasi secara internal (di file GlobalChatRoom.jsx)
-                    untuk menggunakan 'h-full flex flex-col' agar layout-nya rapi */}
-                <GlobalChatRoom /> 
-            </CardContent>
-          </Card>
-        )}
-      </div>
+          </CardHeader>
+          
+          {/* CardContent tetap menggunakan flex-1 dan p-0 */}
+          <CardContent className="flex-1 p-0 overflow-hidden">
+            <GlobalChatRoom /> 
+          </CardContent>
+        </Card>
+      )}
+    </div>
 
       {/* Toast */}
       {toast && (
