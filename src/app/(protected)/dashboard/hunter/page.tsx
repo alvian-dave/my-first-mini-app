@@ -14,7 +14,7 @@ import { ArrowLeft, ArrowRight, MessageCircle, Wallet, CheckCircle } from 'lucid
 
 // Your Custom Components
 import { Topbar } from '@/components/Topbar'
-import { GlobalChatRoom } from '@/components/GlobalChatRoom'
+import { GlobalChatRoom } from '@/components/GlobalChatRoom' // Pastikan file ini sudah di-patch
 import TaskModal from '@/components/TaskModal' // Diasumsikan sudah di-style
 import Toast from '@/components/Toast' // Diasumsikan sudah di-style
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
@@ -191,7 +191,8 @@ export default function HunterDashboard() {
   }
   
   return (
-    <div className="min-h-screen bg-gray-900 w-full" id="app-scroll">
+    // Gunakan 'app-scroll' sebagai ID untuk event listener di Topbar
+    <div className="min-h-screen bg-gray-900 w-full" id="app-scroll"> 
       <Topbar />
 
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
@@ -363,7 +364,6 @@ export default function HunterDashboard() {
             {Array.from({ length: totalPages })
               .map((_, i) => i + 1)
               .filter((page) => {
-                // Logic untuk menampilkan 1, ..., (current-2), (current-1), current, (current+1), (current+2), ..., totalPages
                 return (
                   page === 1 ||
                   page === totalPages ||
@@ -433,7 +433,7 @@ export default function HunterDashboard() {
         />
       )}
 
-      {/* Floating Chat */}
+      {/* Floating Chat (Perbaikan Layout Chat Room di sini) */}
       <div className="fixed bottom-6 left-6 z-50">
         {!showChat ? (
           <div className="text-center">
@@ -448,8 +448,9 @@ export default function HunterDashboard() {
             <p className="text-xs text-gray-400 mt-1">Chat</p>
           </div>
         ) : (
+          // CARD CONTAINER UNTUK CHAT ROOM
           <Card className="w-80 h-96 bg-white text-black rounded-xl shadow-2xl overflow-hidden flex flex-col">
-            <CardHeader className="p-3 bg-green-600 text-white flex flex-row items-center justify-between">
+            <CardHeader className="p-3 bg-green-600 text-white flex flex-row items-center justify-between h-[52px]">
               <CardTitle className="text-lg font-semibold text-white">Global Chat</CardTitle>
               <Button
                 size="icon"
@@ -461,8 +462,11 @@ export default function HunterDashboard() {
                 ✕
               </Button>
             </CardHeader>
+            {/* PENTING: CardContent harus memiliki flex-1 dan p-0 untuk menampung GlobalChatRoom full-size */}
             <CardContent className="flex-1 p-0 overflow-hidden">
-                <GlobalChatRoom /> {/* Assume component is styled internally */}
+                {/* GlobalChatRoom sekarang harus dikonfigurasi secara internal (di file GlobalChatRoom.jsx)
+                    untuk menggunakan 'h-full flex flex-col' agar layout-nya rapi */}
+                <GlobalChatRoom /> 
             </CardContent>
           </Card>
         )}
