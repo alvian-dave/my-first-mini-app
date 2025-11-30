@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useMemo } from 'react'
+import { toast } from 'sonner' // 💡 Sonner: Import fungsi toast
 
 // Shadcn UI Components
 import { Button } from '@/components/ui/button'
@@ -14,9 +15,9 @@ import { ArrowLeft, ArrowRight, MessageCircle, Wallet, CheckCircle } from 'lucid
 
 // Your Custom Components
 import { Topbar } from '@/components/Topbar'
-import { GlobalChatRoom } from '@/components/GlobalChatRoom' // Pastikan file ini sudah di-patch
-import TaskModal from '@/components/TaskModal' // Diasumsikan sudah di-style
-import Toast from '@/components/Toast' // Diasumsikan sudah di-style
+import { GlobalChatRoom } from '@/components/GlobalChatRoom'
+import TaskModal from '@/components/TaskModal' 
+// ❌ Hapus: import Toast from '@/components/Toast' 
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
 // --- Interfaces tetap sama ---
@@ -58,9 +59,13 @@ export default function HunterDashboard() {
   const [loadingIds, setLoadingIds] = useState<string[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  
+  // ❌ Hapus state toast yang lama:
+  /*
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(
     null
   )
+  */
 
   // 🔐 Redirect jika belum login
   useEffect(() => {
@@ -79,7 +84,8 @@ export default function HunterDashboard() {
       }
     } catch (err) {
       console.error('Failed to load campaigns', err)
-      setToast({ message: 'Failed to load campaigns', type: 'error' })
+      // 💡 Sonner: Panggil toast.error
+      toast.error('Failed to load campaigns') 
     }
   }
 
@@ -93,7 +99,8 @@ export default function HunterDashboard() {
       }
     } catch (err) {
       console.error('Failed to load completed campaigns', err)
-      setToast({ message: 'Failed to load completed campaigns', type: 'error' })
+      // 💡 Sonner: Panggil toast.error
+      toast.error('Failed to load completed campaigns')
     }
   }
 
@@ -104,7 +111,8 @@ export default function HunterDashboard() {
       setDbBalance(balance)
     } catch (err) {
       console.error('Failed to fetch blockchain balance:', err)
-      setToast({ message: 'Failed to fetch WR from blockchain', type: 'error' })
+      // 💡 Sonner: Panggil toast.error
+      toast.error('Failed to fetch WR from blockchain')
     }
   }
 
@@ -409,7 +417,7 @@ export default function HunterDashboard() {
       )}
 
 
-      {/* Modal Task (Assume TaskModal already uses Shadcn Dialog/styling) */}
+      {/* Modal Task (Submission Logic Updated to use Sonner) */}
       {selectedCampaign && (
         <TaskModal
           campaignId={selectedCampaign._id}
@@ -420,21 +428,31 @@ export default function HunterDashboard() {
           onClose={() => setSelectedCampaign(null)}
           onConfirm={async (submission: Submission) => {
             try {
+              // Asumsi API call submission sudah berhasil
               await Promise.all([fetchCompleted(), fetchCampaigns(), fetchBalance()])
               setSelectedCampaign(null)
               setActiveTab('completed')
-              setToast({ message: 'Task submitted successfully', type: 'success' })
+              
+              // 💡 Sonner: Panggil toast.success
+              toast.success('Task submitted successfully', {
+                description: 'The campaign has been moved to the Completed tab and is awaiting review.'
+              })
+
             } catch (err) {
               console.error('Failed to refresh after submission', err)
               setSelectedCampaign(null)
-              setToast({ message: 'Failed to submit task', type: 'error' })
+
+              // 💡 Sonner: Panggil toast.error
+              toast.error('Failed to submit task', {
+                description: 'Please check your connection and try again.'
+              })
             }
           }}
         />
       )}
 
       
-    {/* Floating Chat (Perbaikan Layout Chat Room di sini) */}
+    {/* Floating Chat (Layout Tetap) */}
     <div className="fixed bottom-6 left-6 z-50">
       {!showChat ? (
         <div className="text-center">
@@ -452,13 +470,11 @@ export default function HunterDashboard() {
         // CARD CONTAINER UNTUK CHAT ROOM
         <Card className="w-80 h-96 bg-white text-black rounded-xl shadow-2xl overflow-hidden flex flex-col">
           
-          {/* PERBAIKAN: Gunakan 'py-2' (lebih ramping dari p-3) dan hapus 'h-[52px]' */}
           <CardHeader className="py-2 px-4 bg-green-600 text-white flex flex-row items-center justify-between">
             <CardTitle className="text-base font-semibold text-white">Global Chat</CardTitle>
             <Button
               size="icon"
               variant="ghost"
-              // Gunakan styling ukuran kecil (w-6 h-6) untuk tombol X agar header ramping
               className="w-6 h-6 hover:bg-green-700 text-white p-0"
               onClick={() => setShowChat(false)}
               aria-label="Close Chat"
@@ -467,7 +483,6 @@ export default function HunterDashboard() {
             </Button>
           </CardHeader>
           
-          {/* CardContent tetap menggunakan flex-1 dan p-0 */}
           <CardContent className="flex-1 p-0 overflow-hidden">
             <GlobalChatRoom /> 
           </CardContent>
@@ -475,10 +490,7 @@ export default function HunterDashboard() {
       )}
     </div>
 
-      {/* Toast */}
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-      )}
+    {/* ❌ Hapus: Toast kustom tidak lagi diperlukan karena menggunakan Sonner global */}
     </div>
   )
 }
