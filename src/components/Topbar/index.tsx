@@ -33,7 +33,6 @@ interface NotificationsModalProps {
 // ===================================
 // ## Komponen Modal Notifikasi
 // ===================================
-// Catatan: Warna Modal biasanya tetap putih untuk kontras dengan halaman utama yang gelap.
 const NotificationsModal = ({ onClose, notifications, markAsRead }: NotificationsModalProps) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -115,6 +114,13 @@ export const Topbar = () => {
     session?.user?.username ||
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
+  
+  // --- Penentuan Warna Dinamis ---
+  const isHunter = role === 'hunter' // Asumsi role 'hunter'
+  const accentColor = isHunter ? 'green' : 'blue' // Warna utama: green-400 atau blue-400
+  const accentColorClass = `text-${accentColor}-400`
+  const bgColorClass = `bg-${accentColor}-500`
+  const ringColorClass = `focus:ring-${accentColor}-400`
 
   // --- Fetch functions menggunakan useCallback ---
   const fetchBalance = useCallback(async () => {
@@ -122,8 +128,9 @@ export const Topbar = () => {
     if (!walletAddress) return
 
     try {
+      // Format angka menjadi 234.3 (atau 234.30)
       const balance: number = await getWRCreditBalance(walletAddress)
-      setMainBalance(balance)
+      setMainBalance(parseFloat(balance.toFixed(2))) 
     } catch (err) {
       console.error('❌ Failed to fetch WRCredit balance:', err)
       setMainBalance(0)
@@ -165,7 +172,7 @@ export const Topbar = () => {
         // Fetch role first
         const res = await fetch('/api/roles/get')
         const data: { success: boolean, activeRole?: string } = await res.json()
-        const activeRole = data.success && data.activeRole ? data.activeRole : ''
+        const activeRole = data.success && data.activeRole ? data.activeRole.toLowerCase() : ''
         setRole(activeRole)
 
         // Fetch other data
@@ -264,22 +271,18 @@ export const Topbar = () => {
 
   return (
     <>
-      {/* PERUBAHAN UTAMA:
-        1. bg-white -> bg-gray-900 (Background gelap)
-        2. border-b border-gray-200 -> border-b border-gray-700 (Border gelap)
-        3. text-gray-800 -> text-white (Warna teks default)
-      */}
       <header className="sticky top-0 z-50 bg-gray-900 border-b border-gray-700 shadow-lg text-white px-4 py-2 flex items-center justify-between h-14">
         
         {/* KIRI: Logo/Home */}
         <button
           aria-label="Home Dashboard"
-          className="flex items-center gap-2 p-2 rounded-md transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          // Perubahan: Focus ring menggunakan accentColor
+          className={`flex items-center gap-2 p-2 rounded-md transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 ${ringColorClass}`}
           title="Dashboard"
         >
-          {/* Ikon Home diubah ke warna terang yang kontras */}
-          <Home className="w-5 h-5 text-blue-400 flex-shrink-0" /> 
-          <span className="hidden sm:inline text-lg font-bold tracking-tight text-white">App Name</span>
+          {/* Perubahan: Warna Ikon Home dinamis */}
+          <Home className={`w-5 h-5 ${accentColorClass} flex-shrink-0`} />
+          <span className="hidden sm:inline text-lg font-bold tracking-tight text-white">WRC</span>
         </button>
 
         {/* TENGAH: Kosong untuk centering */}
@@ -295,9 +298,9 @@ export const Topbar = () => {
               disabled={!canRefresh || refreshing}
               className={`p-2 rounded-full transition-colors ${
                 !canRefresh || refreshing
-                  ? 'text-gray-500 cursor-not-allowed' // Warna disabled
-                  : 'hover:bg-gray-800 text-gray-300 hover:text-white' // Warna normal/hover gelap
-              } focus:outline-none focus:ring-2 focus:ring-blue-400`}
+                  ? 'text-gray-500 cursor-not-allowed'
+                  : `hover:bg-gray-800 text-gray-300 hover:text-white`
+              } focus:outline-none focus:ring-2 ${ringColorClass}`}
               title="Refresh Data"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -306,8 +309,7 @@ export const Topbar = () => {
             {/* NOTIFICATION ICON */}
             <button
               onClick={openNotificationsModal}
-              // Warna ikon disesuaikan untuk background gelap
-              className="relative p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className={`relative p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 ${ringColorClass}`}
               title={`Notifications (${unreadCount} unread)`}
             >
               <Bell className="w-5 h-5" />
@@ -321,8 +323,7 @@ export const Topbar = () => {
             {/* CONTACT US ICON (Desktop Only) */}
             <button
               onClick={openContactUsModal}
-              // Warna ikon disesuaikan untuk background gelap
-              className="p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 hidden md:block"
+              className={`p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 ${ringColorClass} hidden md:block`}
               title="Contact Us"
             >
               <MessageSquare className="w-5 h-5" />
@@ -331,8 +332,7 @@ export const Topbar = () => {
             {/* ABOUT ICON (Desktop Only) */}
             <button
               onClick={openAboutModal}
-              // Warna ikon disesuaikan untuk background gelap
-              className="p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 hidden md:block"
+              className={`p-2 rounded-full transition-colors hover:bg-gray-800 text-gray-300 hover:text-white focus:outline-none focus:ring-2 ${ringColorClass} hidden md:block`}
               title="About"
             >
               <Info className="w-5 h-5" />
@@ -347,21 +347,22 @@ export const Topbar = () => {
                 setIsMenuOpen((s) => !s)
               }}
               aria-label="User menu"
-              // Warna hover diubah agar terlihat baik di background gelap
-              className="ml-2 flex items-center gap-2 p-1.5 rounded-full transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              // Perubahan: Focus ring menggunakan accentColor
+              className={`ml-2 flex items-center gap-2 p-1.5 rounded-full transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 ${ringColorClass}`}
               title="Profile Menu"
             >
-              {/* Avatar Placeholder */}
-              <div className="w-9 h-9 bg-blue-500 rounded-full flex items-center justify-center font-semibold text-white text-sm">
+              {/* Perubahan: Background Avatar/Circle dinamis */}
+              <div className={`w-9 h-9 ${bgColorClass} rounded-full flex items-center justify-center font-semibold text-white text-sm`}>
                 {username?.[0]?.toUpperCase() || 'U'}
               </div>
               <div className="hidden lg:flex flex-col text-left leading-tight pr-1">
                 <span className="text-sm font-medium truncate max-w-[120px] text-white">{username}</span>
-                <span className="text-xs text-green-400 uppercase font-medium">{role || 'No role'}</span> {/* Warna role diubah menjadi lebih terang */}
+                {/* Perubahan: Warna Role di Topbar dinamis */}
+                <span className={`text-xs ${accentColorClass} uppercase font-medium`}>{role || 'No role'}</span> 
               </div>
             </button>
 
-            {/* PROFILE DROPDOWN (Biasanya dibiarkan terang agar mudah dibaca) */}
+            {/* PROFILE DROPDOWN */}
             {isMenuOpen && (
                 <div
                   id="topbar-menu"
@@ -370,7 +371,8 @@ export const Topbar = () => {
                 >
                   <div className="px-4 py-3 border-b border-gray-200">
                     <p className="text-sm font-bold text-gray-900 truncate">{username}</p>
-                    <p className="text-xs text-green-600 uppercase font-medium">{role || 'No role'}</p>
+                    {/* Perubahan: Warna Role di Dropdown dinamis */}
+                    <p className={`text-xs ${isHunter ? 'text-green-600' : 'text-blue-600'} uppercase font-medium`}>{role || 'No role'}</p>
                   </div>
 
                   <ul className="text-sm">
@@ -380,7 +382,10 @@ export const Topbar = () => {
                         <CreditCard className='w-4 h-4'/>
                         <span>Main Balance</span>
                       </div>
-                      <span className="font-semibold text-blue-600">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
+                      {/* Perubahan: Warna Saldo dinamis */}
+                      <span className={`font-semibold ${isHunter ? 'text-green-600' : 'text-blue-600'}`}>
+                        {mainBalance !== null ? `${mainBalance.toFixed(2)} WR` : '—'}
+                      </span>
                     </li>
                       <li className="h-px bg-gray-100 my-1"/>
 
@@ -441,7 +446,7 @@ export const Topbar = () => {
         {/* Tampilkan Loading/Skeleton jika status loading */}
         {status === 'loading' && (
           <div className="animate-pulse flex items-center gap-2">
-            <div className="w-24 h-4 bg-gray-600 rounded"></div> {/* Warna skeleton diubah lebih gelap */}
+            <div className="w-24 h-4 bg-gray-600 rounded"></div>
             <div className="w-8 h-8 bg-gray-600 rounded-full"></div>
           </div>
         )}
