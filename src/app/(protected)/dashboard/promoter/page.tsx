@@ -11,15 +11,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs' // Import Tabs
 import { MessageCircle, Wallet, ArrowLeft, ArrowRight, Edit, Trash2, CheckCircle, Users } from 'lucide-react'
 
 // Your Custom Components
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
-import { CampaignTabs } from '@/components/CampaignTabs' // Assume this component uses Shadcn Tabs
+// import { CampaignTabs } from '@/components/CampaignTabs' // Dihapus/diganti
 import USDCTransferModal from '@/components/USDCTransferModal'
-import Toast from '@/components/Toast' // Re-add Toast for non-confirm messages
+import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
@@ -55,7 +56,7 @@ function CampaignDescription({ text }: { text: string }) {
             variant="link"
             size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="p-0 h-auto text-blue-400 hover:text-blue-300" // Warna Biru
+            className="p-0 h-auto text-blue-400 hover:text-blue-300"
           >
             {expanded ? 'Show less' : 'Read more'}
           </Button>
@@ -123,18 +124,14 @@ export default function PromoterDashboard() {
 
       const myCampaigns = data.filter(c => c.createdBy === session.user.id)
       
-      // Ambil semua participant ID unik
       const allIds = Array.from(new Set(myCampaigns.flatMap(c => c.participants || [])))
 
-      // Panggil API user
       const userRes = await fetch(`/api/users?ids=${allIds.join(',')}`)
       const users: { _id: string; username?: string }[] = await userRes.json()
 
-      // Bikin mapping ID → username
       const userMap: Record<string, string> = {}
       users.forEach(u => userMap[u._id] = u.username || '(unknown)')
 
-      // Replace ID → username
       const enriched = myCampaigns.map(c => ({
         ...c,
         participants: (c.participants || []).map(id => userMap[id] || '(unknown)')
@@ -194,7 +191,6 @@ export default function PromoterDashboard() {
         return
       }
       
-      // Reload data
       await Promise.all([loadCampaigns(), fetchBalance()])
 
       setToast({ message: result?.txLink ? 'Campaign finished & remaining funds rescued. View tx' : 'Campaign marked as finished', type: 'success' })
@@ -247,7 +243,7 @@ export default function PromoterDashboard() {
   const getStatusBadge = (status: UICampaign['status']) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-blue-600 hover:bg-blue-700 text-white">Active</Badge> // 🔵 Blue
+        return <Badge className="bg-blue-600 hover:bg-blue-700 text-white">Active</Badge> 
       case 'finished':
         return <Badge variant="default" className="bg-gray-500 hover:bg-gray-600 text-white">Finished</Badge> 
       case 'rejected':
@@ -269,7 +265,7 @@ export default function PromoterDashboard() {
 
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
         
-        {/* Banner - Card dengan background gradient Biru */}
+        {/* Banner - Card dengan background gradient Biru/Hijau */}
         <Card className="mb-8 border-0 shadow-xl" style={{ background: 'linear-gradient(to right, #2563eb, #16a34a)' }}>
           <CardContent className="py-4 text-center">
             <p className="font-semibold text-white text-lg">
@@ -279,19 +275,26 @@ export default function PromoterDashboard() {
         </Card>
 
         {/* Balance Status & Topup Button */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-8">
           <Card className="flex-1 bg-gray-800 border-gray-700 mr-4">
-            <CardContent className="py-3 px-4 flex items-center justify-start gap-3">
-              <Wallet className="w-5 h-5 text-blue-400" />
-              <p className="text-gray-300 text-lg">
-                Balance: <span className="text-blue-400 font-bold ml-1">{balance.toFixed(2)} WR</span>
+            <CardContent className="py-3 px-4 flex items-center justify-start gap-3 overflow-hidden">
+              <Wallet className="w-5 h-5 text-blue-400 shrink-0" />
+              {/* PERBAIKAN BALANCE: Tambahkan whitespace-nowrap dan text-ellipsis */}
+              <p className="text-gray-300 text-lg flex items-center min-w-0">
+                <span className="shrink-0 mr-1">Balance:</span>
+                <span 
+                  className="text-blue-400 font-bold whitespace-nowrap overflow-hidden text-ellipsis"
+                  title={balance.toFixed(18)} // Tooltip untuk saldo penuh
+                >
+                  {balance.toFixed(2)} WR
+                </span>
               </p>
             </CardContent>
           </Card>
           
           <Button
             onClick={() => setShowTopup(true)}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold transition shadow-md"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold transition shadow-md shrink-0"
           >
             Topup
           </Button>
@@ -310,10 +313,22 @@ export default function PromoterDashboard() {
           </Button>
         </div>
 
-        {/* Tabs */}
-        {/* Catatan: Component CampaignTabs harus di-update agar menggunakan tema biru */}
-        <div className="sticky top-16 z-40 bg-gray-900 py-3 mb-6">
-          <CampaignTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        {/* Tabs - Menggunakan struktur Shadcn Tabs yang diminta dengan tema Biru */}
+        <div className="sticky top-14 z-40 bg-gray-900 py-3 mb-6">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 bg-gray-800 h-auto p-1">
+                    {['active', 'finished', 'rejected'].map((tab) => (
+                        <TabsTrigger 
+                            key={tab} 
+                            value={tab}
+                            // Ganti green-600 menjadi blue-600
+                            className="text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </Tabs>
         </div>
         <Separator className="bg-gray-700 mb-6" />
 
@@ -323,7 +338,6 @@ export default function PromoterDashboard() {
         ) : (
           <div className="grid lg:grid-cols-2 gap-6">
             {paginatedCampaigns.map(c => {
-              // Format remainingWR
               const remainingWRFormatted = c.remainingWR
                 ? formatUnits(c.remainingWR, 18)
                 : '0.00'
@@ -551,7 +565,7 @@ export default function PromoterDashboard() {
       {/* Topup Modal */}
       {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
 
-      {/* Floating Chat (Di-refactor untuk menggunakan styling Card/Button yang konsisten) */}
+      {/* Floating Chat */}
       <div className="fixed bottom-6 left-4 z-50">
         {!showChat ? (
           <div className="text-center">
