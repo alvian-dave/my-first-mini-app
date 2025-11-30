@@ -115,12 +115,23 @@ export const Topbar = () => {
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
   
-  // --- Penentuan Warna Dinamis ---
-  const isHunter = role === 'hunter' // Asumsi role 'hunter'
-  const accentColor = isHunter ? 'green' : 'blue' // Warna utama: green-400 atau blue-400
-  const accentColorClass = `text-${accentColor}-400`
-  const bgColorClass = `bg-${accentColor}-500`
-  const ringColorClass = `focus:ring-${accentColor}-400`
+  // --- Penentuan Warna Dinamis Berdasarkan Role ---
+  
+  // Fungsi untuk menentukan kelas warna
+  const determineAccentColor = (r: string) => {
+    const normalizedRole = r.toLowerCase()
+    if (normalizedRole === 'hunter') {
+      return { name: 'green', class: 'text-green-400', bg: 'bg-green-500', ring: 'focus:ring-green-400', balance: 'text-green-600' }
+    }
+    if (normalizedRole === 'promoter') {
+      return { name: 'blue', class: 'text-blue-400', bg: 'bg-blue-500', ring: 'focus:ring-blue-400', balance: 'text-blue-600' }
+    }
+    // Default: Gray
+    return { name: 'gray', class: 'text-gray-400', bg: 'bg-gray-500', ring: 'focus:ring-gray-400', balance: 'text-gray-600' }
+  }
+
+  const { name: accentColor, class: accentColorClass, bg: bgColorClass, ring: ringColorClass, balance: balanceColorClass } = determineAccentColor(role)
+
 
   // --- Fetch functions menggunakan useCallback ---
   const fetchBalance = useCallback(async () => {
@@ -128,7 +139,7 @@ export const Topbar = () => {
     if (!walletAddress) return
 
     try {
-      // Format angka menjadi 234.3 (atau 234.30)
+      // Format angka
       const balance: number = await getWRCreditBalance(walletAddress)
       setMainBalance(parseFloat(balance.toFixed(2))) 
     } catch (err) {
@@ -172,7 +183,10 @@ export const Topbar = () => {
         // Fetch role first
         const res = await fetch('/api/roles/get')
         const data: { success: boolean, activeRole?: string } = await res.json()
+        
+        // PASTIKAN ROLE SELALU DIUBAH KE HURUF KECIL
         const activeRole = data.success && data.activeRole ? data.activeRole.toLowerCase() : ''
+        
         setRole(activeRole)
 
         // Fetch other data
@@ -276,13 +290,13 @@ export const Topbar = () => {
         {/* KIRI: Logo/Home */}
         <button
           aria-label="Home Dashboard"
-          // Perubahan: Focus ring menggunakan accentColor
+          onClick={() => router.push('/')}
           className={`flex items-center gap-2 p-2 rounded-md transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 ${ringColorClass}`}
           title="Dashboard"
         >
-          {/* Perubahan: Warna Ikon Home dinamis */}
-          <Home className={`w-5 h-5 ${accentColorClass} flex-shrink-0`} />
-          <span className="hidden sm:inline text-lg font-bold tracking-tight text-white">WRC</span>
+          {/* Warna Ikon Home dinamis */}
+          <Home className={`w-5 h-5 ${accentColorClass} flex-shrink-0`} /> 
+          <span className="hidden sm:inline text-lg font-bold tracking-tight text-white">App Name</span>
         </button>
 
         {/* TENGAH: Kosong untuk centering */}
@@ -347,17 +361,16 @@ export const Topbar = () => {
                 setIsMenuOpen((s) => !s)
               }}
               aria-label="User menu"
-              // Perubahan: Focus ring menggunakan accentColor
               className={`ml-2 flex items-center gap-2 p-1.5 rounded-full transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 ${ringColorClass}`}
               title="Profile Menu"
             >
-              {/* Perubahan: Background Avatar/Circle dinamis */}
+              {/* Background Avatar/Circle dinamis */}
               <div className={`w-9 h-9 ${bgColorClass} rounded-full flex items-center justify-center font-semibold text-white text-sm`}>
                 {username?.[0]?.toUpperCase() || 'U'}
               </div>
               <div className="hidden lg:flex flex-col text-left leading-tight pr-1">
                 <span className="text-sm font-medium truncate max-w-[120px] text-white">{username}</span>
-                {/* Perubahan: Warna Role di Topbar dinamis */}
+                {/* Warna Role di Topbar dinamis */}
                 <span className={`text-xs ${accentColorClass} uppercase font-medium`}>{role || 'No role'}</span> 
               </div>
             </button>
@@ -371,8 +384,8 @@ export const Topbar = () => {
                 >
                   <div className="px-4 py-3 border-b border-gray-200">
                     <p className="text-sm font-bold text-gray-900 truncate">{username}</p>
-                    {/* Perubahan: Warna Role di Dropdown dinamis */}
-                    <p className={`text-xs ${isHunter ? 'text-green-600' : 'text-blue-600'} uppercase font-medium`}>{role || 'No role'}</p>
+                    {/* Warna Role di Dropdown dinamis */}
+                    <p className={`text-xs ${balanceColorClass} uppercase font-medium`}>{role || 'No role'}</p>
                   </div>
 
                   <ul className="text-sm">
@@ -382,8 +395,8 @@ export const Topbar = () => {
                         <CreditCard className='w-4 h-4'/>
                         <span>Main Balance</span>
                       </div>
-                      {/* Perubahan: Warna Saldo dinamis */}
-                      <span className={`font-semibold ${isHunter ? 'text-green-600' : 'text-blue-600'}`}>
+                      {/* Warna Saldo dinamis */}
+                      <span className={`font-semibold ${balanceColorClass}`}>
                         {mainBalance !== null ? `${mainBalance.toFixed(2)} WR` : '—'}
                       </span>
                     </li>

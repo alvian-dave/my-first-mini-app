@@ -52,11 +52,11 @@ export default function Home() {
       ) : status === "unauthenticated" ? (
         <section className="max-w-3xl text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
           <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
-            Welcome to <span className="text-blue-500">WR Bounty Platform</span>
+            Welcome to WR Bounty Platform
           </h1>
 
           <p className="text-gray-300 text-lg sm:text-xl max-w-xl mx-auto mb-8">
-            A mini app where <span className="text-emerald-400">hunters</span> earn rewards and
+            A mini app where <span className="text-green-400">hunters</span> earn rewards and
             <span className="text-blue-400"> project owners</span> launch campaigns.
           </p>
 
