@@ -5,6 +5,16 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
+import { Home, Bell, Mail, Info, LogOut, User, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 const AboutModal = dynamic(() => import('@/components/AboutModal'), { ssr: false })
 const ContactUsModal = dynamic(() => import('@/components/ContactUs'), { ssr: false })
@@ -14,19 +24,16 @@ export const Topbar = () => {
   const router = useRouter()
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  // reuse isMenuOpen as PROFILE dropdown open state (keeps original variable usage)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showContactUs, setShowContactUs] = useState(false)
   const [role, setRole] = useState('')
   const [mainBalance, setMainBalance] = useState<number | null>(null)
 
-  // --- Notification state ---
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
 
-  // --- Refresh state ---
   const [refreshing, setRefreshing] = useState(false)
   const [canRefresh, setCanRefresh] = useState(true)
 
@@ -35,7 +42,6 @@ export const Topbar = () => {
     session?.user?.walletAddress?.split('@')[0] ||
     'Unknown User'
 
-  // --- Fetch functions ---
   const fetchBalance = async () => {
     const walletAddress = session?.user?.walletAddress
     if (!walletAddress) return
@@ -72,40 +78,30 @@ export const Topbar = () => {
     setCanRefresh(false)
     await Promise.all([fetchBalance(), fetchNotifications()])
     setRefreshing(false)
-    setTimeout(() => setCanRefresh(true), 10000) // enable after 10s
+    setTimeout(() => setCanRefresh(true), 10000)
   }
 
-  // --- Initial fetch ---
   useEffect(() => {
     if (!session?.user?.id) return
-
     const init = async () => {
       try {
-        // --- fetch role ---
         const res = await fetch('/api/roles/get')
         const data = await res.json()
         const activeRole = data.success && data.activeRole ? data.activeRole : ''
         setRole(activeRole)
 
-        // --- fetch balance ---
         await fetchBalance()
-
-        // --- fetch notifications langsung pakai role terbaru ---
         if (activeRole) await fetchNotifications(activeRole)
       } catch (err) {
         console.error('Failed initial fetch:', err)
       }
     }
-
     init()
   }, [session])
 
-  // === AUTO CLOSE MENU ===
   useEffect(() => {
     const container = document.getElementById('app-scroll')
-
     const closeProfile = () => setIsMenuOpen(false)
-
     if (container) container.addEventListener('scroll', closeProfile)
 
     const handleClickOutside = (e: MouseEvent) => {
@@ -117,14 +113,12 @@ export const Topbar = () => {
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-
     return () => {
       if (container) container.removeEventListener('scroll', closeProfile)
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
 
-  // --- Notification mark as read ---
   const markAsRead = async (id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
@@ -145,7 +139,6 @@ export const Topbar = () => {
     }
   }
 
-  // --- Logout ---
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
@@ -158,26 +151,13 @@ export const Topbar = () => {
     }
   }
 
-  const handleGoToAbout = () => {
-    // close dropdown first
-    setIsMenuOpen(false)
-    setShowAbout(true)
-  }
-
-  const handleGoToContactUs = () => {
-    setIsMenuOpen(false)
-    setShowContactUs(true)
-  }
-
   const [isNavigating, setIsNavigating] = useState(false)
-
   const handleChooseRole = () => {
     setIsNavigating(true)
     router.push('/home')
     setTimeout(() => setIsNavigating(false), 2000)
   }
 
-  // helper: open notifications modal (close profile dropdown first)
   const openNotifications = () => {
     setIsMenuOpen(false)
     setShowNotificationsModal(true)
@@ -185,189 +165,90 @@ export const Topbar = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-gray-900 text-white px-4 py-3 shadow flex items-center justify-between">
-        {/* LEFT: Home (icon + optional label on larger screens) */}
-        <div className="flex items-center gap-3">
-          <button
-            aria-label="Home"
-            className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-            title="Home"
-          >
-            {/* home svg */}
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75l9-7.5 9 7.5M4.5 10.5v9.75h5.25V15h4.5v5.25H19.5V10.5" />
-            </svg>
-            <span className="hidden sm:inline text-lg font-semibold tracking-wide">Dashboard</span>
-          </button>
-        </div>
+      <header className="sticky top-0 z-50 bg-gray-900 text-white shadow px-4 py-3 flex items-center justify-between">
+        {/* LEFT: Home */}
+        <Button variant="ghost" size="icon" className="flex items-center gap-2" aria-label="Home" title="Home">
+          <Home className="w-6 h-6" />
+        </Button>
 
-        {/* CENTER: keep empty so layout stays single-line and balanced */}
         <div className="flex-1" />
 
-        {/* RIGHT: Icons + profile */}
         {status === 'authenticated' && (
-          <div className="relative flex items-center gap-2">
-            {/* LOGOUT ICON (to the left of profile) */}
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="Logout"
-            >
-              {/* logout svg */}
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
-              </svg>
-            </button>
+          <div className="flex items-center gap-2 relative">
+            {/* Logout */}
+            <Button variant="ghost" size="icon" onClick={handleLogout} disabled={isLoggingOut} title="Logout">
+              <LogOut className="w-5 h-5 text-red-400" />
+            </Button>
 
-            {/* NOTIFICATION ICON (single) */}
-            <button
-              onClick={openNotifications}
-              className="relative p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="Notifications"
-            >
-              {/* bell svg */}
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+            {/* Notifications */}
+            <Button variant="ghost" size="icon" onClick={openNotifications} title="Notifications">
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && <Badge variant="destructive" className="absolute -top-1 -right-1">{unreadCount}</Badge>}
+            </Button>
 
-            {/* CONTACT US ICON */}
-            <button
-              onClick={() => { setShowContactUs(true); setIsMenuOpen(false) }}
-              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="Contact us"
-            >
-<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
-  viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-  <path strokeLinecap="round" strokeLinejoin="round"
-    d="M18 13v3a3 3 0 01-3 3h-1M6 13v3a3 3 0 003 3h1m8-6a8 8 0 10-16 0m16 0v2m-16-2v2m5-7h2a2 2 0 012 2v3a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3a2 2 0 012-2z" />
-</svg>
-            </button>
+            {/* Contact Us */}
+            <Button variant="ghost" size="icon" onClick={() => setShowContactUs(true)} title="Contact us">
+              <Mail className="w-5 h-5" />
+            </Button>
 
-            {/* ABOUT ICON */}
-            <button
-              onClick={() => { setShowAbout(true); setIsMenuOpen(false) }}
-              className="p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="About"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
-              </svg>
-            </button>
+            {/* About */}
+            <Button variant="ghost" size="icon" onClick={() => setShowAbout(true)} title="About">
+              <Info className="w-5 h-5" />
+            </Button>
 
-            {/* PROFILE BUTTON (id kept as topbar-button to match original click-outside logic) */}
-            <button
-              id="topbar-button"
-              onClick={() => {
-                // toggle profile dropdown and ensure notifications modal closed
-                setShowNotificationsModal(false)
-                setIsMenuOpen((s) => !s)
-              }}
-              aria-label="User menu"
-              className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-800 focus:outline-none"
-              title="Profile"
-            >
-              <div className="hidden sm:flex flex-col text-right leading-tight">
-                <span className="text-sm font-semibold truncate max-w-[140px]">{username}</span>
-                <span className="text-xs text-green-400 uppercase truncate">{role || 'No role'}</span>
-              </div>
-              <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center font-bold uppercase text-sm">
-                {username?.[0] || 'U'}
-              </div>
-            </button>
-
-            {/* PROFILE DROPDOWN (id kept topbar-menu to match original click-outside logic) */}
-            {isMenuOpen && (
-                <div
-                  id="topbar-menu"
-                  className="absolute right-0 top-full mt-2 w-64 bg-white text-gray-800 rounded-md shadow-lg overflow-hidden animate-fade-in-up"
-                  onMouseLeave={() => setIsMenuOpen(false)}
-                >
-                <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{username}</p>
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" id="topbar-button" className="flex items-center gap-2">
+                  <div className="hidden sm:flex flex-col text-right leading-tight">
+                    <span className="text-sm font-semibold truncate max-w-[140px]">{username}</span>
+                    <span className="text-xs text-green-400 uppercase truncate">{role || 'No role'}</span>
+                  </div>
+                  <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center font-bold uppercase text-sm">
+                    {username?.[0] || 'U'}
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent id="topbar-menu" align="end">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <p className="text-sm font-semibold">{username}</p>
                   <p className="text-xs text-green-600 uppercase">{role || 'No role'}</p>
                 </div>
 
-                <ul className="divide-y divide-gray-200 text-sm">
-                  {/* --- Refresh button --- */}
-                  <li className="px-4 py-2">
-                    <button
-                      onClick={handleRefresh}
-                      disabled={!canRefresh}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 transition ${
-                        !canRefresh ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                    >
-                      {refreshing && <span className="animate-spin">⏳</span>}
-                      Refresh
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        className="w-4 h-4"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 1116 0 8 8 0 01-16 0z"
-                        />
-                      </svg>
-                    </button>
-                  </li>
+                <DropdownMenuItem asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between" onClick={handleRefresh} disabled={!canRefresh}>
+                    {refreshing ? 'Loading…' : 'Refresh'}
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuItem>
 
-                  {/* --- Main balance --- */}
-                  <li className="flex justify-between items-center px-4 py-2">
-                    <span>Main balance</span>
-                    <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span>
-                  </li>
+                <DropdownMenuItem>
+                  <span className="flex justify-between w-full">Main balance <span className="font-medium">{mainBalance !== null ? `${mainBalance} WR` : '—'}</span></span>
+                </DropdownMenuItem>
 
-                  {/* --- Choose Role --- */}
-
-                  <li>
-                    <button
-                      onClick={handleChooseRole}
-                      disabled={isNavigating}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 transition ${
-                        isNavigating ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                    >
-                      {isNavigating ? 'Loading…' : 'Choose role'}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
+                <DropdownMenuItem asChild>
+                  <Button variant="ghost" size="sm" className="w-full text-left" onClick={handleChooseRole} disabled={isNavigating}>
+                    {isNavigating ? 'Loading…' : 'Choose role'}
+                  </Button>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </header>
 
-      {/* --- Modals --- */}
+      {/* Modals */}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
-
       {showContactUs && <ContactUsModal onClose={() => setShowContactUs(false)} />}
 
-      {/* Notifications Modal (same behavior as original) */}
+      {/* Notifications Modal */}
       {showNotificationsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white w-96 max-h-[70vh] rounded-lg shadow-lg flex flex-col">
-            <div className="flex justify-between items-center px-4 py-3 border-b sticky top-0 bg-white z-10">
-              <h2 className="text-lg font-semibold">Notifications</h2>
-              <button
-                onClick={() => setShowNotificationsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                Close
-              </button>
-            </div>
-
+        <Dialog open={showNotificationsModal} onOpenChange={setShowNotificationsModal}>
+          <DialogContent className="w-96 max-h-[70vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Notifications</DialogTitle>
+              <Button variant="ghost" size="icon" onClick={() => setShowNotificationsModal(false)}>Close</Button>
+            </DialogHeader>
             <div className="overflow-y-auto flex-1">
               {notifications.length > 0 ? (
                 notifications.map((n) => (
@@ -378,7 +259,6 @@ export const Topbar = () => {
                   >
                     <p className="text-sm">{n.message}</p>
                     <p className="text-xs text-gray-600">{new Date(n.createdAt).toLocaleString()}</p>
-
                     {n.metadata?.txLink && (
                       <a
                         href={n.metadata.txLink}
@@ -396,8 +276,8 @@ export const Topbar = () => {
                 <p className="px-4 py-2 text-sm text-gray-500 text-center">No notifications yet</p>
               )}
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   )
