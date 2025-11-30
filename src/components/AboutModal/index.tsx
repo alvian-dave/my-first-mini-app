@@ -8,23 +8,23 @@ interface AboutModalProps {
 
 /**
  * ## AboutModal
- * Modal informatif yang didesain dengan estetika modern/dark mode.
- * Menggunakan Shadcn/Tailwind untuk tampilan profesional dan bersih.
+ * An informative modal designed with a modern/dark mode aesthetic.
+ * Explains the WR Bounty Platform and its token, WR Credit.
  */
 export default function AboutModal({ onClose }: AboutModalProps) {
   return (
-    // Backdrop: lebih gelap dan z-index tinggi
+    // Backdrop: Darker and high z-index
     <div 
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 backdrop-blur-sm"
-      onClick={onClose} // Menutup saat klik di luar
+      onClick={onClose} // Closes on outside click
     >
-      {/* Modal Container: Warna gelap, sudut membulat, shadow kuat */}
+      {/* Modal Container: Dark color, rounded corners, strong shadow */}
       <div 
         className="bg-gray-900 border border-gray-700 rounded-3xl shadow-2xl max-w-lg w-full relative transform transition-all duration-300 scale-95 md:scale-100"
-        onClick={(e) => e.stopPropagation()} // Mencegah penutupan saat klik di dalam modal
+        onClick={(e) => e.stopPropagation()} // Prevents closing on inside click
       >
         
-        {/* Close Button: Ikon X di pojok kanan atas, warna kontras */}
+        {/* Close Button: X icon in top right corner, contrasting color */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-cyan-400 p-1 transition-colors z-10"
@@ -40,7 +40,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
             </h2>
         </div>
 
-        {/* Konten Utama: Bisa discroll dengan padding yang nyaman */}
+        {/* Main Content: Scrollable with comfortable padding */}
         <div className="p-6 space-y-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
           
           {/* Section 1: Platform Overview */}
@@ -49,10 +49,9 @@ export default function AboutModal({ onClose }: AboutModalProps) {
                 <Zap size={20} className='text-blue-400'/> Platform Overview
             </h3>
             <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-              WR Bounty Platform adalah sistem *campaign* dan hadiah terdesentralisasi
-              yang dibangun di atas **World Chain**. Platform ini menghubungkan **Promoters**
-              (Pemilik Proyek) yang mencari promosi dengan **Hunters** (Penyelesai Tugas)
-              yang menyelesaikan tugas digital secara transparan dan otomatis.
+              The **WR Bounty Platform** is a decentralized campaign and reward system
+              built on **World Chain**. It connects **Promoters** who seek project promotion 
+              with **Hunters** who complete digital tasks reliably, transparently, and automatically.
             </p>
           </section>
 
@@ -64,26 +63,26 @@ export default function AboutModal({ onClose }: AboutModalProps) {
             
             <div className="bg-gray-800 p-4 rounded-xl shadow-inner">
                 <p className="text-sm text-gray-400 mb-3">
-                    WR adalah token utilitas yang digunakan sebagai kredit internal untuk menggerakkan
-                    ekonomi platform.
+                    WR is a utility token used as internal credit to fuel the platform's
+                    economy.
                 </p>
                 <ul className="list-none space-y-3">
                     <li className='flex items-start text-sm text-gray-300'>
                         <span className='mr-3 text-cyan-400 font-bold shrink-0'>&#x2022; Promoters:</span>
                         <span className='text-gray-400'>
-                            Mendapatkan WR dengan mendepositkan USDC.e (dengan rasio tetap 1 USDC = 200 WR) untuk membuat *campaign*.
+                            Acquire WR by depositing USDC.e (at a fixed ratio of 1 USDC = 200 WR) to create campaigns.
                         </span>
                     </li>
                     <li className='flex items-start text-sm text-gray-300'>
                         <span className='mr-3 text-cyan-400 font-bold shrink-0'>&#x2022; Hunters:</span>
                         <span className='text-gray-400'>
-                            Mendapatkan WR sebagai hadiah saat berhasil menyelesaikan tugas *campaign*.
+                            Earn WR as rewards upon successful completion of campaign tasks.
                         </span>
                     </li>
                     <li className='flex items-start text-sm text-gray-300'>
-                        <span className='mr-3 text-cyan-400 font-bold shrink-0'>&#x2022; Nilai Masa Depan:</span>
+                        <span className='mr-3 text-cyan-400 font-bold shrink-0'>&#x2022; Future Value:</span>
                         <span className='text-gray-400 italic'>
-                            WR adalah **kredit sementara** yang nantinya dapat ditukarkan dengan token resmi **WRC** setelah peluncuran.
+                            WR is a **temporary credit token** that will be redeemable for the official token **WRC** after launch.
                         </span>
                     </li>
                 </ul>
@@ -92,31 +91,31 @@ export default function AboutModal({ onClose }: AboutModalProps) {
 
           {/* Section 3: Key Features (Grid Layout) */}
           <section>
-            <h3 className="text-xl font-bold text-gray-200 mb-4">Fitur Utama</h3>
+            <h3 className="text-xl font-bold text-gray-200 mb-4">Key Features</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Feature Card 1 */}
                 <FeatureCard 
                     icon="✅"
                     title="Transparent Rewards"
-                    description="Sistem hadiah otomatis dan transparan yang didukung oleh smart contract on-chain."
+                    description="Automated and transparent reward system powered by on-chain smart contracts."
                 />
                 {/* Feature Card 2 */}
                 <FeatureCard 
                     icon="💰"
                     title="USDC.e Backed"
-                    description="Semua campaign didukung oleh deposit USDC.e, menjamin nilai dan kredibilitas hadiah."
+                    description="All campaigns are secured by USDC.e deposits, guaranteeing the value and credibility of rewards."
                 />
                 {/* Feature Card 3 */}
                 <FeatureCard 
                     icon="🔗"
                     title="Decentralized Connection"
-                    description="Menghubungkan Promoters dan Hunters secara efisien tanpa perantara yang berlebihan."
+                    description="Efficiently connects Promoters and Hunters without unnecessary intermediaries."
                 />
                 {/* Feature Card 4 */}
                 <FeatureCard 
                     icon="🚀"
                     title="World Chain Native"
-                    description="Memanfaatkan kecepatan dan efisiensi biaya gas rendah dari jaringan World Chain."
+                    description="Leverages the speed and low gas fee efficiency of the World Chain network."
                 />
             </div>
           </section>
@@ -130,7 +129,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
   )
 }
 
-// --- Komponen Pembantu untuk Fitur (Clean Separation) ---
+// --- Helper Component for Features ---
 interface FeatureCardProps {
     icon: string;
     title: string;
