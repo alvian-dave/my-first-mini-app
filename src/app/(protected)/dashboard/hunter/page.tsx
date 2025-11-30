@@ -273,7 +273,7 @@ export default function HunterDashboard() {
                                 <Button
                                     variant="link"
                                     onClick={() => toggleExpand(c._id)}
-                                    className="p-0 h-auto text-blue-400 hover:text-blue-300"
+                                    className="p-0 h-auto text-green-400 hover:text-green-300"
                                 >
                                     {isExpanded ? 'Show Less' : 'Read More'}
                                 </Button>
