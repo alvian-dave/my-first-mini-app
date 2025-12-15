@@ -37,12 +37,12 @@ export const AuthButton = () => {
         size="lg"
         className={`
           relative overflow-hidden w-full sm:min-w-[200px] px-8 py-6 text-lg font-bold tracking-wide text-white
-          bg-gradient-to-r from-red-700 via-orange-600 to-yellow-500
-          border border-orange-400/50 rounded-xl
-          shadow-[0_0_15px_rgba(255,69,0,0.3)]
+          bg-gradient-to-r from-blue-600 to-green-600
+          border border-blue-400/50 rounded-xl
+          shadow-[0_0_15px_rgba(59,130,246,0.5)]
           transition-all duration-300 ease-out
           
-          hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]
+          hover:shadow-[0_0_30px_rgba(34,197,94,0.6)]
           hover:scale-105 hover:brightness-110 hover:-translate-y-1
           
           active:scale-95 active:shadow-none

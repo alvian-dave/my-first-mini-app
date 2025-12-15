@@ -51,8 +51,8 @@ export default function Home() {
           color: white;
           text-shadow: 
             0 0 7px #fff,
-            0 -10px 25px #f00, 
-            0 -20px 35px #ff0;
+            0 -10px 25px #22c55e, 
+            0 -20px 35px #3b82f6;
           animation: flicker 1.5s infinite alternate;
         }
 
@@ -60,14 +60,14 @@ export default function Home() {
           0%, 100% {
             text-shadow: 
               0 0 4px #fff,
-              0 -5px 15px #fe0, 
-              0 -15px 30px #f00;
+              0 -5px 15px #3b82f6, 
+              0 -15px 30px #22c55e;
           }
           50% {
             text-shadow: 
               0 0 9px #fff,
-              0 -12px 25px #fe0, 
-              0 -22px 40px #f00;
+              0 -12px 25px #22c55e, 
+              0 -22px 40px #3b82f6;
           }
         }
       `}</style>
