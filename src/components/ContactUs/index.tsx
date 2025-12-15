@@ -6,30 +6,35 @@ interface ContactUsModalProps {
   onClose: () => void
 }
 
+const SHOW_WEBSITE = false
+
 const CONTACT_LINKS = [
-  {
-    icon: <Globe className="w-5 h-5" />,
-    label: 'Official Website',
-    url: 'https://worldrewardcoin.vercel.app',
-    color: 'text-cyan-400', 
-  },
+  ...(SHOW_WEBSITE
+    ? [{
+        icon: <Globe className="w-5 h-5" />,
+        label: 'Official Website',
+        url: 'https://worldrewardcoin.site',
+        color: 'text-cyan-400',
+      }]
+    : []),
+
   {
     icon: <Send className="w-5 h-5" />,
     label: 'Telegram Group (Chat)',
     url: 'https://t.me/WRC_Community',
-    color: 'text-sky-500', 
+    color: 'text-sky-500',
   },
   {
     icon: <Users className="w-5 h-5" />,
     label: 'Telegram Channel (Announcements)',
     url: 'https://t.me/WRC_OfficialAnn',
-    color: 'text-sky-400', 
+    color: 'text-sky-400',
   },
   {
     icon: <Twitter className="w-5 h-5" />,
     label: 'Twitter / X',
     url: 'https://x.com/wrc_bounty',
-    color: 'text-blue-400', 
+    color: 'text-blue-400',
   },
 ]
 
