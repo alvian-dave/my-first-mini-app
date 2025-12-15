@@ -10,7 +10,7 @@ const CONTACT_LINKS = [
   {
     icon: <Globe className="w-5 h-5" />,
     label: 'Official Website',
-    url: 'https://worldrewardcoin.site',
+    url: 'https://worldrewardcoin.vercel.app',
     color: 'text-cyan-400', 
   },
   {
