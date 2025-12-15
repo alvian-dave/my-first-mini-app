@@ -392,19 +392,19 @@ export const Topbar = () => {
             {isMenuOpen && (
                 <div
                   id="topbar-menu"
-                  className="absolute right-0 top-full mt-2 w-64 bg-white text-gray-800 rounded-lg shadow-2xl border border-gray-100 z-50 transition-all duration-200 origin-top-right scale-100 opacity-100"
+                  className="absolute right-0 top-full mt-2 w-64 bg-gray-800 text-white rounded-lg shadow-2xl border border-gray-700 z-50 transition-all duration-200 origin-top-right scale-100 opacity-100"
                   onMouseLeave={() => setIsMenuOpen(false)}
                 >
-                  <div className="px-4 py-3 border-b border-gray-200">
-                    <p className="text-sm font-bold text-gray-900 truncate">{username}</p>
+                  <div className="px-4 py-3 border-b border-gray-700">
+                    <p className="text-sm font-bold text-white truncate">{username}</p>
                     {/* Warna Role di Dropdown dinamis */}
                     <p className={`text-xs ${balanceColorClass} uppercase font-medium`}>{role || 'No role'}</p>
                   </div>
 
                   <ul className="text-sm">
                     {/* --- Main balance (Credit) --- */}
-                    <li className="flex justify-between items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                      <div className='flex items-center gap-3 text-gray-600'>
+                    <li className="flex justify-between items-center px-4 py-2 hover:bg-gray-700 transition-colors">
+                      <div className='flex items-center gap-3 text-gray-300'>
                         <CreditCard className='w-4 h-4'/>
                         <span>Main Balance</span>
                       </div>
@@ -413,18 +413,18 @@ export const Topbar = () => {
                         {mainBalance !== null ? `${mainBalance.toFixed(2)} WR` : '—'}
                       </span>
                     </li>
-                      <li className="h-px bg-gray-100 my-1"/>
+                      <li className="h-px bg-gray-700 my-1"/>
 
                     {/* --- Choose Role --- */}
                     <li>
                       <button
                         onClick={handleChooseRole}
                         disabled={isNavigating}
-                        className={`w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors ${
+                        className={`w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-700 transition-colors ${
                           isNavigating ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
-                        <Users className='w-4 h-4 text-gray-600'/>
+                        <Users className='w-4 h-4 text-gray-300'/>
                         {isNavigating ? 'Switching Role…' : 'Switch Role'}
                       </button>
                     </li>
@@ -433,9 +433,9 @@ export const Topbar = () => {
                     <li>
                       <button
                         onClick={openContactUsModal}
-                        className="md:hidden w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors"
+                        className="md:hidden w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-700 transition-colors"
                       >
-                        <MessageSquare className='w-4 h-4 text-gray-600'/>
+                        <MessageSquare className='w-4 h-4 text-gray-300'/>
                         Contact Us
                       </button>
                     </li>
@@ -444,19 +444,19 @@ export const Topbar = () => {
                     <li>
                       <button
                         onClick={openAboutModal}
-                        className="md:hidden w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors"
+                        className="md:hidden w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-700 transition-colors"
                       >
-                        <Info className='w-4 h-4 text-gray-600'/>
+                        <Info className='w-4 h-4 text-gray-300'/>
                         About
                       </button>
                     </li>
 
                     {/* --- Logout --- */}
-                    <li className="border-t border-gray-100 mt-1">
+                    <li className="border-t border-gray-700 mt-1">
                       <button
                         onClick={handleLogout}
                         disabled={isLoggingOut}
-                        className={`w-full text-left flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors ${
+                        className={`w-full text-left flex items-center gap-3 px-4 py-2 text-red-400 hover:bg-red-900/40 transition-colors ${
                           isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
@@ -472,8 +472,8 @@ export const Topbar = () => {
         {/* Tampilkan Loading/Skeleton jika status loading */}
         {status === 'loading' && (
           <div className="animate-pulse flex items-center gap-2">
-            <div className="w-24 h-4 bg-gray-600 rounded"></div>
-            <div className="w-8 h-8 bg-gray-600 rounded-full"></div>
+            <div className="w-24 h-4 bg-gray-300 rounded"></div>
+            <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
           </div>
         )}
       </header>

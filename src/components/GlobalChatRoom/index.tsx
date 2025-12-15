@@ -138,7 +138,7 @@ export const GlobalChatRoom = () => {
     <div className="flex flex-col flex-1 min-h-0 h-full"> 
       <div
         ref={chatRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 text-sm bg-gray-50"
+        className="flex-1 overflow-y-auto p-4 space-y-3 text-sm bg-gray-900"
       >
         {messages.map((m) => {
           const isSelf = m.username === username
@@ -150,6 +150,10 @@ export const GlobalChatRoom = () => {
             ? 'bg-blue-600 text-white' // Warna Promoter
             : 'bg-green-500 text-white' // Warna Hunter (Default)
 
+          // Gaya bubble lain (Dark Mode)
+           const otherBubbleStyle = 'bg-gray-800 text-gray-200 rounded-tl-none border border-gray-700'
+           const otherTimestampColor = 'text-gray-400'
+
           return (
             <div
               key={m.id}
@@ -159,7 +163,7 @@ export const GlobalChatRoom = () => {
                 className={`max-w-[80%] px-3 py-2 rounded-xl shadow-md ${
                   isSelf
                     ? `${selfBubbleColor} rounded-br-none`
-                    : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
+                    : otherBubbleStyle
                 }`}
               >
                 {/* Header Pesan */}
@@ -177,7 +181,7 @@ export const GlobalChatRoom = () => {
                 </div>
 
                 {/* Isi Pesan */}
-                <div className={`${isSelf ? 'text-white' : 'text-gray-800'} whitespace-pre-line text-[0.9rem]`}>
+                <div className={`${isSelf ? 'text-white' : 'text-gray-200'} whitespace-pre-line text-[0.9rem]`}>
                   {m.text}
                 </div>
               </div>
@@ -187,10 +191,10 @@ export const GlobalChatRoom = () => {
       </div>
 
       {/* Input Area */}
-      <div className="border-t p-3 flex items-center gap-2 bg-white">
+      <div className="border-t border-gray-700 p-3 flex items-center gap-2 bg-gray-800">
         <Input
           // Kondisional class ring: Jika Promoter warna Biru, selain itu Hijau
-          className={`flex-1 text-sm ${isPromoter ? 'focus-visible:ring-blue-500' : 'focus-visible:ring-green-500'}`}
+          className={`flex-1 text-sm bg-gray-700 text-white border-gray-600 placeholder:text-gray-400 ${isPromoter ? 'focus-visible:ring-blue-500' : 'focus-visible:ring-green-500'}`}
           placeholder={`Chatting as ${username} (${role})...`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
