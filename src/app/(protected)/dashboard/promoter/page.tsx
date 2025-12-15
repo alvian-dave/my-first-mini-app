@@ -610,7 +610,7 @@ export default function PromoterDashboard() {
             <p className="text-xs text-gray-400 mt-1">Chat</p>
           </div>
         ) : (
-          <Card className="w-80 h-96 bg-white text-black rounded-xl shadow-2xl overflow-hidden flex flex-col">
+          <Card className="w-80 h-96 bg-gray-800 text-gray-200 border border-gray-700 rounded-xl shadow-2xl overflow-hidden flex flex-col">
             <CardHeader className="py-2 px-4 bg-blue-600 text-white flex flex-row items-center justify-between">
               <CardTitle className="text-base font-semibold text-white">Global Chat</CardTitle>
               <Button
