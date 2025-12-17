@@ -314,11 +314,7 @@ const handleVerify = async (idx: number, task: Task) => {
               )}
             >
               <a
-                href={
-                  task.service === 'telegram'
-                    ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${session.user.id}`
-                    : task.url
-                }
+                href={task.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 // Teks link default warna putih/terang
