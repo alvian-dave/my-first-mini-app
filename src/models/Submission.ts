@@ -41,6 +41,8 @@ const submissionSchema = new Schema(
       default: "none",
     },
 
+    rewardRequestedAt: { type: Date },
+
     // reward amount in wei (string)
     rewardAmount: { type: String },
 
@@ -55,5 +57,11 @@ const submissionSchema = new Schema(
   },
   { timestamps: true }
 )
+
+submissionSchema.index(
+  { userId: 1, campaignId: 1 },
+  { unique: true }
+)
+
 
 export default models.Submission || model("Submission", submissionSchema)

@@ -6,13 +6,11 @@ import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
 import { useSession } from 'next-auth/react'
-import { Loader2, CheckCircle } from 'lucide-react'
+import { Loader2, CheckCircle, Wallet, ArrowRightLeft, Zap, X } from 'lucide-react'
 import { toast } from 'sonner' 
 
-// ABI (Asumsi file ini ada di path yang benar)
 import ERC20 from '@/abi/ERC20.json' 
 
-// Komponen Shadcn/ui
 import {
   Dialog,
   DialogContent,
@@ -33,7 +31,7 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
   const [estimatedWR, setEstimatedWR] = useState('0.0000')
   const [transactionId, setTransactionId] = useState<string>('')
   
-  const RATE = 0.0050 // 1 WR = 0.0050 USDC
+  const RATE = 0.0050 
 
   const { data: session } = useSession()
   const userAddress = session?.user?.walletAddress || ''
@@ -49,29 +47,26 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
     transactionId,
   })
 
-  // Fungsi Sonner Toast - Disesuaikan untuk tema gelap
   const showSonnerToast = (message: string, type: 'success' | 'error') => {
     if (type === 'success') {
       toast.success(message, {
         duration: 3000,
-        style: { backgroundColor: '#1f2937', color: 'white', borderColor: '#34d399' }
+        style: { backgroundColor: '#0f172a', color: '#10b981', borderColor: '#10b981/20' }
       })
     } else {
       toast.error(message, {
         duration: 3000,
-        style: { backgroundColor: '#450a0a', color: 'white', borderColor: '#f87171' }
+        style: { backgroundColor: '#0f172a', color: '#ef4444', borderColor: '#ef4444/20' }
       })
     }
   }
 
-  // Effect untuk menghitung estimasi WR
   useEffect(() => {
     if (!amountUSDC || isNaN(parseFloat(amountUSDC))) return setEstimatedWR('0.0000')
     const wr = parseFloat(amountUSDC) / RATE
     setEstimatedWR(wr.toFixed(4))
   }, [amountUSDC])
 
-  // Fungsi Pengiriman Transaksi
   const sendTransaction = async () => {
     if (!amountUSDC || Number(amountUSDC) <= 0) {
         showSonnerToast('Please enter a valid amount.', 'error')
@@ -80,7 +75,6 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
 
     const usdcAddress = process.env.NEXT_PUBLIC_USDC_CONTRACT || ''
     const contractAddress = process.env.NEXT_PUBLIC_WR_CONTRACT || ''
-    // Pastikan amount dihitung dengan benar. USDC menggunakan 6 desimal
     const amount = (Number(amountUSDC) * 1_000_000).toString() 
 
     try {
@@ -96,33 +90,19 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
       })
 
       if (finalPayload.status === 'error') {
-        console.error('Error sending transaction:', finalPayload)
-        
-        let errorMessage = 'Unknown error';
-        
-        if ((finalPayload as any).error) {
-            errorMessage = (finalPayload as any).error;
-        } else {
-            errorMessage = JSON.stringify(finalPayload);
-        }
-        
+        let errorMessage = (finalPayload as any).error || JSON.stringify(finalPayload);
         showSonnerToast(`Transaction failed: ${errorMessage}`, 'error')
-        
       } else {
-        console.log('Transaction sent successfully:', finalPayload)
         setTransactionId(finalPayload.transaction_id)
         showSonnerToast('Transaction sent! Waiting for network confirmation.', 'success')
       }
     } catch (err) {
-      console.error('Unexpected error:', err)
-      showSonnerToast(`Unexpected error during transaction: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      showSonnerToast(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
   }
 
-  // Effect Pasca Konfirmasi Transaksi (Kirim ke Backend)
   useEffect(() => {
-    if (!isConfirmed || !transactionId) return
-    if (!userAddress) return
+    if (!isConfirmed || !transactionId || !userAddress) return
 
     const sendToBackend = async () => {
       try {
@@ -138,125 +118,126 @@ const USDCTransferModal = ({ onClose }: USDCTransferModalProps) => {
         const data = await res.json()
         
         if (!res.ok || !data.ok) {
-          console.error('❌ Topup backend error:', data)
-          showSonnerToast(data.message || 'Topup processing failed on backend.', 'error')
+          showSonnerToast(data.message || 'Topup processing failed.', 'error')
         } else {
-          showSonnerToast(
-            `Topup successful, ${estimatedWR} WR added. Please refresh dashboard.`,
-            'success'
-          )
-          // Opsional: Tutup modal setelah proses backend berhasil
-          // onClose() 
+          showSonnerToast(`Topup successful, ${estimatedWR} WR added.`, 'success')
         }
       } catch (err) {
-        console.error('Failed to call topup API:', err)
-        showSonnerToast('Failed to connect to backend service.', 'error')
+        showSonnerToast('Failed to connect to backend.', 'error')
       }
     }
     sendToBackend()
   }, [isConfirmed, transactionId, userAddress, amountUSDC, estimatedWR])
 
   return (
-    // Menggunakan Dialog shadcn/ui
     <Dialog open={true} onOpenChange={onClose}>
-<DialogContent
-  // Dark Mode: Latar belakang gelap (bg-gray-900), border abu-abu
-  // PERBAIKAN: Menambahkan text-gray-400 untuk membuat tombol close (X) terlihat
-  className="sm:max-w-[425px] rounded-xl border border-gray-700 bg-gray-900 p-6 
-             text-gray-400 hover:text-white 
-             focus-visible:ring-blue-600 focus-visible:ring-offset-gray-900"
->
-  <DialogHeader className="text-center">
-          <DialogTitle 
-            // Teks putih untuk judul
-            className="text-2xl font-bold text-white"
-          >
-            Topup WR with USDC 💵
-          </DialogTitle>
-          <DialogDescription 
-            // Teks abu-abu terang untuk deskripsi
-            className="text-sm text-gray-400"
-          >
-            Transfer USDC on World Chain to receive WR at a rate of 1 WR = ${RATE} USDC.
-          </DialogDescription>
-        </DialogHeader>
+      {/* Container utama dengan backdrop blur & penyesuaian posisi agar tidak tertutup Topbar */}
+      <DialogContent className="w-[92%] sm:max-w-[400px] rounded-[32px] border border-white/10 bg-[#0f172a]/95 backdrop-blur-xl p-0 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all">
+        
+        {/* Inner Glow Effect */}
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_40px_rgba(59,130,246,0.05)]" />
 
-        {/* Input Form */}
-        <div className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="usdc-amount" 
-                // Teks abu-abu terang untuk label
-                className="text-sm text-gray-400"
+        {/* Header Custom dengan Button Close yang jelas */}
+        <div className="relative px-6 pt-8 pb-4">
+            <button 
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
             >
-              USDC Amount
-            </Label>
-            <div className="relative mt-2">
+                <X size={20} />
+            </button>
+            <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                    <Wallet size={20} className="text-blue-400" />
+                </div>
+                <div>
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Protocol: Topup</h2>
+                    <DialogTitle className="text-xl font-black text-white italic uppercase tracking-tighter">
+                        WR <span className="text-blue-400 italic">Credits</span>
+                    </DialogTitle>
+                </div>
+            </div>
+            <DialogDescription className="text-[11px] font-medium text-slate-400 leading-relaxed uppercase tracking-wider">
+                1 WR = <span className="text-white">${RATE}</span> USDC • WORLD CHAIN
+            </DialogDescription>
+        </div>
+
+        <div className="px-6 py-4 space-y-6">
+          {/* Input Area */}
+          <div className="space-y-3">
+            <div className="flex justify-between">
+                <Label htmlFor="usdc-amount" className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Deposit Amount
+                </Label>
+                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">USDC.e</span>
+            </div>
+            
+            <div className="relative group">
               <Input
                 id="usdc-amount"
                 type="number"
                 value={amountUSDC}
                 onChange={(e) => setAmountUSDC(e.target.value)}
                 placeholder="0.00"
-                // Dark Mode Input: bg-gray-800, border-gray-700, teks putih
-                // Ring Focus: Menggunakan ring-blue-600 sesuai permintaan, ring-offset-gray-900 untuk dark mode
-                className="pr-16 h-12 text-lg bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus-visible:ring-blue-600 focus-visible:ring-offset-gray-900"
+                className="h-14 text-xl font-bold bg-white/[0.03] border-white/10 rounded-2xl text-white placeholder:text-slate-600 focus-visible:ring-blue-500/50 focus-visible:border-blue-500/50 transition-all pl-12"
               />
-              <span 
-                // Teks abu-abu gelap untuk placeholder/suffix
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500"
-              >
-                USDC
-              </span>
+              <ArrowRightLeft className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={18} />
             </div>
           </div>
 
-          <div className="flex justify-between text-sm pt-2">
-            <span className="text-gray-400">WR you will receive:</span>
-            <span className="font-semibold text-white">
-              {estimatedWR} WR
+          {/* Result Card */}
+          <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-blue-500/10 rounded-lg">
+                    <Zap size={14} className="text-blue-400" />
+                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Received WR</span>
+            </div>
+            <span className="text-lg font-black text-white italic">
+              {estimatedWR} <span className="text-[10px] not-italic text-blue-400 ml-1 uppercase">WR</span>
             </span>
           </div>
-        </div>
-        
-        {/* Tombol Aksi - Diubah menjadi blue-600 */}
-        <Button
-          onClick={sendTransaction}
-          disabled={isConfirming || Number(amountUSDC) <= 0 || !userAddress}
-          // Tombol utama: bg-blue-600, hover:bg-blue-700
-          className="w-full h-12 text-base font-semibold transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {isConfirming ? (
-            <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Waiting for confirmation...
-            </>
-          ) : (
-            'Send USDC'
-          )}
-        </Button>
 
-        {/* Status Transaksi - Disesuaikan untuk dark mode (warna 400 scale) */}
-        {transactionId && (
-          <div className="mt-4 flex items-center justify-center text-sm font-medium">
-            {isConfirming && (
-              <span className="flex items-center text-yellow-400">
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Transaction is confirming...
-              </span>
-            )}
-            {isConfirmed && (
-              <span className="flex items-center text-green-400">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Transaction confirmed!
-              </span>
-            )}
-            {!isConfirming && !isConfirmed && (
-                <span className="text-gray-500">
-                    Transaction sent, waiting for confirmation...
-                </span>
+          {/* Action Button */}
+          <div className="pb-6">
+            <Button
+              onClick={sendTransaction}
+              disabled={isConfirming || Number(amountUSDC) <= 0 || !userAddress}
+              className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
+            >
+              {isConfirming ? (
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Syncing...</span>
+                </div>
+              ) : (
+                'Execute Transfer'
+              )}
+            </Button>
+
+            {/* Transaction Status Footer */}
+            {transactionId && (
+              <div className="mt-4 flex items-center justify-center p-3 rounded-xl bg-white/5 border border-white/5 animate-in fade-in slide-in-from-top-2">
+                {isConfirming && (
+                  <span className="flex items-center text-[10px] font-bold uppercase tracking-widest text-yellow-400">
+                    <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                    Pending Network Confirmation
+                  </span>
+                )}
+                {isConfirmed && (
+                  <span className="flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                    <CheckCircle className="w-3 h-3 mr-2" />
+                    Transaction Secured
+                  </span>
+                )}
+                {!isConfirming && !isConfirmed && (
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 animate-pulse">
+                        Uplinking Transaction...
+                    </span>
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   )

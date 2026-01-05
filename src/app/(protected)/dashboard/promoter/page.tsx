@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { formatUnits } from 'ethers'
-import { toast } from 'sonner' // 💡 Sonner: Import fungsi toast
+import { toast } from 'sonner'
 
 // Shadcn UI Components
 import { Button } from '@/components/ui/button'
@@ -13,18 +13,20 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs' 
-import { MessageCircle, Wallet, ArrowLeft, ArrowRight, Edit, Trash2, CheckCircle, Users } from 'lucide-react'
+import { 
+  MessageCircle, Wallet, ArrowLeft, ArrowRight, Edit, 
+  Trash2, CheckCircle, Users, Plus, Zap, Star
+} from 'lucide-react'
 
-// Your Custom Components
+// Custom Components
 import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import USDCTransferModal from '@/components/USDCTransferModal'
-// ❌ Hapus: import Toast from '@/components/Toast'
 import type { Campaign as BaseCampaign } from '@/types'
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 
-// --- Interfaces tetap sama ---
+// --- Interfaces ---
 type UICampaign = BaseCampaign & {
   _id: string
   contributors: number
@@ -34,41 +36,34 @@ type UICampaign = BaseCampaign & {
   remainingWR?: string
 }
 
-// ❌ Hapus Tipe ToastState Kustom
-// type ToastState =
-//   | { message: string; type?: 'success' | 'error' }
-//   | { message: string; type: 'confirm'; onConfirm: () => void; onCancel?: () => void }
-
-// =====================================
 // ## CampaignDescription Component (Internal Refactoring)
-// =====================================
 function CampaignDescription({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false)
   const isLong = text.length > 100
   const shownText = expanded ? text : text.slice(0, 100)
 
   return (
-    <p className="text-gray-300 my-2 whitespace-pre-wrap text-sm">
+    <div className="text-slate-300 my-2 whitespace-pre-wrap text-sm leading-relaxed">
       {shownText}
       {isLong && (
         <>
-          {!expanded && <span>...</span>}{' '}
+          {!expanded && <span className="text-slate-500">...</span>}{' '}
           <Button
             variant="link"
             size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="p-0 h-auto text-blue-400 hover:text-blue-300"
+            className="p-0 h-auto text-blue-400 hover:text-blue-300 font-bold uppercase text-[10px] tracking-wider transition-all"
           >
             {expanded ? 'Show less' : 'Read more'}
           </Button>
         </>
       )}
-    </p>
+    </div>
   )
 }
 
 // =====================================
-// ## PROMOTER DASHBOARD
+// ## PROMOTER DASHBOARD (FULL REFACTOR)
 // =====================================
 export default function PromoterDashboard() {
   const { data: session, status } = useSession()
@@ -83,8 +78,6 @@ export default function PromoterDashboard() {
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
-  // ❌ Hapus state toast kustom yang lama
-  // const [toast, setToast] = useState<ToastState | null>(null) 
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   // Pagination
@@ -95,7 +88,7 @@ export default function PromoterDashboard() {
     setCurrentPage(1)
   }, [activeTab])
 
-  // 🔐 Redirect jika belum login
+  // Redirect jika belum login
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/home')
   }, [status, router])
@@ -110,7 +103,6 @@ export default function PromoterDashboard() {
       setBalance(Number(onChainBal))
     } catch (err) {
       console.error('Failed to fetch on-chain balance:', err)
-      // 💡 Sonner: Notifikasi error
       toast.error('Failed to fetch WR from blockchain') 
     }
   }, [session])
@@ -130,21 +122,23 @@ export default function PromoterDashboard() {
       
       const allIds = Array.from(new Set(myCampaigns.flatMap(c => c.participants || [])))
 
-      const userRes = await fetch(`/api/users?ids=${allIds.join(',')}`)
-      const users: { _id: string; username?: string }[] = await userRes.json()
+      if (allIds.length > 0) {
+        const userRes = await fetch(`/api/users?ids=${allIds.join(',')}`)
+        const users: { _id: string; username?: string }[] = await userRes.json()
 
-      const userMap: Record<string, string> = {}
-      users.forEach(u => userMap[u._id] = u.username || '(unknown)')
+        const userMap: Record<string, string> = {}
+        users.forEach(u => userMap[u._id] = u.username || '(unknown)')
 
-      const enriched = myCampaigns.map(c => ({
-        ...c,
-        participants: (c.participants || []).map(id => userMap[id] || '(unknown)')
-      }))
-
-      setCampaigns(enriched)
+        const enriched = myCampaigns.map(c => ({
+          ...c,
+          participants: (c.participants || []).map(id => userMap[id] || '(unknown)')
+        }))
+        setCampaigns(enriched)
+      } else {
+        setCampaigns(myCampaigns)
+      }
     } catch (err) {
       console.error('Failed to load campaigns:', err)
-      // 💡 Sonner: Notifikasi error
       toast.error('Failed to load campaigns')
     }
   }, [session])
@@ -168,22 +162,13 @@ export default function PromoterDashboard() {
         body: JSON.stringify(campaign),
       })
 
-      // 💡 Sonner: Notifikasi sukses
-      toast.success(`Campaign ${method === 'PUT' ? 'updated' : 'created'} successfully`, {
-        description: `Your campaign is now ${method === 'PUT' ? 'updated' : 'live'}.`
-      })
-
-      // Reload data
+      toast.success(`Campaign ${method === 'PUT' ? 'updated' : 'created'} successfully`)
       await Promise.all([loadCampaigns(), fetchBalance()])
-
       setIsModalOpen(false)
       setEditingCampaign(null)
     } catch (err) {
       console.error('Failed to submit campaign:', err)
-      // 💡 Sonner: Notifikasi error
-      toast.error('Failed to submit campaign', {
-        description: 'Please check your input and try again.'
-      })
+      toast.error('Failed to submit campaign')
     }
   }
 
@@ -198,42 +183,25 @@ export default function PromoterDashboard() {
       const result = await resp.json()
 
       if (!resp.ok) {
-        console.error('Mark finished failed:', result)
-        // 💡 Sonner: Notifikasi error
-        toast.error(result?.error || 'Failed to mark finished', {
-          description: 'Could not update campaign status.'
-        })
+        toast.error(result?.error || 'Failed to mark finished')
         return
       }
       
       await Promise.all([loadCampaigns(), fetchBalance()])
-
-      // 💡 Sonner: Notifikasi sukses
-      toast.success('Campaign finished!', {
-        description: result?.txLink ? 'Remaining funds rescued and status updated.' : 'Campaign marked as finished.',
-        action: result?.txLink ? {
-            label: 'View Tx',
-            onClick: () => window.open(result.txLink, '_blank')
-        } : undefined
-      })
+      toast.success('Campaign finished!')
       setActiveTab('finished')
     } catch (err) {
-      console.error('Failed to mark finished:', err)
-      // 💡 Sonner: Notifikasi error
-      toast.error('Failed to mark finished', {
-        description: 'An unexpected error occurred.'
-      })
+      toast.error('Failed to mark finished')
     } finally {
       setLoadingId(null)
     }
   }
 
   const handleDelete = (id: string) => {
-    // 💡 Sonner: Mengganti modal konfirmasi kustom dengan action di Sonner
     toast.warning('Are you sure you want to delete this campaign?', {
       id: `delete-campaign-${id}`,
-      description: 'This action cannot be undone and is only allowed if there are no contributors.',
-      duration: 10000, // Beri waktu 10 detik untuk konfirmasi
+      description: 'This action cannot be undone.',
+      duration: 10000,
       action: {
         label: 'Confirm Delete',
         onClick: async () => {
@@ -241,11 +209,8 @@ export default function PromoterDashboard() {
           try {
             await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
             setCampaigns(prev => prev.filter(p => p._id !== id))
-            // 💡 Sonner: Notifikasi sukses
             toast.success('Campaign deleted successfully')
           } catch (err) {
-            console.error('Failed to delete campaign:', err)
-            // 💡 Sonner: Notifikasi error
             toast.error('Failed to delete campaign')
           } finally {
             setLoadingId(null)
@@ -268,15 +233,12 @@ export default function PromoterDashboard() {
   const paginatedCampaigns = current.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
 
-  // =========================
-  // RENDER HELPERS
-  // =========================
   const getStatusBadge = (status: UICampaign['status']) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-blue-600 hover:bg-blue-700 text-white">Active</Badge> 
+        return <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-none shadow-[0_0_10px_rgba(37,99,235,0.5)]">Active</Badge> 
       case 'finished':
-        return <Badge variant="default" className="bg-gray-500 hover:bg-gray-600 text-white">Finished</Badge> 
+        return <Badge className="bg-slate-600 hover:bg-slate-700 text-white border-none">Finished</Badge> 
       case 'rejected':
         return <Badge variant="destructive">Rejected</Badge>
       default:
@@ -284,130 +246,150 @@ export default function PromoterDashboard() {
     }
   }
   
-  if (status === 'loading') return <div className="text-white p-6">Loading...</div>
+  if (status === 'loading') return <div className="min-h-screen bg-[#020617] flex items-center justify-center text-blue-500 font-bold">LOADING...</div>
   if (!session?.user) return null
 
   // =========================
   // RETURN MAIN UI
   // =========================
   return (
-    <div className="min-h-screen bg-gray-900 text-white" id="app-scroll">
+    <div className="min-h-screen bg-[#020617] text-slate-100 pb-20 selection:bg-blue-500/30">
       <Topbar />
 
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto space-y-8">
         
-        {/* Banner - Card dengan background gradient Biru/Hijau */}
-        <Card className="mb-8 border-0 shadow-xl" style={{ background: 'linear-gradient(to right, #2563eb, #16a34a)' }}>
-          <CardContent className="py-4 text-center">
-            <p className="font-semibold text-white text-lg">
-              "Lead the way. Fund the future. Track the results."
-            </p>
-          </CardContent>
-        </Card>
+        {/* Banner - Lead the way */}
+        <div className="relative group overflow-hidden rounded-[32px] p-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500 shadow-2xl transition-all duration-500 hover:scale-[1.01]">
+          <div className="bg-[#020617]/90 rounded-[31px] py-8 px-6 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-blue-500/5 blur-3xl rounded-full translate-y-10" />
+            <h2 className="relative text-3xl md:text-5xl font-black italic uppercase tracking-tighter bg-gradient-to-b from-white to-slate-500 bg-clip-text text-transparent leading-tight">
+              Lead the way.<br/>Fund the future.
+            </h2>
+            <div className="mt-4 h-[2px] w-32 mx-auto bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_15px_rgba(37,99,235,0.8)]" />
+            <p className="mt-4 text-[10px] uppercase tracking-[0.5em] text-blue-400 font-black opacity-80">Track the results in real-time</p>
+          </div>
+        </div>
 
-        {/* Balance Status & Topup Button */}
-        <div className="flex justify-between items-center mb-8">
-          <Card className="flex-1 bg-gray-800 border-gray-700 mr-4">
-            <CardContent className="py-3 px-4 flex items-center justify-start gap-3 overflow-hidden">
-              <Wallet className="w-5 h-5 text-blue-400 shrink-0" />
-              <p className="text-gray-300 text-lg flex items-center min-w-0">
-                <span className="shrink-0 mr-1">Balance:</span>
-                <span 
-                  className="text-blue-400 font-bold whitespace-nowrap overflow-hidden text-ellipsis"
-                  title={balance.toFixed(18)} // Tooltip untuk saldo penuh
+{/* Balance & New Campaign Row - Mobile First Approach */}
+<div className="flex flex-row gap-3 items-stretch h-24">
+  {/* Balance Card - Sekarang lebih fleksibel */}
+  <Card className="flex-1 bg-slate-900/60 border-white/5 backdrop-blur-md rounded-[20px] overflow-hidden relative group hover:border-blue-500/30 transition-all duration-500">
+    {/* Soft Inner Glow Blue */}
+    <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(59,130,246,0.15)] pointer-events-none" />
+    
+    <CardContent className="h-full p-4 flex flex-col justify-center relative z-10">
+      <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-1.5 mb-1">
+        <Zap size={8} fill="currentColor" /> Credits
+      </p>
+      
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-black text-white tracking-tighter">
+            {balance.toFixed(2)}
+          </span>
+          <span className="text-[10px] font-bold text-slate-500 italic">WR</span>
+        </div>
+        
+        <Button 
+          onClick={() => setShowTopup(true)} 
+          className="h-7 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] font-black shadow-lg shadow-blue-900/20 border-t border-white/20 active:scale-90 transition-all"
+        >
+          TOPUP
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* New Campaign Button - Dibuat Vertikal & Ramping (Square-ish) */}
+  <Button
+    onClick={() => { setEditingCampaign(null); setIsModalOpen(true); }}
+    className="w-24 h-full bg-white hover:bg-slate-100 text-black rounded-[20px] flex flex-col items-center justify-center gap-1.5 shadow-xl group transition-all border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 relative overflow-hidden shrink-0"
+  >
+    {/* Inner Glow White for Depth */}
+    <div className="absolute inset-0 shadow-[inset_0_0_12px_rgba(0,0,0,0.05)] pointer-events-none" />
+    
+    <div className="p-1.5 bg-blue-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-300 relative z-10">
+      <Plus className="w-4 h-4" strokeWidth={3} />
+    </div>
+    <span className="text-[9px] font-black uppercase tracking-tight relative z-10 leading-none">New Task</span>
+  </Button>
+</div>
+
+        {/* STICKY TABS - GLASSMORPHISM */}
+        <div className="sticky top-[64px] z-40 -mx-4 px-4 py-4 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-black/40 border border-white/10 p-1.5 rounded-full h-14 max-w-2xl mx-auto shadow-2xl">
+              {['active', 'finished', 'rejected'].map((tab) => (
+                <TabsTrigger 
+                  key={tab} 
+                  value={tab}
+                  className="rounded-full text-[10px] font-black uppercase tracking-[0.15em] transition-all 
+                  text-slate-500 hover:text-slate-300
+                  data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(37,99,235,0.4)]"
                 >
-                  {balance.toFixed(2)} WR
-                </span>
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Button
-            onClick={() => setShowTopup(true)}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold transition shadow-md shrink-0"
-          >
-            Topup
-          </Button>
+                  {tab}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
-
-        {/* Create Campaign */}
-        <div className="text-center mb-8">
-          <Button
-            onClick={() => {
-              setEditingCampaign(null)
-              setIsModalOpen(true)
-            }}
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg transition"
-          >
-            + Create New Campaign
-          </Button>
-        </div>
-
-        {/* Tabs - Menggunakan struktur Shadcn Tabs yang diminta dengan tema Biru */}
-        <div className="sticky top-14 z-40 bg-gray-900 py-3 mb-6">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-gray-800 h-auto p-1">
-                    {['active', 'finished', 'rejected'].map((tab) => (
-                        <TabsTrigger 
-                            key={tab} 
-                            value={tab}
-                            // Ganti green-600 menjadi blue-600
-                            className="text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
-                        >
-                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
-            </Tabs>
-        </div>
-        <Separator className="bg-gray-700 mb-6" />
 
         {/* Campaign list */}
         {paginatedCampaigns.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">📝 No campaigns available in the {activeTab} tab.</p>
+          <div className="text-center py-24 border-2 border-dashed border-white/5 rounded-[40px] bg-white/[0.01]">
+            <p className="text-slate-600 font-black uppercase tracking-widest text-sm italic">No campaigns found in this sector.</p>
+          </div>
         ) : (
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-2 gap-8">
             {paginatedCampaigns.map(c => {
-              const remainingWRFormatted = c.remainingWR
-                ? formatUnits(c.remainingWR, 18)
-                : '0.00'
+              const remainingWRFormatted = c.remainingWR ? formatUnits(c.remainingWR, 18) : '0.00'
 
               return (
                 <Card 
                   key={c._id} 
-                  className="bg-gray-800 border-gray-700 shadow-xl hover:shadow-blue-500/20 transition-all duration-300 flex flex-col"
+                  className="bg-slate-900/60 border-white/5 shadow-2xl rounded-[32px] overflow-hidden group hover:border-blue-500/40 transition-all duration-500 flex flex-col relative"
                 >
-                  <CardHeader>
+                  {/* INNER BLUE LIGHT EFFECT */}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent)] pointer-events-none" />
+                  <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.4)] pointer-events-none" />
+
+                  <CardHeader className="p-8 pb-4 relative z-10">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-xl font-bold text-blue-400">{c.title}</CardTitle>
+                      <div className="space-y-1">
+                        <Badge className="bg-white/5 text-slate-500 border-white/10 text-[9px] font-black px-2 py-0.5 rounded-md mb-2">
+                           REF: {c._id.slice(-6).toUpperCase()}
+                        </Badge>
+                        <CardTitle className="text-2xl font-black text-white tracking-tight group-hover:text-blue-400 transition-colors duration-300">
+                          {c.title}
+                        </CardTitle>
+                      </div>
                       {getStatusBadge(c.status)}
                     </div>
-                    <CardDescription className="text-sm text-gray-400 mt-2">
-                        Reward: <span className="text-blue-400 font-semibold">{c.reward}</span>
+                    <CardDescription className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest flex items-center gap-2">
+                        <Star size={12} className="text-blue-500" /> Reward: <span className="text-blue-400">{c.reward} WR</span>
                     </CardDescription>
                   </CardHeader>
 
-                  <CardContent className="flex-1">
+                  <CardContent className="px-8 flex-1 relative z-10">
                     <CampaignDescription text={c.description} />
-                    <Separator className="my-4 bg-gray-700" />
+                    <Separator className="my-6 bg-white/5" />
                     
-                    {/* Task List */}
+                    {/* Task List (LENGKAP) */}
                     {Array.isArray(c.tasks) && c.tasks.length > 0 ? (
-                      <div className="mt-2 space-y-2">
-                        <p className="font-medium text-yellow-400">Required Tasks:</p>
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Mission Tasks</p>
                         <div className="flex flex-wrap gap-2">
                           {c.tasks.map((t, i) => {
                             const serviceIcon =
                               t.service.toLowerCase().includes('twitter') ? '🐦' :
                               t.service.toLowerCase().includes('discord') ? '💬' :
-                              t.service.toLowerCase().includes('telegram') ? '📨' :
-                              '🔗'
+                              t.service.toLowerCase().includes('telegram') ? '📨' : '🔗'
 
                             return (
                               <Badge 
                                 key={i}
                                 variant="secondary"
-                                className="bg-gray-700 text-xs text-blue-400"
+                                className="bg-black/50 hover:bg-black/80 text-[10px] text-slate-300 border border-white/10 px-3 py-1 rounded-full transition-all"
                               >
                                 {serviceIcon} {t.service} • {t.type}
                               </Badge>
@@ -416,30 +398,34 @@ export default function PromoterDashboard() {
                         </div>
                       </div>
                     ) : (
-                        <p className="text-sm text-gray-500 italic">No tasks defined.</p>
+                        <p className="text-[10px] text-slate-500 italic">No missions assigned.</p>
                     )}
 
-                    <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm">
-                      <p className="text-yellow-400 font-semibold mb-2 sm:mb-0">
-                        Budget Left: {remainingWRFormatted} WR
-                      </p>
+                    <div className="mt-8 flex flex-col sm:flex-row justify-between items-center bg-black/40 p-4 rounded-[20px] border border-white/5 shadow-inner">
+                      <div className="text-center sm:text-left">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Budget Remaining</p>
+                        <p className="text-lg font-black text-blue-400">{parseFloat(remainingWRFormatted).toFixed(2)} <span className="text-[10px] text-slate-500">WR</span></p>
+                      </div>
+                      <div className="h-[1px] w-full sm:h-8 sm:w-[1px] bg-white/10 my-2 sm:my-0" />
                       <Button
                         variant="link"
                         size="sm"
-                        className="p-0 h-auto text-gray-400 hover:text-gray-300 flex items-center gap-1"
+                        className="p-0 h-auto text-slate-400 hover:text-white flex items-center gap-2 group/btn"
                         onClick={() => {
                           setParticipants(Array.isArray(c.participants) ? c.participants : [])
                           setShowParticipants(true)
                         }}
                       >
-                        <Users className="w-4 h-4" />
-                        Contributors: <b className="text-white ml-1">{c.contributors ?? 0}</b>
+                        <Users className="w-4 h-4 text-blue-500 group-hover/btn:scale-110 transition-transform" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">
+                          Contributors: <b className="text-white ml-1">{c.contributors ?? 0}</b>
+                        </span>
                       </Button>
                     </div>
                   </CardContent>
 
-                  {/* Footer - Action Buttons */}
-                  <CardFooter className="pt-4 px-6 flex justify-center gap-4">
+                  {/* Footer - Action Buttons (LENGKAP) */}
+                  <CardFooter className="p-6 pt-2 bg-black/10 mt-6 border-t border-white/5 flex justify-center gap-3 relative z-10">
                     {c.status !== 'finished' && (
                       <>
                         <Button
@@ -447,23 +433,19 @@ export default function PromoterDashboard() {
                             setEditingCampaign(c)
                             setIsModalOpen(true)
                           }}
-                          className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold transition"
+                          className="flex-1 h-12 bg-slate-800/80 hover:bg-slate-700 text-slate-100 font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl border border-white/5 transition-all"
                         >
-                          <Edit className="w-4 h-4 mr-2" /> Edit
+                          <Edit className="w-4 h-4 mr-2 text-blue-500" /> Edit
                         </Button>
 
                         {c.contributors > 0 ? (
                           <Button
                             onClick={() => handleMarkFinished(c._id)}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
+                            className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl shadow-lg shadow-blue-900/40 border-t border-white/20 active:scale-95 transition-all"
                             disabled={loadingId === c._id}
-                            aria-busy={loadingId === c._id}
                           >
                             {loadingId === c._id ? (
-                              <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                                <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                              </svg>
+                              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             ) : (
                               <><CheckCircle className="w-4 h-4 mr-2" /> Finish</>
                             )}
@@ -471,18 +453,10 @@ export default function PromoterDashboard() {
                         ) : (
                           <Button
                             onClick={() => handleDelete(c._id)}
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold transition"
+                            className="w-14 h-12 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-2xl border border-red-500/20 transition-all flex items-center justify-center"
                             disabled={loadingId === c._id}
-                            aria-busy={loadingId === c._id}
                           >
-                            {loadingId === c._id ? (
-                              <svg className="animate-spin mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="4"></circle>
-                                <path d="M22 12a10 10 0 00-10-10" stroke="#fff" strokeWidth="4" strokeLinecap="round"></path>
-                              </svg>
-                            ) : (
-                              <><Trash2 className="w-4 h-4 mr-2" /> Delete</>
-                            )}
+                            <Trash2 className="w-5 h-5" />
                           </Button>
                         )}
                       </>
@@ -494,144 +468,169 @@ export default function PromoterDashboard() {
           </div>
         )}
 
-        <Separator className="bg-gray-700 my-6" />
+        <Separator className="bg-white/5 my-12" />
 
-        {/* Pagination */}
-        {current.length > pageSize && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <div className="flex justify-center items-center gap-2 flex-wrap">
-              {/* Prev */}
-              <Button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                variant={currentPage === 1 ? 'outline' : 'default'}
-                className={`bg-yellow-500 hover:bg-yellow-600 text-black font-bold ${currentPage === 1 ? 'opacity-50 cursor-not-allowed border-yellow-500 bg-transparent text-yellow-500' : ''}`}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" /> Prev
-              </Button>
+{/* Pagination (SMART DYNAMIC - SINGLE LINE) */}
+{current.length > pageSize && (
+  <div className="flex flex-col items-center gap-4 py-8 w-full px-4">
+    <div className="flex items-center justify-center gap-1.5 w-full overflow-hidden">
+      
+      {/* PREV */}
+      <Button
+        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+        disabled={currentPage === 1}
+        className={`h-9 w-9 p-0 bg-slate-800 text-white rounded-lg border border-white/5 shrink-0 ${currentPage === 1 ? 'opacity-10' : 'active:scale-90'}`}
+      >
+        <ArrowLeft className="w-4 h-4" />
+      </Button>
 
-              {/* Page numbers */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2)
-                .map((page, idx, arr) => {
-                  const prevPage = arr[idx - 1]
-                  const showEllipsis = prevPage && page - prevPage > 1
+      <div className="flex items-center gap-1.5">
+        {/* HALAMAN PERTAMA: Selalu Tampil */}
+        <Button
+          onClick={() => setCurrentPage(1)}
+          className={`h-9 w-9 rounded-lg text-xs font-black shrink-0 transition-all ${
+            currentPage === 1 
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' 
+              : 'bg-slate-900 text-slate-500 border border-white/5'
+          }`}
+        >
+          1
+        </Button>
 
-                  return (
-                    <span key={page} className="flex items-center">
-                      {showEllipsis && (
-                        <span className="px-1 text-gray-500">..</span>
-                      )}
-                      <Button
-                        onClick={() => setCurrentPage(page)}
-                        variant={currentPage === page ? 'default' : 'secondary'}
-                        className={currentPage === page ? 'bg-blue-600 hover:bg-blue-700 text-white font-bold' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}
-                      >
-                        {page}
-                      </Button>
-                    </span>
-                  )
-                })}
+        {/* TITIK-TITIK AWAL: Tampil jika currentPage > 3 */}
+        {currentPage > 3 && <span className="text-slate-700 font-bold px-0.5">...</span>}
 
-              {/* Next */}
-              <Button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                variant={currentPage === totalPages ? 'outline' : 'default'}
-                className={`bg-yellow-500 hover:bg-yellow-600 text-black font-bold ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed border-yellow-500 bg-transparent text-yellow-500' : ''}`}
-              >
-                Next <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-
-            {/* Status page */}
-            <p className="text-sm text-gray-500 mt-2">
-              Page {currentPage} of {totalPages}
-            </p>
-          </div>
-        )}
-      </main>
-
-      {/* Modal form */}
-      <CampaignForm
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setEditingCampaign(null)
-        }}
-        onSubmit={handleSubmit}
-        editingCampaign={editingCampaign as unknown as BaseCampaign | null}
-        setEditingCampaign={(c: BaseCampaign | null) => setEditingCampaign(c as unknown as UICampaign | null)}
-      />
-
-      {/* Participants modal (using Shadcn Dialog) */}
-      <Dialog open={showParticipants} onOpenChange={setShowParticipants}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-blue-400">Participants List</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 max-h-[50vh] overflow-y-auto">
-            {participants.length === 0 ? (
-              <p className="text-gray-400">No participants yet.</p>
-            ) : (
-              <ul className="list-disc list-inside space-y-1">
-                {participants.map(p => (
-                  <li key={p} className="text-sm text-gray-200">{p}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div className="flex justify-end pt-2">
+        {/* HALAMAN TENGAH (DINAMIS): Tampil di sekitar halaman aktif */}
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter(page => (
+            page !== 1 && 
+            page !== totalPages && 
+            Math.abs(page - currentPage) <= 1
+          ))
+          .map((page) => (
             <Button
-              onClick={() => setShowParticipants(false)}
-              className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white"
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`h-9 w-9 rounded-lg text-xs font-black shrink-0 transition-all ${
+                currentPage === page 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' 
+                  : 'bg-slate-900 text-slate-500 border border-white/5'
+              }`}
             >
-              Close
+              {page}
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          ))}
 
-      {/* Topup Modal */}
-      {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
+        {/* TITIK-TITIK AKHIR: Tampil jika currentPage < totalPages - 2 */}
+        {currentPage < totalPages - 2 && <span className="text-slate-700 font-bold px-0.5">...</span>}
 
-      {/* Floating Chat */}
-      <div className="fixed bottom-6 left-6 z-50">
-        {!showChat ? (
-          <div className="text-center">
-            <Button
-              size="icon"
-              className="p-3 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 hover:scale-105 transition duration-300"
-              onClick={() => setShowChat(true)}
-              aria-label="Open Global Chat"
-            >
-              <MessageCircle className="w-6 h-6" />
-            </Button>
-            <p className="text-xs text-gray-400 mt-1">Chat</p>
-          </div>
-        ) : (
-          <Card className="w-80 h-96 bg-gray-800 text-gray-200 border border-gray-700 rounded-xl shadow-2xl overflow-hidden flex flex-col">
-            <CardHeader className="py-2 px-4 bg-blue-600 text-white flex flex-row items-center justify-between">
-              <CardTitle className="text-base font-semibold text-white">Global Chat</CardTitle>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="w-6 h-6 hover:bg-blue-700 text-white p-0"
-                onClick={() => setShowChat(false)}
-                aria-label="Close Chat"
-              >
-                ✕
-              </Button>
-            </CardHeader>
-            <CardContent className="flex-1 p-0 overflow-hidden">
-              <GlobalChatRoom />
-            </CardContent>
-          </Card>
+        {/* HALAMAN TERAKHIR: Selalu Tampil (selama totalPages > 1) */}
+        {totalPages > 1 && (
+          <Button
+            onClick={() => setCurrentPage(totalPages)}
+            className={`h-9 w-9 rounded-lg text-xs font-black shrink-0 transition-all ${
+              currentPage === totalPages 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' 
+                : 'bg-slate-900 text-slate-500 border border-white/5'
+            }`}
+          >
+            {totalPages}
+          </Button>
         )}
       </div>
 
-      {/* ❌ Hapus: Toast kustom dan logic konfirmasi toast sudah dihapus karena diganti Sonner */}
-
+      {/* NEXT */}
+      <Button
+        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+        disabled={currentPage === totalPages}
+        className={`h-9 w-9 p-0 bg-slate-800 text-white rounded-lg border border-white/5 shrink-0 ${currentPage === totalPages ? 'opacity-10' : 'active:scale-90'}`}
+      >
+        <ArrowRight className="w-4 h-4" />
+      </Button>
     </div>
+    
+    <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">
+      Page {currentPage} / {totalPages}
+    </p>
+  </div>
+)}
+      </main>
+
+      {/* Participants Modal (LENGKAP) */}
+      <Dialog open={showParticipants} onOpenChange={setShowParticipants}>
+        <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-[425px] rounded-[32px] overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-blue-400 uppercase italic tracking-tighter pt-4">Personnel Log</DialogTitle>
+          </DialogHeader>
+          <div className="py-6 max-h-[50vh] overflow-y-auto custom-scrollbar">
+            {participants.length === 0 ? (
+              <p className="text-slate-500 text-center font-bold italic py-10">No personnel detected in this campaign.</p>
+            ) : (
+              <div className="grid gap-2">
+                {participants.map((p, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all">
+                    <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-black text-xs">
+                        {p.slice(0,1).toUpperCase()}
+                    </div>
+                    <span className="text-sm font-bold text-slate-200">{p}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <Button onClick={() => setShowParticipants(false)} className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all">
+            DISMISS
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Form & Topup Modal */}
+      <CampaignForm
+        isOpen={isModalOpen}
+        onClose={() => { setIsModalOpen(false); setEditingCampaign(null); }}
+        onSubmit={handleSubmit}
+        editingCampaign={editingCampaign as any}
+        setEditingCampaign={(c: any) => setEditingCampaign(c)}
+      />
+      {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
+
+{/* FLOATING CHAT - MODERN REDESIGN */}
+<div className="fixed bottom-8 right-8 z-50">
+  {!showChat ? (
+    <Button
+      size="icon"
+      className="w-16 h-16 rounded-full shadow-[0_10px_40px_rgba(37,99,235,0.4)] bg-blue-600 hover:bg-blue-500 hover:scale-110 active:scale-95 transition-all duration-300 border-t border-white/30"
+      onClick={() => setShowChat(true)}
+    >
+      <MessageCircle className="w-7 h-7" />
+    </Button>
+  ) : (
+    <Card className="w-[90vw] md:w-96 h-[500px] max-h-[80dvh] bg-[#020617] text-slate-200 border border-white/10 rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col animate-in zoom-in slide-in-from-bottom-10 fixed bottom-8 right-8">
+      
+      {/* HEADER: Tetap Terlihat (Sticky-like behavior because of Flex) */}
+      <CardHeader className="shrink-0 py-4 px-6 bg-gradient-to-r from-blue-700 to-indigo-700 flex flex-row items-center justify-between space-y-0 z-20">
+        <CardTitle className="text-sm font-black uppercase tracking-widest text-white">Live Network</CardTitle>
+        <button onClick={() => setShowChat(false)} className="text-xs font-black bg-black/20 hover:bg-black/40 px-3 py-1 rounded-full transition-colors">HIDE</button>
+      </CardHeader>
+      
+      {/* AREA CHAT: Hanya area ini yang bisa di-scroll */}
+      <CardContent className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden relative">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth flex flex-col-reverse p-4">
+          {/* PENTING: 'flex-reverse' akan memaksa chat mulai dari bawah. 
+              Pastikan list chat di dalam <GlobalChatRoom /> di-render terbalik 
+              atau komponen tersebut menangani auto-scroll ke bawah.
+          */}
+          <GlobalChatRoom />
+        </div>
+      </CardContent>
+
+      {/* INPUT FIELD: Jika input field ada di dalam GlobalChatRoom, 
+          pastikan komponen tersebut menaruh inputnya di luar area scroll. 
+          Jika tidak, taruh komponen Input di sini agar dia 'Sticky' di bawah. */}
+    </Card>
+  )}
+</div>
+</div>
   )
 }

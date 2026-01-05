@@ -1,157 +1,116 @@
 'use client'
 
-import { X, Trophy, DollarSign, Zap, ShieldCheck } from 'lucide-react'
+import { X, Trophy, DollarSign, Zap, ShieldCheck, Cpu, Globe, Activity } from 'lucide-react'
 
 interface AboutModalProps {
   onClose: () => void
 }
 
 /**
- * ## AboutModal
- * Transparent, reviewer-safe, and hunter-friendly explanation
- * of WR Bounty Platform and WR Credit.
+ * ## AboutModal - Cyber-Noir Edition
+ * Desain serempak dengan Topbar dan ContactUs menggunakan Glassmorphism dan Bold Typography.
  */
 export default function AboutModal({ onClose }: AboutModalProps) {
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 backdrop-blur-sm"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-md animate-in fade-in duration-300"
       onClick={onClose}
     >
       <div
-        className="bg-gray-900 border border-gray-700 rounded-3xl shadow-2xl max-w-lg w-full relative"
+        className="bg-[#0f172a]/95 border border-white/10 rounded-[32px] shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-lg w-full overflow-hidden transform transition-all relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-cyan-400 p-1"
-          aria-label="Close"
-        >
-          <X size={24} />
-        </button>
-
-        {/* Header */}
-        <div className="pt-6 pb-3 px-6 border-b border-gray-800">
-          <h2 className="text-3xl font-extrabold text-cyan-400 flex items-center gap-2">
-            <Trophy size={28} className="text-yellow-400" />
-            About WR Bounty
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            Transparent • Activity-Based • Non-Custodial
-          </p>
+        
+        {/* Header - Terminal Style */}
+        <div className="px-8 pt-8 pb-5 border-b border-white/5 bg-white/5 relative">
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors"
+            aria-label="Close"
+          >
+            <X size={20} />
+          </button>
+          
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-emerald-500/10 rounded-lg">
+              <Trophy size={24} className="text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Protocol Information</h2>
+              <h1 className="text-2xl font-black text-white italic uppercase tracking-tighter">
+                About WR <span className="text-emerald-400">Bounty</span>
+              </h1>
+            </div>
+          </div>
+          <div className="flex gap-4 mt-4">
+            <Badge text="Transparent" color="text-emerald-400" />
+            <Badge text="Non-Custodial" color="text-blue-400" />
+            <Badge text="Automated" color="text-purple-400" />
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-8 max-h-[80vh] overflow-y-auto custom-scrollbar">
+        {/* Scrollable Content */}
+        <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
 
           {/* Platform Overview */}
-          <section className="bg-gray-800 p-4 rounded-xl">
-            <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-              <Zap size={18} className="text-blue-400" />
-              Platform Overview
+          <section className="relative group">
+            <div className="absolute -left-4 top-0 bottom-0 w-[2px] bg-emerald-500/20 group-hover:bg-emerald-500 transition-colors" />
+            <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2 mb-3">
+              <Cpu size={14} /> System Core
             </h3>
-            <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-              <strong>WR Bounty</strong> is a decentralized campaign platform built on
-              <strong> World Chain</strong>. It connects <strong>Promoters</strong> who
-              want to grow their projects with <strong>Hunters</strong> who complete
-              simple digital tasks in a transparent and automated way.
+            <p className="text-sm text-slate-300 leading-relaxed font-medium">
+              <span className="text-white">WR Bounty</span> is a decentralized tactical layer built on 
+              <span className="text-white"> World Chain</span>. It facilitates direct transmission between 
+              <span className="text-slate-400 italic"> Promoters</span> and 
+              <span className="text-emerald-400 italic font-bold"> Hunters</span> through secure, 
+              automated neural-contracts.
             </p>
           </section>
 
-          {/* WR Credit */}
-          <section className="space-y-3">
-            <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-              <DollarSign size={18} className="text-green-400" />
-              WR Credit (WR)
+          {/* WR Credit Logic */}
+          <section className="space-y-4">
+            <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
+              <Activity size={14} /> Operational Credits (WR)
             </h3>
-
-            <div className="bg-gray-800 p-4 rounded-xl">
-              <p className="text-sm text-gray-400 mb-3">
-                WR is an <strong>internal utility credit</strong> that represents
-                completed tasks and platform activity.
-              </p>
-
-              <ul className="space-y-3">
-                <li className="flex items-start text-sm">
-                  <span className="mr-3 text-cyan-400 font-bold shrink-0">
-                    • Promoters:
-                  </span>
-                  <span className="text-gray-400">
-                    Fund campaigns by depositing USDC.e at a fixed internal rate
-                    (1 USDC = 200 WR) to distribute task rewards.
-                  </span>
-                </li>
-
-                <li className="flex items-start text-sm">
-                  <span className="mr-3 text-cyan-400 font-bold shrink-0">
-                    • Hunters:
-                  </span>
-                  <span className="text-gray-400">
-                    Earn WR by completing clearly defined tasks such as following,
-                    joining communities, or engaging with content.
-                  </span>
-                </li>
-
-                <li className="flex items-start text-sm">
-                  <span className="mr-3 text-cyan-400 font-bold shrink-0">
-                    • Activity-Based:
-                  </span>
-                  <span className="text-gray-400">
-                    WR accumulation reflects participation level and consistency
-                    across campaigns.
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          {/* Important Notice */}
-          <section className="bg-gray-800/70 border border-gray-700 p-4 rounded-xl">
-            <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2 mb-2">
-              <ShieldCheck size={16} className="text-cyan-400" />
-              Important Notice
-            </h3>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              WR is <strong>not a financial instrument</strong>, does not represent
-              ownership, and does not guarantee monetary returns. Any future use
-              of WR in optional mechanisms related to WRC will depend on platform
-              policies, activity metrics, and eligibility criteria that may change
-              or not be implemented.
-            </p>
-          </section>
-
-          {/* Key Features */}
-          <section>
-            <h3 className="text-lg font-bold text-gray-200 mb-3">
-              Why Use WR Bounty?
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FeatureCard
-                icon="🔍"
-                title="Clear Effort & Reward"
-                description="Each task shows its reward upfront, allowing hunters to decide freely."
+            
+            <div className="grid gap-3">
+              <Card 
+                label="Promoter Deployment" 
+                desc="Fund campaigns using USDC.e at a fixed sync rate (1 USDC = 200 WR)."
+                icon={<DollarSign size={16} className="text-blue-400" />}
               />
-              <FeatureCard
-                icon="⚙️"
-                title="Automated & Trustless"
-                description="Rewards are distributed by smart contracts without manual intervention."
-              />
-              <FeatureCard
-                icon="💵"
-                title="Pre-Funded Campaigns"
-                description="Promoters must fund campaigns in advance using USDC.e."
-              />
-              <FeatureCard
-                icon="🌍"
-                title="World Chain Native"
-                description="Fast confirmation and low transaction costs for all users."
+              <Card 
+                label="Hunter Extraction" 
+                desc="Earn WR by executing verified digital tasks with surgical precision."
+                icon={<Zap size={16} className="text-emerald-400" />}
               />
             </div>
           </section>
 
-          <div className="text-center pt-4">
-            <p className="text-xs text-gray-600">
-              Version 1.0.0 • Built on World Chain
+          {/* Legal/Important Notice - Cyber Guard Style */}
+          <section className="bg-emerald-500/[0.03] border border-emerald-500/10 p-5 rounded-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-2 opacity-10">
+              <ShieldCheck size={40} className="text-emerald-500" />
+            </div>
+            <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+              <ShieldCheck size={14} /> Compliance Protocol
+            </h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              WR Credits are <span className="text-emerald-200">Utility Metrics</span> only. They do not constitute financial instruments or ownership. Future parity or integration within the WRC ecosystem is subject to active governance and participation eligibility.
+            </p>
+          </section>
+
+          {/* Feature Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <MiniStat title="Trustless" icon="⚙️" />
+            <MiniStat title="Pre-Funded" icon="💵" />
+            <MiniStat title="Low-Gas" icon="🌍" />
+            <MiniStat title="Instant" icon="⚡" />
+          </div>
+
+          <div className="text-center pt-8 opacity-30">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.5em]">
+              System Version 1.0.0 // Connected to World Chain
             </p>
           </div>
         </div>
@@ -160,16 +119,29 @@ export default function AboutModal({ onClose }: AboutModalProps) {
   )
 }
 
-interface FeatureCardProps {
-  icon: string
-  title: string
-  description: string
-}
+// --- Internal Sub-components ---
 
-const FeatureCard = ({ icon, title, description }: FeatureCardProps) => (
-  <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 hover:bg-gray-700 transition">
-    <div className="text-2xl mb-2">{icon}</div>
-    <h4 className="font-semibold text-gray-200">{title}</h4>
-    <p className="text-xs text-gray-400 mt-1">{description}</p>
+const Badge = ({ text, color }: { text: string; color: string }) => (
+  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 bg-white/5 border border-white/10 rounded-md ${color}`}>
+    {text}
+  </span>
+)
+
+const Card = ({ label, desc, icon }: { label: string; desc: string; icon: any }) => (
+  <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl hover:bg-white/[0.05] transition-colors">
+    <div className="flex items-center gap-3 mb-1">
+      {icon}
+      <span className="text-[11px] font-black text-white uppercase tracking-wider">{label}</span>
+    </div>
+    <p className="text-xs text-slate-500 leading-snug pl-7">{desc}</p>
   </div>
 )
+
+const MiniStat = ({ title, icon }: { title: string; icon: string }) => (
+  <div className="bg-white/[0.02] border border-white/5 p-3 rounded-xl flex items-center gap-3">
+    <span className="text-lg">{icon}</span>
+    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{title}</span>
+  </div>
+)
+
+const MiniStatGroup = () => {} // Placeholder
