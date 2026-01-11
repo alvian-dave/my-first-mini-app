@@ -194,7 +194,7 @@ export default function HunterDashboard() {
                   <span className="text-[10px] font-bold text-slate-500 italic">WR</span>
                 </div>
                 <div className="px-3 py-1 bg-emerald-600/10 border border-emerald-500/20 rounded-lg">
-                   <p className="text-[8px] font-black text-emerald-400 uppercase">Ready for Claim</p>
+                   <p className="text-[8px] font-black text-emerald-400 uppercase">Claimed</p>
                 </div>
               </div>
             </CardContent>
@@ -205,7 +205,7 @@ export default function HunterDashboard() {
             <div className="p-1.5 bg-emerald-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-300 relative z-10">
               <Target className="w-4 h-4" strokeWidth={3} />
             </div>
-            <span className="text-[9px] font-black uppercase tracking-tight relative z-10 leading-none">Rank #1</span>
+            <span className="text-[9px] font-black uppercase tracking-tight relative z-10 leading-none">coming soon #</span>
           </div>
         </div>
 
