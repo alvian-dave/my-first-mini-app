@@ -33,7 +33,7 @@ interface Props {
   onClose: () => void
 }
 
-const APP_ID = 'app_b7153403a67ed506679d5103a1f6d935'
+const APP_ID = 'app_c9fdcdd0cfc23e7bee04ea4cb0194a25'
 
 export default function ReferralModal({ isOpen, onClose }: Props) {
   const [tab, setTab] = useState<'referral' | 'stats' | 'rules'>('referral')
