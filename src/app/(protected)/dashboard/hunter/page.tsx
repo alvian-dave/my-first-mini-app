@@ -21,6 +21,8 @@ import { Topbar } from '@/components/Topbar'
 import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import TaskModal from '@/components/TaskModal' 
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
+import ReferralModal from '@/components/ReferralModal'
+
 
 // --- Interfaces ---
 interface Task {
@@ -88,6 +90,7 @@ export default function HunterDashboard() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 6
+  const [openReferral, setOpenReferral] = useState(false)
 
   // Redirect Logic
   useEffect(() => {
@@ -200,12 +203,15 @@ export default function HunterDashboard() {
             </CardContent>
           </Card>
 
-          <div className="w-24 h-full bg-white hover:bg-emerald-50 text-black rounded-[20px] flex flex-col items-center justify-center gap-1.5 shadow-xl group transition-all border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 relative overflow-hidden shrink-0">
+            <div
+              onClick={() => setOpenReferral(true)}
+              className="w-24 h-full bg-white hover:bg-emerald-50 text-black rounded-[20px] flex flex-col items-center justify-center gap-1.5 shadow-xl group transition-all border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 relative overflow-hidden shrink-0 cursor-pointer select-none"
+            >
             <div className="absolute inset-0 shadow-[inset_0_0_12px_rgba(0,0,0,0.05)] pointer-events-none" />
             <div className="p-1.5 bg-emerald-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-300 relative z-10">
               <Target className="w-4 h-4" strokeWidth={3} />
             </div>
-            <span className="text-[9px] font-black uppercase tracking-tight relative z-10 leading-none">coming soon #</span>
+            <span className="text-[9px] font-black uppercase tracking-tight relative z-10 leading-none">Referral</span>
           </div>
         </div>
 
@@ -381,6 +387,14 @@ export default function HunterDashboard() {
           }}
         />
       )}
+
+
+      {/* Referral Modal */}
+      <ReferralModal
+        isOpen={openReferral}
+        onClose={() => setOpenReferral(false)}
+      />
+
 
       {/* Floating Chat (Promoter Redesign - Emerald Version) */}
       <div className="fixed bottom-8 left-8 z-50">

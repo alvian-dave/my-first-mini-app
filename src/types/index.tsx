@@ -8,6 +8,7 @@ export interface User {
   walletAddress: string
   username?: string
   profilePictureUrl?: string
+  createdAt: string | Date
 }
 
 // ==========================
@@ -149,3 +150,34 @@ export interface Topup {
   createdAt?: string
   updatedAt?: string
 }
+
+
+// ==========================
+// Referral (TAMBAHAN BARU)
+// ==========================
+export type ReferralStatus = 'pending' | 'confirmed' | 'expired' | 'failed'
+
+export interface Referral {
+  _id?: string
+  referrerUserId: string
+  referrerWallet?: string
+  refereeUserId: string
+  refereeWallet?: string
+  referralCode: string
+  status: ReferralStatus
+  rewardAmount: number
+  txHashReferrer?: string
+  txHashReferee?: string
+  createdAt: string | Date
+  confirmedAt?: string | Date
+  expiredAt?: string | Date
+}
+
+export interface ReferralCode {
+  _id?: string
+  userId: string
+  code: string
+  isActive: boolean
+  createdAt: string | Date
+}
+
