@@ -20,7 +20,6 @@ import {
 
 // Custom Components
 import { Topbar } from '@/components/Topbar'
-import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import { CampaignForm } from '@/components/CampaignForm'
 import USDCTransferModal from '@/components/USDCTransferModal'
 import type { Campaign as BaseCampaign } from '@/types'
@@ -74,11 +73,11 @@ export default function PromoterDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<UICampaign | null>(null)
   const [balance, setBalance] = useState(0)
-  const [showChat, setShowChat] = useState(false)
   const [showTopup, setShowTopup] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
   const [participants, setParticipants] = useState<string[]>([])
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [isCampaignLoading, setIsCampaignLoading] = useState(true) // Tambahan state loading
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -114,6 +113,8 @@ export default function PromoterDashboard() {
   const loadCampaigns = useCallback(async () => {
     if (!session?.user?.id) return
 
+    setIsCampaignLoading(true) // Start Loading
+
     try {
       const res = await fetch('/api/campaigns')
       const data: UICampaign[] = await res.json()
@@ -140,6 +141,8 @@ export default function PromoterDashboard() {
     } catch (err) {
       console.error('Failed to load campaigns:', err)
       toast.error('Failed to load campaigns')
+    } finally {
+      setIsCampaignLoading(false) // Stop Loading
     }
   }, [session])
 
@@ -272,16 +275,13 @@ export default function PromoterDashboard() {
 
 {/* Balance & New Campaign Row - Mobile First Approach */}
 <div className="flex flex-row gap-3 items-stretch h-24">
-  {/* Balance Card - Sekarang lebih fleksibel */}
+  {/* Balance Card */}
   <Card className="flex-1 bg-slate-900/60 border-white/5 backdrop-blur-md rounded-[20px] overflow-hidden relative group hover:border-blue-500/30 transition-all duration-500">
-    {/* Soft Inner Glow Blue */}
     <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(59,130,246,0.15)] pointer-events-none" />
-    
     <CardContent className="h-full p-4 flex flex-col justify-center relative z-10">
       <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-1.5 mb-1">
         <Zap size={8} fill="currentColor" /> Credits
       </p>
-      
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-baseline gap-1">
           <span className="text-2xl font-black text-white tracking-tighter">
@@ -289,7 +289,6 @@ export default function PromoterDashboard() {
           </span>
           <span className="text-[10px] font-bold text-slate-500 italic">WR</span>
         </div>
-        
         <Button 
           onClick={() => setShowTopup(true)} 
           className="h-7 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] font-black shadow-lg shadow-blue-900/20 border-t border-white/20 active:scale-90 transition-all"
@@ -300,14 +299,12 @@ export default function PromoterDashboard() {
     </CardContent>
   </Card>
 
-  {/* New Campaign Button - Dibuat Vertikal & Ramping (Square-ish) */}
+  {/* New Campaign Button */}
   <Button
     onClick={() => { setEditingCampaign(null); setIsModalOpen(true); }}
     className="w-24 h-full bg-white hover:bg-slate-100 text-black rounded-[20px] flex flex-col items-center justify-center gap-1.5 shadow-xl group transition-all border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 relative overflow-hidden shrink-0"
   >
-    {/* Inner Glow White for Depth */}
     <div className="absolute inset-0 shadow-[inset_0_0_12px_rgba(0,0,0,0.05)] pointer-events-none" />
-    
     <div className="p-1.5 bg-blue-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-300 relative z-10">
       <Plus className="w-4 h-4" strokeWidth={3} />
     </div>
@@ -334,8 +331,19 @@ export default function PromoterDashboard() {
           </Tabs>
         </div>
 
-        {/* Campaign list */}
-        {paginatedCampaigns.length === 0 ? (
+        {/* Campaign list section with Loading State */}
+        {isCampaignLoading ? (
+          <div className="py-24 flex flex-col items-center justify-center border-2 border-dashed border-blue-500/10 rounded-[40px] bg-blue-500/[0.02] space-y-4">
+            <div className="relative flex items-center justify-center">
+              <div className="w-16 h-16 border-4 border-blue-500/10 border-t-blue-500 rounded-full animate-spin"></div>
+              <Zap className="absolute text-blue-500 animate-pulse" size={24} fill="currentColor" />
+            </div>
+            <div className="text-center">
+              <p className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-400 animate-pulse">Initializing Campaigns...</p>
+              <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Synchronizing with Neural Network</p>
+            </div>
+          </div>
+        ) : paginatedCampaigns.length === 0 ? (
           <div className="text-center py-24 border-2 border-dashed border-white/5 rounded-[40px] bg-white/[0.01]">
             <p className="text-slate-600 font-black uppercase tracking-widest text-sm italic">No campaigns found in this sector.</p>
           </div>
@@ -349,7 +357,6 @@ export default function PromoterDashboard() {
                   key={c._id} 
                   className="bg-slate-900/60 border-white/5 shadow-2xl rounded-[32px] overflow-hidden group hover:border-blue-500/40 transition-all duration-500 flex flex-col relative"
                 >
-                  {/* INNER BLUE LIGHT EFFECT */}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent)] pointer-events-none" />
                   <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.4)] pointer-events-none" />
 
@@ -357,7 +364,7 @@ export default function PromoterDashboard() {
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
                         <Badge className="bg-white/5 text-slate-500 border-white/10 text-[9px] font-black px-2 py-0.5 rounded-md mb-2">
-                           REF: {c._id.slice(-6).toUpperCase()}
+                            REF: {c._id.slice(-6).toUpperCase()}
                         </Badge>
                         <CardTitle className="text-2xl font-black text-white tracking-tight group-hover:text-blue-400 transition-colors duration-300">
                           {c.title}
@@ -374,7 +381,6 @@ export default function PromoterDashboard() {
                     <CampaignDescription text={c.description} />
                     <Separator className="my-6 bg-white/5" />
                     
-                    {/* Task List (LENGKAP) */}
                     {Array.isArray(c.tasks) && c.tasks.length > 0 ? (
                       <div className="space-y-3">
                         <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Mission Tasks</p>
@@ -424,7 +430,6 @@ export default function PromoterDashboard() {
                     </div>
                   </CardContent>
 
-                  {/* Footer - Action Buttons (LENGKAP) */}
                   <CardFooter className="p-6 pt-2 bg-black/10 mt-6 border-t border-white/5 flex justify-center gap-3 relative z-10">
                     {c.status !== 'finished' && (
                       <>
@@ -470,12 +475,10 @@ export default function PromoterDashboard() {
 
         <Separator className="bg-white/5 my-12" />
 
-{/* Pagination (SMART DYNAMIC - SINGLE LINE) */}
-{current.length > pageSize && (
-  <div className="flex flex-col items-center gap-4 py-8 w-full px-4">
+{/* Pagination */}
+{!isCampaignLoading && current.length > pageSize && (
+  <div className="flex flex-col items-center gap-4 py-8">
     <div className="flex items-center justify-center gap-1.5 w-full overflow-hidden">
-      
-      {/* PREV */}
       <Button
         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
         disabled={currentPage === 1}
@@ -485,53 +488,34 @@ export default function PromoterDashboard() {
       </Button>
 
       <div className="flex items-center gap-1.5">
-        {/* HALAMAN PERTAMA: Selalu Tampil */}
         <Button
           onClick={() => setCurrentPage(1)}
           className={`h-9 w-9 rounded-lg text-xs font-black shrink-0 transition-all ${
-            currentPage === 1 
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' 
-              : 'bg-slate-900 text-slate-500 border border-white/5'
+            currentPage === 1 ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' : 'bg-slate-900 text-slate-500 border border-white/5'
           }`}
         >
           1
         </Button>
-
-        {/* TITIK-TITIK AWAL: Tampil jika currentPage > 3 */}
         {currentPage > 3 && <span className="text-slate-700 font-bold px-0.5">...</span>}
-
-        {/* HALAMAN TENGAH (DINAMIS): Tampil di sekitar halaman aktif */}
         {Array.from({ length: totalPages }, (_, i) => i + 1)
-          .filter(page => (
-            page !== 1 && 
-            page !== totalPages && 
-            Math.abs(page - currentPage) <= 1
-          ))
+          .filter(page => page !== 1 && page !== totalPages && Math.abs(page - currentPage) <= 1)
           .map((page) => (
             <Button
               key={page}
               onClick={() => setCurrentPage(page)}
               className={`h-9 w-9 rounded-lg text-xs font-black shrink-0 transition-all ${
-                currentPage === page 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' 
-                  : 'bg-slate-900 text-slate-500 border border-white/5'
+                currentPage === page ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' : 'bg-slate-900 text-slate-500 border border-white/5'
               }`}
             >
               {page}
             </Button>
           ))}
-
-        {/* TITIK-TITIK AKHIR: Tampil jika currentPage < totalPages - 2 */}
         {currentPage < totalPages - 2 && <span className="text-slate-700 font-bold px-0.5">...</span>}
-
-        {/* HALAMAN TERAKHIR: Selalu Tampil (selama totalPages > 1) */}
         {totalPages > 1 && (
           <Button
             onClick={() => setCurrentPage(totalPages)}
             className={`h-9 w-9 rounded-lg text-xs font-black shrink-0 transition-all ${
-              currentPage === totalPages 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' 
-                : 'bg-slate-900 text-slate-500 border border-white/5'
+              currentPage === totalPages ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 border-t border-white/20' : 'bg-slate-900 text-slate-500 border border-white/5'
             }`}
           >
             {totalPages}
@@ -539,7 +523,6 @@ export default function PromoterDashboard() {
         )}
       </div>
 
-      {/* NEXT */}
       <Button
         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
         disabled={currentPage === totalPages}
@@ -548,15 +531,11 @@ export default function PromoterDashboard() {
         <ArrowRight className="w-4 h-4" />
       </Button>
     </div>
-    
-    <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">
-      Page {currentPage} / {totalPages}
-    </p>
+    <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">Page {currentPage} / {totalPages}</p>
   </div>
 )}
       </main>
 
-      {/* Participants Modal (LENGKAP) */}
       <Dialog open={showParticipants} onOpenChange={setShowParticipants}>
         <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-[425px] rounded-[32px] overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
@@ -585,7 +564,6 @@ export default function PromoterDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Campaign Form & Topup Modal */}
       <CampaignForm
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingCampaign(null); }}
@@ -594,43 +572,6 @@ export default function PromoterDashboard() {
         setEditingCampaign={(c: any) => setEditingCampaign(c)}
       />
       {showTopup && <USDCTransferModal onClose={() => setShowTopup(false)} />}
-
-{/* FLOATING CHAT - MODERN REDESIGN */}
-<div className="fixed bottom-8 right-8 z-50">
-  {!showChat ? (
-    <Button
-      size="icon"
-      className="w-16 h-16 rounded-full shadow-[0_10px_40px_rgba(37,99,235,0.4)] bg-blue-600 hover:bg-blue-500 hover:scale-110 active:scale-95 transition-all duration-300 border-t border-white/30"
-      onClick={() => setShowChat(true)}
-    >
-      <MessageCircle className="w-7 h-7" />
-    </Button>
-  ) : (
-    <Card className="w-[90vw] md:w-96 h-[500px] max-h-[80dvh] bg-[#020617] text-slate-200 border border-white/10 rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col animate-in zoom-in slide-in-from-bottom-10 fixed bottom-8 right-8">
-      
-      {/* HEADER: Tetap Terlihat (Sticky-like behavior because of Flex) */}
-      <CardHeader className="shrink-0 py-4 px-6 bg-gradient-to-r from-blue-700 to-indigo-700 flex flex-row items-center justify-between space-y-0 z-20">
-        <CardTitle className="text-sm font-black uppercase tracking-widest text-white">Live Network</CardTitle>
-        <button onClick={() => setShowChat(false)} className="text-xs font-black bg-black/20 hover:bg-black/40 px-3 py-1 rounded-full transition-colors">HIDE</button>
-      </CardHeader>
-      
-      {/* AREA CHAT: Hanya area ini yang bisa di-scroll */}
-      <CardContent className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden relative">
-        <div className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth flex flex-col-reverse p-4">
-          {/* PENTING: 'flex-reverse' akan memaksa chat mulai dari bawah. 
-              Pastikan list chat di dalam <GlobalChatRoom /> di-render terbalik 
-              atau komponen tersebut menangani auto-scroll ke bawah.
-          */}
-          <GlobalChatRoom />
-        </div>
-      </CardContent>
-
-      {/* INPUT FIELD: Jika input field ada di dalam GlobalChatRoom, 
-          pastikan komponen tersebut menaruh inputnya di luar area scroll. 
-          Jika tidak, taruh komponen Input di sini agar dia 'Sticky' di bawah. */}
-    </Card>
-  )}
-</div>
-</div>
+    </div>
   )
 }

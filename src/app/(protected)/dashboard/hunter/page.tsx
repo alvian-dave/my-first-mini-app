@@ -13,16 +13,14 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { 
   ArrowLeft, ArrowRight, MessageCircle, Wallet, 
-  CheckCircle, Zap, Star, Target, LayoutGrid 
+  CheckCircle, Zap, Star, Target, LayoutGrid, Loader2 
 } from 'lucide-react'
 
 // Custom Components
 import { Topbar } from '@/components/Topbar'
-import { GlobalChatRoom } from '@/components/GlobalChatRoom'
 import TaskModal from '@/components/TaskModal' 
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 import ReferralModal from '@/components/ReferralModal'
-
 
 // --- Interfaces ---
 interface Task {
@@ -30,11 +28,6 @@ interface Task {
   type: string
   url: string
   done?: boolean
-}
-
-interface Submission {
-  status: string
-  tasks: Task[]
 }
 
 interface Campaign {
@@ -48,7 +41,6 @@ interface Campaign {
   contributors?: number
 }
 
-// ## Internal Component for Description (Mirroring Promoter Style)
 function CampaignDescription({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false)
   const isLong = text.length > 120
@@ -74,9 +66,6 @@ function CampaignDescription({ text }: { text: string }) {
   )
 }
 
-// =====================================
-// ## HUNTER DASHBOARD (REFACTORED)
-// =====================================
 export default function HunterDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -85,21 +74,18 @@ export default function HunterDashboard() {
   const [completedCampaigns, setCompletedCampaigns] = useState<Campaign[]>([])
   const [balance, setBalance] = useState(0)
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'rejected'>('active')
-  const [showChat, setShowChat] = useState(false)
-  const [loadingIds, setLoadingIds] = useState<string[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 6
   const [openReferral, setOpenReferral] = useState(false)
+  
+  // --- LOADING STATE ---
+  const [isDataLoading, setIsDataLoading] = useState(true)
 
-  // Redirect Logic
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/')
   }, [status, router])
 
-  // =========================
-  // DATA FETCHING
-  // =========================
   const fetchBalance = useCallback(async () => {
     if (!session?.user?.walletAddress) return
     try {
@@ -107,12 +93,12 @@ export default function HunterDashboard() {
       setBalance(Number(bal))
     } catch (err) {
       console.error('Balance error:', err)
-      toast.error('Failed to fetch WR balance')
     }
   }, [session])
 
   const loadData = useCallback(async () => {
     if (!session?.user?.id) return
+    setIsDataLoading(true) 
     try {
       const [resAll, resDone] = await Promise.all([
         fetch('/api/campaigns', { cache: 'no-store' }),
@@ -122,6 +108,9 @@ export default function HunterDashboard() {
       if (resDone.ok) setCompletedCampaigns(await resDone.json())
     } catch (err) {
       toast.error('Data synchronization failed')
+    } finally {
+      // Delay sedikit agar transisi mulus
+      setTimeout(() => setIsDataLoading(false), 500)
     }
   }, [session])
 
@@ -132,9 +121,6 @@ export default function HunterDashboard() {
 
   useEffect(() => { setCurrentPage(1) }, [activeTab])
 
-  // =========================
-  // LOGIC & FILTERING
-  // =========================
   const filteredCampaigns = useMemo(() => {
     let list: Campaign[] = []
     if (activeTab === 'active') {
@@ -160,7 +146,13 @@ export default function HunterDashboard() {
     }
   }
 
-  if (status === 'loading') return <div className="min-h-screen bg-[#020617] flex items-center justify-center text-emerald-500 font-black tracking-tighter">INITIALIZING...</div>
+  // Initializing App State (Gaya Promoter)
+  if (status === 'loading') return (
+    <div className="min-h-screen bg-[#020617] flex items-center justify-center text-emerald-500 font-black tracking-tighter italic">
+      INITIALIZING...
+    </div>
+  )
+  
   if (!session?.user) return null
 
   return (
@@ -169,7 +161,7 @@ export default function HunterDashboard() {
 
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto space-y-8">
         
-        {/* Banner - Lead the way (Hunter Emerald Version) */}
+        {/* Banner */}
         <div className="relative group overflow-hidden rounded-[32px] p-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-blue-500 shadow-2xl transition-all duration-500 hover:scale-[1.01]">
           <div className="bg-[#020617]/90 rounded-[31px] py-8 px-6 text-center relative overflow-hidden">
             <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full translate-y-10" />
@@ -203,10 +195,10 @@ export default function HunterDashboard() {
             </CardContent>
           </Card>
 
-            <div
-              onClick={() => setOpenReferral(true)}
-              className="w-24 h-full bg-white hover:bg-emerald-50 text-black rounded-[20px] flex flex-col items-center justify-center gap-1.5 shadow-xl group transition-all border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 relative overflow-hidden shrink-0 cursor-pointer select-none"
-            >
+          <div
+            onClick={() => setOpenReferral(true)}
+            className="w-24 h-full bg-white hover:bg-emerald-50 text-black rounded-[20px] flex flex-col items-center justify-center gap-1.5 shadow-xl group transition-all border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 relative overflow-hidden shrink-0 cursor-pointer select-none"
+          >
             <div className="absolute inset-0 shadow-[inset_0_0_12px_rgba(0,0,0,0.05)] pointer-events-none" />
             <div className="p-1.5 bg-emerald-600 rounded-full text-white shadow-md group-hover:scale-110 transition-transform duration-300 relative z-10">
               <Target className="w-4 h-4" strokeWidth={3} />
@@ -215,7 +207,7 @@ export default function HunterDashboard() {
           </div>
         </div>
 
-        {/* STICKY TABS - Emerald Glassmorphism */}
+        {/* STICKY TABS */}
         <div className="sticky top-[64px] z-40 -mx-4 px-4 py-4 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
             <TabsList className="grid w-full grid-cols-3 bg-black/40 border border-white/10 p-1.5 rounded-full h-14 max-w-2xl mx-auto shadow-2xl">
@@ -234,8 +226,19 @@ export default function HunterDashboard() {
           </Tabs>
         </div>
 
-        {/* Task Grid */}
-        {paginated.length === 0 ? (
+        {/* --- LOADING SECTION (GAYA PROMOTER) --- */}
+        {isDataLoading ? (
+          <div className="py-24 flex flex-col items-center justify-center border-2 border-dashed border-emerald-500/10 rounded-[40px] bg-emerald-500/[0.02] space-y-4">
+            <div className="relative flex items-center justify-center">
+              <div className="w-16 h-16 border-4 border-emerald-500/10 border-t-emerald-500 rounded-full animate-spin"></div>
+              <Zap className="absolute text-emerald-500 animate-pulse" size={24} fill="currentColor" />
+            </div>
+            <div className="text-center">
+              <p className="text-[11px] font-black uppercase tracking-[0.4em] text-emerald-400 animate-pulse">Initializing Tasks...</p>
+              <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Synchronizing with Neural Network</p>
+            </div>
+          </div>
+        ) : paginated.length === 0 ? (
           <div className="text-center py-24 border-2 border-dashed border-white/5 rounded-[40px] bg-white/[0.01]">
             <p className="text-slate-600 font-black uppercase tracking-widest text-sm italic">No missions available in this sector.</p>
           </div>
@@ -329,8 +332,8 @@ export default function HunterDashboard() {
           </div>
         )}
 
-        {/* Pagination (Promoter Style) */}
-        {totalPages > 1 && (
+        {/* Pagination - Hide during loading */}
+        {!isDataLoading && totalPages > 1 && (
           <div className="flex flex-col items-center gap-4 py-8">
             <div className="flex items-center justify-center gap-1.5">
               <Button
@@ -388,38 +391,12 @@ export default function HunterDashboard() {
         />
       )}
 
-
       {/* Referral Modal */}
       <ReferralModal
         isOpen={openReferral}
         onClose={() => setOpenReferral(false)}
       />
 
-
-      {/* Floating Chat (Promoter Redesign - Emerald Version) */}
-      <div className="fixed bottom-8 left-8 z-50">
-        {!showChat ? (
-          <Button
-            size="icon"
-            className="w-16 h-16 rounded-full shadow-[0_10px_40px_rgba(16,185,129,0.4)] bg-emerald-600 hover:bg-emerald-500 hover:scale-110 transition-all duration-300 border-t border-white/30"
-            onClick={() => setShowChat(true)}
-          >
-            <MessageCircle className="w-7 h-7" />
-          </Button>
-        ) : (
-          <Card className="w-[90vw] md:w-96 h-[500px] max-h-[80dvh] bg-[#020617] text-slate-200 border border-white/10 rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col animate-in zoom-in slide-in-from-bottom-10 fixed bottom-8 left-8">
-            <CardHeader className="shrink-0 py-4 px-6 bg-gradient-to-r from-emerald-700 to-teal-700 flex flex-row items-center justify-between space-y-0 z-20">
-              <CardTitle className="text-sm font-black uppercase tracking-widest text-white">Hunter Comms</CardTitle>
-              <button onClick={() => setShowChat(false)} className="text-xs font-black bg-black/20 hover:bg-black/40 px-3 py-1 rounded-full">HIDE</button>
-            </CardHeader>
-            <CardContent className="flex-1 min-h-0 p-0 overflow-hidden relative">
-              <div className="h-full overflow-y-auto flex flex-col-reverse p-4">
-                <GlobalChatRoom />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
     </div>
   )
 }
