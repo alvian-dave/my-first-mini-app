@@ -114,18 +114,19 @@ export default function PromoterHowToStart() {
         </div>
       </div>
 
-      {/* 5. FUTURE ADS PREVIEW */}
+{/* 5. LIVE ADS FEATURE */}
       <div className="bg-gradient-to-br from-blue-600/20 to-transparent border border-blue-500/30 rounded-2xl p-6 relative overflow-hidden group">
         <div className="absolute -right-2 -bottom-2 opacity-5">
            <LayoutDashboard size={100} />
         </div>
         <div className="relative z-10 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 bg-blue-500 text-[8px] font-black rounded uppercase tracking-widest">Coming Soon</span>
-            <h3 className="text-xs font-black uppercase italic tracking-tighter">Special Neural Ads</h3>
+            <span className="px-2 py-0.5 bg-blue-500 text-[8px] font-black rounded uppercase tracking-widest text-white">Available Now</span>
+            <h3 className="text-xs font-black uppercase italic tracking-tighter text-white">Neural Banner Ads</h3>
           </div>
           <p className="text-[10px] font-medium text-slate-400 leading-snug">
-            Promote your <span className="text-white">Telegram Mini-Apps</span> or custom banners at the top of the dashboard for maximum visibility.
+            Promote your <span className="text-white">Mini Apps</span> or any custom ads for <span className="text-white">200 WR / 1 USDC per 24H</span>. 
+            Banners are displayed at the top of both Hunter and Promoter dashboards, greeting every user upon entry.
           </p>
         </div>
       </div>
