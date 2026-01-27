@@ -67,8 +67,7 @@ const AdSchema = new Schema(
     // Kapan iklan berakhir
     expiresAt: { 
       type: Date, 
-      required: true, 
-      index: true 
+      required: true,
     }, 
     
     clicks: { 
