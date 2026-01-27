@@ -21,6 +21,7 @@ import { Topbar } from '@/components/Topbar'
 import TaskModal from '@/components/TaskModal' 
 import { getWRCreditBalance } from '@/lib/getWRCreditBalance'
 import ReferralModal from '@/components/ReferralModal'
+import SpinFloatingButton from '@/components/hunter/SpinFloatingButton'
 
 // --- Interfaces ---
 interface Task {
@@ -365,6 +366,9 @@ export default function HunterDashboard() {
             <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">Sector {currentPage} / {totalPages}</p>
           </div>
         )}
+
+        <SpinFloatingButton />
+        
       </main>
 
       {/* Task Modal Integration */}
