@@ -99,7 +99,7 @@ export default function Home() {
 
               <p className="text-slate-400 text-sm leading-relaxed mb-8 px-2 font-medium">
                 A mini app where <span className="text-emerald-400 font-bold">hunters</span> earn rewards and
-                <span className="text-blue-400 font-bold"> project owners</span> launch campaigns.
+                <span className="text-blue-400 font-bold"> promoters</span> launch campaigns.
               </p>
 
               <div className="flex flex-col items-center gap-4">

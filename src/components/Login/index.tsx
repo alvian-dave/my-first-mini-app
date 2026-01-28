@@ -66,9 +66,9 @@ export const Login = () => {
             {loadingRole === 'promoter' && <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />}
           </div>
 
-          <h3 className="text-xl font-bold text-blue-400 mb-1">For Project Owners</h3>
+          <h3 className="text-xl font-bold text-blue-400 mb-1">For Promoters</h3>
           <p className="text-sm text-slate-400 leading-relaxed mb-6">
-            Launch your own campaign and distribute rewards to real humans.
+            Build your personal brand or grow your community.
           </p>
 
           <Button
