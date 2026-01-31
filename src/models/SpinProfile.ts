@@ -39,6 +39,4 @@ const spinProfileSchema = new Schema(
   { timestamps: true }
 );
 
-spinProfileSchema.index({ userId: 1 });
-
 export default models.SpinProfile || model("SpinProfile", spinProfileSchema);
